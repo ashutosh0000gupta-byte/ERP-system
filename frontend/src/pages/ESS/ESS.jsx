@@ -1,0 +1,967 @@
+/**
+ * Employee Self Service (ESS) Page  •  Module 16
+ * Tabs: Overview  •  Tax Declaration  •  Download My Data
+ *
+ * ESS is a thin, employee-scoped aggregation layer over other modules  • 
+ * it deep-links into Leave/Attendance/Payroll/LMS/Assets rather than
+ * duplicating their data stores.
+ */
+
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import {
+  LayoutGrid,
+  Receipt,
+  DownloadCloud,
+  CalendarDays,
+  Clock,
+  Wallet,
+  GraduationCap,
+  Laptop,
+  LifeBuoy,
+  AlertTriangle,
+  Plus,
+  ShieldCheck,
+  Clock3,
+  UserCog,
+  Send,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
+import MainLayout from "../../components/layout/MainLayout";
+import PageHeader from "../../components/shared/PageHeader";
+import StatusBadge from "../../components/shared/StatusBadge";
+import Spinner from "../../components/shared/Spinner";
+import EmptyState from "../../components/shared/EmptyState";
+import Modal from "../../components/shared/Modal";
+import { useAuth } from "../../context/AuthContext";
+import {
+  getOverview,
+  getTaxDeclarations,
+  submitTaxDeclaration,
+  getLastExportRequest,
+  requestDataExport,
+} from "../../services/essService";
+import {
+  getEmployeeRequests,
+  createEmployeeRequest,
+  decideEmployeeRequest,
+} from "../../services/employeeService";
+import { proofStatusMeta, EXPORT_THROTTLE_DAYS } from "../../mock/ess";
+
+const currency = (n) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+const fmtDateTime = (iso) => new Date(iso).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+const fmtDate = (d) => new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
+/* ---------------------------------- shared bits ---------------------------------- */
+
+const cardStyle = {
+  background: "var(--card)",
+  borderRadius: "var(--radius-lg)",
+  border: "1px solid var(--border)",
+  boxShadow: "var(--shadow-sm)",
+};
+
+function inputStyle(hasError) {
+  return {
+    width: "100%", padding: "9px 12px",
+    border: `1px solid ${hasError ? "var(--red)" : "var(--border)"}`,
+    borderRadius: "var(--radius-sm)", fontSize: "13.5px", color: "var(--text)",
+    outline: "none", background: "var(--card)", fontFamily: "inherit",
+  };
+}
+
+function fieldLabel(text) {
+  return <label style={{ fontSize: "12px", fontWeight: 600, color: "var(--label)" }}>{text}</label>;
+}
+
+function PrimaryButton({ children, ...props }) {
+  return (
+    <button {...props} style={{
+      display: "flex", alignItems: "center", gap: "6px", padding: "9px 16px",
+      background: "var(--primary)", color: "#fff", border: "none", borderRadius: "var(--radius-sm)",
+      fontWeight: 600, fontSize: "13px", cursor: props.disabled ? "not-allowed" : "pointer",
+      opacity: props.disabled ? 0.6 : 1, ...props.style,
+    }}>
+      {children}
+    </button>
+  );
+}
+
+function SecondaryButton({ children, ...props }) {
+  return (
+    <button {...props} style={{
+      padding: "9px 16px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
+      background: "none", color: "var(--label)", fontWeight: 600, fontSize: "13px", cursor: "pointer", ...props.style,
+    }}>
+      {children}
+    </button>
+  );
+}
+
+function TabNav({ tabs, active, onChange }) {
+  return (
+    <div style={{ display: "flex", gap: "4px", borderBottom: "1px solid var(--border)", marginBottom: "22px", overflowX: "auto" }}>
+      {tabs.map((t) => {
+        const isActive = t.key === active;
+        return (
+          <button key={t.key} onClick={() => onChange(t.key)} style={{
+            display: "flex", alignItems: "center", gap: "7px", padding: "10px 16px",
+            border: "none", borderBottom: isActive ? "2px solid var(--primary)" : "2px solid transparent",
+            background: "none", color: isActive ? "var(--primary)" : "var(--subtext)",
+            fontWeight: 600, fontSize: "13.5px", cursor: "pointer", whiteSpace: "nowrap",
+          }}>
+            <t.icon size={15} />
+            {t.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ---------------------------------- Overview tab ---------------------------------- */
+
+const QUICK_LINKS = [
+  { key: "leave", label: "Apply Leave", icon: CalendarDays, to: "/leave", ready: true },
+  { key: "attendance", label: "Attendance", icon: Clock, to: "/attendance", ready: true },
+  { key: "payroll", label: "Payslips", icon: Wallet, to: "/payroll", ready: true },
+  { key: "performance", label: "Performance", icon: ShieldCheck, to: "/performance", ready: true },
+  { key: "lms", label: "Learning Portal", icon: GraduationCap, to: "/lms", ready: true },
+  { key: "assets", label: "Request Asset", icon: Laptop, to: "/assets", ready: true },
+  { key: "helpdesk", label: "Raise Ticket", icon: LifeBuoy, to: "/helpdesk", ready: false },
+  { key: "profile", label: "Update Profile", icon: UserCog, to: "/employees/me", ready: false },
+];
+
+function QuickLinkCard({ link }) {
+  const content = (
+    <>
+      <div style={{ width: "38px", height: "38px", borderRadius: "var(--radius)", background: "var(--primary-light)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "10px" }}>
+        <link.icon size={18} style={{ color: "var(--primary)" }} />
+      </div>
+      <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--text)" }}>{link.label}</p>
+      {!link.ready && <span style={{ fontSize: "10.5px", color: "var(--subtext)" }}>Module coming soon</span>}
+    </>
+  );
+
+  const style = { ...cardStyle, padding: "16px", textAlign: "left", display: "block", textDecoration: "none", cursor: link.ready ? "pointer" : "default", opacity: link.ready ? 1 : 0.6 };
+
+  return link.ready ? (
+    <Link to={link.to} style={style}>{content}</Link>
+  ) : (
+    <div style={style}>{content}</div>
+  );
+}
+
+function OverviewWidget({ icon: Icon, label, error, children }) {
+  return (
+    <div style={{ ...cardStyle, padding: "16px 18px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+        <Icon size={15} style={{ color: "var(--subtext)" }} />
+        <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--subtext)", textTransform: "uppercase", letterSpacing: "0.4px" }}>{label}</span>
+      </div>
+      {error ? (
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--red)" }}>
+          <AlertTriangle size={14} />
+          <span style={{ fontSize: "12px" }}>{error}</span>
+        </div>
+      ) : (
+        children
+      )}
+    </div>
+  );
+}
+
+function OverviewTab({ overview }) {
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "8px" }}>
+        <h2 style={{ fontSize: "14px", fontWeight: 700, color: "var(--text)" }}>Quick Actions</h2>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "12px", marginBottom: "24px" }}>
+        {QUICK_LINKS.map((l) => <QuickLinkCard key={l.key} link={l} />)}
+      </div>
+
+      <h2 style={{ fontSize: "14px", fontWeight: 700, color: "var(--text)", marginBottom: "14px" }}>My Snapshot</h2>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "14px" }}>
+        <OverviewWidget icon={CalendarDays} label="Leave Balance">
+          <p style={{ fontSize: "22px", fontWeight: 800, color: "var(--text)" }}>{overview.leaveBalance.available}</p>
+          <p style={{ fontSize: "11.5px", color: "var(--subtext)" }}>{overview.leaveBalance.pending} day(s) pending approval</p>
+        </OverviewWidget>
+
+        <OverviewWidget icon={Clock} label="This Month">
+          <p style={{ fontSize: "22px", fontWeight: 800, color: "var(--text)" }}>{overview.attendanceThisMonth.present} days</p>
+          <p style={{ fontSize: "11.5px", color: "var(--subtext)" }}>Present  •  {overview.attendanceThisMonth.late} late  •  {overview.attendanceThisMonth.wfh} WFH</p>
+        </OverviewWidget>
+
+        <OverviewWidget icon={Wallet} label="Latest Payslip" error={overview.payrollError}>
+          {overview.latestPayslip && (
+            <>
+              <p style={{ fontSize: "22px", fontWeight: 800, color: "var(--text)" }}>{currency(overview.latestPayslip.netPay)}</p>
+              <p style={{ fontSize: "11.5px", color: "var(--subtext)" }}>{overview.latestPayslip.period}</p>
+            </>
+          )}
+        </OverviewWidget>
+
+        <OverviewWidget icon={GraduationCap} label="Learning">
+          <p style={{ fontSize: "22px", fontWeight: 800, color: "var(--text)" }}>{overview.learning.inProgress}</p>
+          <p style={{ fontSize: "11.5px", color: overview.learning.complianceOverdue > 0 ? "var(--red)" : "var(--subtext)" }}>
+            In progress{overview.learning.complianceOverdue > 0 ? `  •  ${overview.learning.complianceOverdue} compliance overdue` : ""}
+          </p>
+        </OverviewWidget>
+
+        <OverviewWidget icon={Laptop} label="Assigned Assets">
+          <p style={{ fontSize: "22px", fontWeight: 800, color: "var(--text)" }}>{overview.assignedAssets}</p>
+          <p style={{ fontSize: "11.5px", color: "var(--subtext)" }}>Currently in your custody</p>
+        </OverviewWidget>
+
+        <OverviewWidget icon={LifeBuoy} label="Open Tickets">
+          <p style={{ fontSize: "22px", fontWeight: 800, color: "var(--text)" }}>{overview.openTickets}</p>
+          <p style={{ fontSize: "11.5px", color: "var(--subtext)" }}>Awaiting Helpdesk response</p>
+        </OverviewWidget>
+      </div>
+
+      {overview.payrollError && (
+        <p style={{ fontSize: "11.5px", color: "var(--subtext)", marginTop: "14px" }}>
+          Payroll data is unavailable right now, but the rest of your dashboard loaded normally  •  that's intentional (a single module outage shouldn't take ESS down).
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------- Tax Declaration tab ---------------------------------- */
+
+function AddDeclarationModal({ isOpen, onClose, onSaved }) {
+  const [section, setSection] = useState("80C");
+  const [investmentType, setInvestmentType] = useState("");
+  const [amount, setAmount] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!investmentType.trim() || !amount) return;
+    setSaving(true);
+    const entry = {
+      id: `td-${Date.now()}`,
+      financialYear: "2026-27",
+      section,
+      investmentType: investmentType.trim(),
+      amount: Number(amount),
+      proofStatus: "Pending",
+      submittedAt: new Date().toISOString().slice(0, 10),
+    };
+    const res = await submitTaxDeclaration(entry);
+    setSaving(false);
+    onSaved(res.data);
+    onClose();
+    setInvestmentType(""); setAmount("");
+  };
+
+  return (
+    <Modal isOpen={isOpen} title="Submit Investment Declaration" onClose={onClose}>
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <p style={{ fontSize: "12px", color: "var(--subtext)", margin: 0 }}>Financial Year 2026-27</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+          {fieldLabel("Section")}
+          <select value={section} onChange={(e) => setSection(e.target.value)} style={{ ...inputStyle(false), height: "38px", cursor: "pointer" }}>
+            {["80C", "80D", "80CCD(1B)", "HRA", "LTA", "Home Loan Interest"].map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+          {fieldLabel("Investment / Expense Type *")}
+          <input value={investmentType} onChange={(e) => setInvestmentType(e.target.value)} placeholder="e.g. ELSS Mutual Fund" style={inputStyle(false)} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+          {fieldLabel("Amount (₹) *")}
+          <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} style={inputStyle(false)} />
+        </div>
+        <p style={{ fontSize: "11px", color: "var(--subtext)", margin: 0 }}>Proof documents can be uploaded after submission; status starts as "Pending" until reviewed by Payroll.</p>
+        <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+          <SecondaryButton type="button" onClick={onClose}>Cancel</SecondaryButton>
+          <PrimaryButton type="submit" disabled={saving}>{saving ? "Submitting • " : "Submit Declaration"}</PrimaryButton>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function TaxDeclarationTab({ declarations, onAdded }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const total = declarations.reduce((sum, d) => sum + d.amount, 0);
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+        <div>
+          <h2 style={{ fontSize: "14px", fontWeight: 700, color: "var(--text)" }}>Tax Declarations  •  FY 2026-27</h2>
+          <p style={{ fontSize: "12px", color: "var(--subtext)" }}>Total declared: {currency(total)}</p>
+        </div>
+        <PrimaryButton onClick={() => setShowAdd(true)}><Plus size={16} /> Add Declaration</PrimaryButton>
+      </div>
+
+      {declarations.length === 0 ? (
+        <EmptyState icon={Receipt} title="No declarations submitted yet" />
+      ) : (
+        <div style={{ ...cardStyle, overflow: "hidden" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "var(--background)", borderBottom: "1px solid var(--border)" }}>
+                  {["Section", "Type", "Amount", "Proof Status", "Submitted"].map((h) => (
+                    <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: "11px", fontWeight: 700, color: "var(--subtext)", textTransform: "uppercase", letterSpacing: "0.5px", whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {declarations.map((d, i) => {
+                  const meta = proofStatusMeta[d.proofStatus];
+                  return (
+                    <tr key={d.id} style={{ borderBottom: i < declarations.length - 1 ? "1px solid var(--border)" : "none" }}>
+                      <td style={{ padding: "13px 16px", fontSize: "13.5px", color: "var(--text)", fontWeight: 600 }}>{d.section}</td>
+                      <td style={{ padding: "13px 16px", fontSize: "13.5px", color: "var(--text)" }}>{d.investmentType}</td>
+                      <td style={{ padding: "13px 16px", fontSize: "13.5px", color: "var(--text)" }}>{currency(d.amount)}</td>
+                      <td style={{ padding: "13px 16px" }}><StatusBadge label={d.proofStatus} color={meta.color} bg={meta.bg} /></td>
+                      <td style={{ padding: "13px 16px", fontSize: "12px", color: "var(--subtext)", whiteSpace: "nowrap" }}>{fmtDate(d.submittedAt)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <AddDeclarationModal isOpen={showAdd} onClose={() => setShowAdd(false)} onSaved={onAdded} />
+    </div>
+  );
+}
+
+/* ---------------------------------- Request Center tab ---------------------------------- */
+
+function NewRequestModal({ isOpen, onClose, onSubmitted }) {
+  const [requestType, setRequestType] = useState("ProfileUpdate");
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  // Profile fields
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [alternateMobile, setAlternateMobile] = useState("");
+  const [personalEmail, setPersonalEmail] = useState("");
+  const [currentAddress, setCurrentAddress] = useState("");
+  const [permanentAddress, setPermanentAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [country] = useState("India");
+  const [postalCode, setPostalCode] = useState("");
+
+  // Bank fields
+  const [bankName, setBankName] = useState("");
+  const [bankAccountNumber, setBankAccountNumber] = useState("");
+  const [bankIfsc, setBankIfsc] = useState("");
+  const [panNumber, setPanNumber] = useState("");
+
+  // Emergency Contact fields
+  const [contactName, setContactName] = useState("");
+  const [relationship, setRelationship] = useState("Guardian");
+  const [phone, setPhone] = useState("");
+  const [altPhone, setAltPhone] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactAddress, setContactAddress] = useState("");
+  const [isPrimary, setIsPrimary] = useState(false);
+
+  const resetForm = () => {
+    setReason("");
+    setError("");
+    setMobileNumber("");
+    setAlternateMobile("");
+    setPersonalEmail("");
+    setCurrentAddress("");
+    setPermanentAddress("");
+    setCity("");
+    setState("");
+    setPostalCode("");
+    setBankName("");
+    setBankAccountNumber("");
+    setBankIfsc("");
+    setPanNumber("");
+    setContactName("");
+    setRelationship("Guardian");
+    setPhone("");
+    setAltPhone("");
+    setContactEmail("");
+    setContactAddress("");
+    setIsPrimary(false);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!reason.trim()) {
+      setError("Please provide a reason for this change request.");
+      return;
+    }
+
+    let payload = {};
+    if (requestType === "ProfileUpdate") {
+      if (mobileNumber) payload.mobileNumber = mobileNumber.trim();
+      if (alternateMobile) payload.alternateMobile = alternateMobile.trim();
+      if (personalEmail) payload.personalEmail = personalEmail.trim();
+      if (currentAddress) payload.currentAddress = currentAddress.trim();
+      if (permanentAddress) payload.permanentAddress = permanentAddress.trim();
+      if (city) payload.city = city.trim();
+      if (state) payload.state = state.trim();
+      if (country) payload.country = country.trim();
+      if (postalCode) payload.postalCode = postalCode.trim();
+
+      if (Object.keys(payload).length === 0) {
+        setError("Please enter at least one profile detail to update.");
+        return;
+      }
+    } else if (requestType === "BankUpdate") {
+      if (bankName) payload.bankName = bankName.trim();
+      if (bankAccountNumber) payload.bankAccountNumber = bankAccountNumber.trim();
+      if (bankIfsc) payload.bankIfsc = bankIfsc.trim().toUpperCase();
+      if (panNumber) payload.panNumber = panNumber.trim().toUpperCase();
+
+      if (Object.keys(payload).length === 0) {
+        setError("Please provide at least one bank or statutory field to update.");
+        return;
+      }
+    } else if (requestType === "EmergencyContact") {
+      if (!contactName.trim() || !phone.trim()) {
+        setError("Contact Name and Phone number are required.");
+        return;
+      }
+      payload = {
+        name: contactName.trim(),
+        relationship,
+        phone: phone.trim(),
+        alternatePhone: altPhone.trim() || null,
+        email: contactEmail.trim() || null,
+        address: contactAddress.trim() || null,
+        isPrimary,
+      };
+    }
+
+    try {
+      setSubmitting(true);
+      setError("");
+      const res = await createEmployeeRequest({
+        requestType,
+        payload,
+        reason: reason.trim(),
+      });
+      setSubmitting(false);
+      resetForm();
+      onSubmitted(res.data);
+      onClose();
+    } catch (err) {
+      setSubmitting(false);
+      setError(err?.response?.data?.message || "Failed to submit request.");
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} title="Submit Change Request" onClose={onClose}>
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px", maxHeight: "75vh", overflowY: "auto", paddingRight: "4px" }}>
+        {error && (
+          <div style={{ padding: "8px 12px", background: "#fee2e2", border: "1px solid #f87171", borderRadius: "var(--radius-sm)", color: "#b91c1c", fontSize: "12.5px" }}>
+            {error}
+          </div>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+          {fieldLabel("Request Category *")}
+          <select
+            value={requestType}
+            onChange={(e) => { setRequestType(e.target.value); setError(""); }}
+            style={{ ...inputStyle(false), height: "38px", cursor: "pointer" }}
+          >
+            <option value="ProfileUpdate">Profile & Contact Information</option>
+            <option value="BankUpdate">Bank Details & Statutory Identifiers</option>
+            <option value="EmergencyContact">Emergency Contact / Guardian</option>
+          </select>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+          {fieldLabel("Reason / Justification *")}
+          <input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. Relocated to a new address / Updated bank account"
+            style={inputStyle(false)}
+            required
+          />
+        </div>
+
+        {requestType === "ProfileUpdate" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", background: "var(--background)", padding: "14px", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
+            <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--text)" }}>Profile Information to Update</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {fieldLabel("Mobile Number")}
+                <input value={mobileNumber} onChange={(e) => setMobileNumber(e.target.value)} placeholder="+91 98765 43210" style={inputStyle(false)} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {fieldLabel("Alternate Mobile")}
+                <input value={alternateMobile} onChange={(e) => setAlternateMobile(e.target.value)} placeholder="+91 98765 00000" style={inputStyle(false)} />
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              {fieldLabel("Personal Email")}
+              <input type="email" value={personalEmail} onChange={(e) => setPersonalEmail(e.target.value)} placeholder="personal@example.com" style={inputStyle(false)} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              {fieldLabel("Current Residential Address")}
+              <input value={currentAddress} onChange={(e) => setCurrentAddress(e.target.value)} placeholder="House, Street, Area" style={inputStyle(false)} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              {fieldLabel("Permanent Address")}
+              <input value={permanentAddress} onChange={(e) => setPermanentAddress(e.target.value)} placeholder="Permanent Address" style={inputStyle(false)} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {fieldLabel("City")}
+                <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Bengaluru" style={inputStyle(false)} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {fieldLabel("State")}
+                <input value={state} onChange={(e) => setState(e.target.value)} placeholder="Karnataka" style={inputStyle(false)} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {fieldLabel("Postal Code")}
+                <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="560001" style={inputStyle(false)} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {requestType === "BankUpdate" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", background: "var(--background)", padding: "14px", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
+            <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--text)" }}>Bank & Statutory Information</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {fieldLabel("Bank Name")}
+                <input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="HDFC Bank" style={inputStyle(false)} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {fieldLabel("Account Number")}
+                <input value={bankAccountNumber} onChange={(e) => setBankAccountNumber(e.target.value)} placeholder="001234567890" style={inputStyle(false)} />
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {fieldLabel("IFSC Code")}
+                <input value={bankIfsc} onChange={(e) => setBankIfsc(e.target.value)} placeholder="HDFC0001234" style={inputStyle(false)} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {fieldLabel("PAN Number")}
+                <input value={panNumber} onChange={(e) => setPanNumber(e.target.value)} placeholder="ABCDE1234F" style={inputStyle(false)} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {requestType === "EmergencyContact" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", background: "var(--background)", padding: "14px", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
+            <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--text)" }}>Emergency Contact Details</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {fieldLabel("Contact / Guardian Name *")}
+                <input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="e.g. Ramesh Kumar" style={inputStyle(false)} required />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {fieldLabel("Relationship *")}
+                <select value={relationship} onChange={(e) => setRelationship(e.target.value)} style={{ ...inputStyle(false), height: "38px" }}>
+                  {["Father", "Mother", "Spouse", "Guardian", "Sibling", "Friend", "Other"].map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {fieldLabel("Primary Phone *")}
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" style={inputStyle(false)} required />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {fieldLabel("Alternate Phone")}
+                <input value={altPhone} onChange={(e) => setAltPhone(e.target.value)} placeholder="Optional" style={inputStyle(false)} />
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              {fieldLabel("Email")}
+              <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="contact@example.com" style={inputStyle(false)} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              {fieldLabel("Address")}
+              <input value={contactAddress} onChange={(e) => setContactAddress(e.target.value)} placeholder="Residential address of contact" style={inputStyle(false)} />
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12.5px", color: "var(--text)", cursor: "pointer", marginTop: "4px" }}>
+              <input type="checkbox" checked={isPrimary} onChange={(e) => setIsPrimary(e.target.checked)} />
+              Mark as Primary Emergency Contact / Guardian
+            </label>
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "8px" }}>
+          <SecondaryButton type="button" onClick={onClose}>Cancel</SecondaryButton>
+          <PrimaryButton type="submit" disabled={submitting}>
+            <Send size={14} /> {submitting ? "Submitting..." : "Submit Request"}
+          </PrimaryButton>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function RequestCenterTab({ userRole }) {
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [showModal, setShowModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState(null);
+
+  const canReview = userRole === "MANAGER" || userRole === "HR" || userRole === "ADMIN";
+
+  const fetchRequests = async () => {
+    try {
+      setLoading(true);
+      const res = await getEmployeeRequests();
+      setRequests(res.data || []);
+    } catch (err) {
+      console.error("Failed to load requests", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    queueMicrotask(fetchRequests);
+  }, []);
+
+  const handleDecide = async (id, status) => {
+    let rejectionReason = undefined;
+    if (status === "Rejected") {
+      const reasonInput = prompt("Enter reason for rejection:");
+      if (reasonInput === null) return;
+      rejectionReason = reasonInput.trim() || "Rejected by manager";
+    }
+
+    try {
+      setActionLoading(id);
+      await decideEmployeeRequest(id, { status, rejectionReason });
+      await fetchRequests();
+    } catch (err) {
+      alert(err?.response?.data?.message || `Failed to ${status.toLowerCase()} request`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const filteredRequests = requests.filter((r) => {
+    if (statusFilter !== "All" && r.status !== statusFilter) return false;
+    return true;
+  });
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "Approved":
+        return <StatusBadge label="Approved" color="#16a34a" bg="#f0fdf4" />;
+      case "Rejected":
+        return <StatusBadge label="Rejected" color="#dc2626" bg="#fef2f2" />;
+      default:
+        return <StatusBadge label="Pending Review" color="#d97706" bg="#fef3c7" />;
+    }
+  };
+
+  const formatPayload = (payload) => {
+    if (!payload || typeof payload !== "object") return "None";
+    const entries = Object.entries(payload).filter(([, v]) => v !== null && v !== undefined && v !== "");
+    if (entries.length === 0) return "No details provided";
+    return entries.map(([k, v]) => `${k}: ${v}`).join(" • ");
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
+        <div>
+          <h2 style={{ fontSize: "14px", fontWeight: 700, color: "var(--text)" }}>Request Center</h2>
+          <p style={{ fontSize: "12px", color: "var(--subtext)" }}>
+            Submit profile corrections, bank account modifications, and emergency contact updates with full approval audit trail.
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={{ ...inputStyle(false), width: "130px", height: "36px", padding: "4px 8px", cursor: "pointer" }}
+          >
+            <option value="All">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+          <PrimaryButton onClick={() => setShowModal(true)}>
+            <Plus size={15} /> New Request
+          </PrimaryButton>
+        </div>
+      </div>
+
+      {loading ? (
+        <Spinner />
+      ) : filteredRequests.length === 0 ? (
+        <EmptyState icon={Send} title="No requests found" subtitle="Submit a profile, bank, or emergency contact change to get started." />
+      ) : (
+        <div style={{ ...cardStyle, overflow: "hidden" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "var(--background)", borderBottom: "1px solid var(--border)" }}>
+                  {["Employee", "Type", "Reason", "Changes", "Status", "Decision / Date", canReview ? "Actions" : ""].filter(Boolean).map((h) => (
+                    <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: "11px", fontWeight: 700, color: "var(--subtext)", textTransform: "uppercase", letterSpacing: "0.5px", whiteSpace: "nowrap" }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRequests.map((r, i) => (
+                  <tr key={r.id} style={{ borderBottom: i < filteredRequests.length - 1 ? "1px solid var(--border)" : "none" }}>
+                    <td style={{ padding: "13px 16px", fontSize: "13px", fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap" }}>
+                      {r.employee ? `${r.employee.firstName} ${r.employee.lastName} (${r.employee.employeeCode})` : "Self"}
+                    </td>
+                    <td style={{ padding: "13px 16px", fontSize: "13px", color: "var(--text)" }}>
+                      <span style={{ fontWeight: 600 }}>
+                        {r.requestType === "ProfileUpdate" && "Profile & Contact"}
+                        {r.requestType === "BankUpdate" && "Bank & Statutory"}
+                        {r.requestType === "EmergencyContact" && "Emergency Contact"}
+                      </span>
+                    </td>
+                    <td style={{ padding: "13px 16px", fontSize: "12.5px", color: "var(--subtext)", maxWidth: "200px" }}>
+                      {r.reason || "—"}
+                    </td>
+                    <td style={{ padding: "13px 16px", fontSize: "12px", color: "var(--text)", maxWidth: "280px" }}>
+                      <span style={{ fontFamily: "monospace", fontSize: "11.5px", background: "var(--background)", padding: "2px 6px", borderRadius: "4px" }}>
+                        {formatPayload(r.payload)}
+                      </span>
+                    </td>
+                    <td style={{ padding: "13px 16px", whiteSpace: "nowrap" }}>
+                      {getStatusBadge(r.status)}
+                    </td>
+                    <td style={{ padding: "13px 16px", fontSize: "11.5px", color: "var(--subtext)", whiteSpace: "nowrap" }}>
+                      {fmtDateTime(r.createdAt)}
+                      {r.decidedBy && (
+                        <div style={{ marginTop: "2px", fontSize: "11px", color: "var(--text)" }}>
+                          By: {r.decidedBy.firstName} {r.decidedBy.lastName}
+                        </div>
+                      )}
+                      {r.rejectionReason && (
+                        <div style={{ marginTop: "2px", fontSize: "11px", color: "#dc2626" }}>
+                          Reason: {r.rejectionReason}
+                        </div>
+                      )}
+                    </td>
+                    {canReview && (
+                      <td style={{ padding: "13px 16px", whiteSpace: "nowrap" }}>
+                        {r.status === "Pending" ? (
+                          <div style={{ display: "flex", gap: "6px" }}>
+                            <button
+                              onClick={() => handleDecide(r.id, "Approved")}
+                              disabled={actionLoading === r.id}
+                              style={{
+                                display: "flex", alignItems: "center", gap: "4px", padding: "5px 10px",
+                                background: "#16a34a", color: "#fff", border: "none", borderRadius: "4px",
+                                fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                              }}
+                            >
+                              <CheckCircle2 size={13} /> Approve
+                            </button>
+                            <button
+                              onClick={() => handleDecide(r.id, "Rejected")}
+                              disabled={actionLoading === r.id}
+                              style={{
+                                display: "flex", alignItems: "center", gap: "4px", padding: "5px 10px",
+                                background: "#dc2626", color: "#fff", border: "none", borderRadius: "4px",
+                                fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                              }}
+                            >
+                              <XCircle size={13} /> Reject
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: "12px", color: "var(--subtext)" }}>—</span>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <NewRequestModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSubmitted={() => fetchRequests()}
+      />
+    </div>
+  );
+}
+
+/* ---------------------------------- Download My Data tab ---------------------------------- */
+
+function DataExportTab({ lastRequest, onRequested }) {
+  const [requesting, setRequesting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleRequest = async () => {
+    try {
+      setRequesting(true);
+      setError("");
+      const res = await requestDataExport();
+      onRequested(res.data);
+    } catch (err) {
+      setError(err?.message || "Unable to request the export. Please try again.");
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const isExpired = lastRequest && new Date(lastRequest.expiresAt) < new Date();
+  const nextAllowed = lastRequest ? new Date(new Date(lastRequest.requestedAt).getTime() + EXPORT_THROTTLE_DAYS * 86400000) : null;
+  const canRequestAgain = !lastRequest || new Date() >= nextAllowed;
+
+  return (
+    <div style={{ maxWidth: "560px" }}>
+      <h2 style={{ fontSize: "14px", fontWeight: 700, color: "var(--text)", marginBottom: "6px" }}>Download My Data</h2>
+      <p style={{ fontSize: "12.5px", color: "var(--subtext)", marginBottom: "18px" }}>
+        Request a complete export of everything linked to your employee record across every module  •  profile, attendance, leave, payroll, performance, learning, and assets. This is a data subject access request (DSAR), limited to once every {EXPORT_THROTTLE_DAYS} days.
+      </p>
+
+      <div style={{ ...cardStyle, padding: "20px 22px" }}>
+        {!lastRequest ? (
+          <>
+            <p style={{ fontSize: "13px", color: "var(--subtext)", marginBottom: "14px" }}>No export requested yet.</p>
+            <PrimaryButton onClick={handleRequest} disabled={requesting}>
+              <DownloadCloud size={16} /> {requesting ? "Preparing export • " : "Request Data Export"}
+            </PrimaryButton>
+          </>
+        ) : (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+              <Clock3 size={15} style={{ color: "var(--subtext)" }} />
+              <span style={{ fontSize: "12.5px", color: "var(--subtext)" }}>Requested {fmtDateTime(lastRequest.requestedAt)}</span>
+            </div>
+            {lastRequest.status === "Requested" ? (
+              <>
+                <StatusBadge label="Export requested" color="#b45309" bg="#fffbeb" />
+                <p style={{ fontSize: "11.5px", color: "var(--subtext)", margin: "10px 0 0" }}>
+                  Your request is being prepared. A secure download link will appear here after processing.
+                </p>
+              </>
+            ) : isExpired ? (
+              <StatusBadge label="Link expired" color="#64748b" bg="#f1f5f9" />
+            ) : lastRequest.downloadUrl ? (
+              <>
+                <StatusBadge label="Ready to download" color="#16a34a" bg="#f0fdf4" />
+                <p style={{ fontSize: "11.5px", color: "var(--subtext)", margin: "10px 0 14px" }}>
+                  Expires {fmtDateTime(lastRequest.expiresAt)} - the file is automatically deleted from temporary storage after that.
+                </p>
+                <a href={lastRequest.downloadUrl} style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "13px", fontWeight: 700, color: "var(--primary)", textDecoration: "none" }}>
+                  <DownloadCloud size={15} /> Download my data (.zip, encrypted)
+                </a>
+              </>
+            ) : (
+              <StatusBadge label={lastRequest.status || "Processing"} color="#b45309" bg="#fffbeb" />
+            )}
+
+            <div style={{ marginTop: "18px", paddingTop: "16px", borderTop: "1px solid var(--border)" }}>
+              {canRequestAgain ? (
+                <PrimaryButton onClick={handleRequest} disabled={requesting}>{requesting ? "Preparing" : "Request a new export"}</PrimaryButton>
+              ) : (
+                <p style={{ fontSize: "12px", color: "var(--subtext)" }}>You can request another export on {nextAllowed.toISOString().slice(0, 10)}.</p>
+              )}
+            </div>
+          </>
+        )}
+        {error && <p style={{ fontSize: "12px", color: "var(--red)", marginTop: "10px" }}>{error}</p>}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------- Page ---------------------------------- */
+
+const TABS = [
+  { key: "overview", label: "Overview", icon: LayoutGrid },
+  { key: "tax", label: "Tax Declaration", icon: Receipt },
+  { key: "requests", label: "Request Center", icon: Send },
+  { key: "export", label: "Download My Data", icon: DownloadCloud },
+];
+
+export default function SelfService() {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState("overview");
+  const [loading, setLoading] = useState(true);
+  const [overview, setOverview] = useState(null);
+  const [declarations, setDeclarations] = useState([]);
+  const [lastExportRequest, setLastExportRequest] = useState(null);
+
+  const userId = user?.employeeCode || user?.id || "EMP001";
+  const userName = `${user?.firstName || "Current"} ${user?.lastName || "User"}`;
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setLoading(true);
+      Promise.all([
+        getOverview().catch(() => ({ data: null })),
+        getTaxDeclarations(userId).catch(() => ({ data: [] })),
+        getLastExportRequest(userId).catch(() => ({ data: null }))
+      ])
+        .then(([ov, td, exp]) => {
+          setOverview(ov?.data || null);
+          setDeclarations(td?.data || []);
+          setLastExportRequest(exp?.data || null);
+        })
+        .finally(() => setLoading(false));
+    });
+  }, [userId]);
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <Spinner />
+      </MainLayout>
+    );
+  }
+
+  return (
+    <MainLayout>
+      <div style={{ maxWidth: "1480px", margin: "0 auto" }}>
+        <PageHeader title="Self Service" subtitle={`Welcome back, ${userName} (${user?.role || "Employee"})`} />
+        <TabNav tabs={TABS} active={activeTab} onChange={setActiveTab} />
+
+        {activeTab === "overview" && (
+          <OverviewTab overview={overview} />
+        )}
+
+        {activeTab === "tax" && (
+          <TaxDeclarationTab declarations={declarations} onAdded={(d) => setDeclarations((prev) => [d, ...prev])} />
+        )}
+
+        {activeTab === "requests" && (
+          <RequestCenterTab userRole={user?.role} />
+        )}
+
+        {activeTab === "export" && (
+          <DataExportTab lastRequest={lastExportRequest} onRequested={setLastExportRequest} />
+        )}
+      </div>
+    </MainLayout>
+  );
+}

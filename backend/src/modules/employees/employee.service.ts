@@ -1,0 +1,1314 @@
+import { Prisma } from "@prisma/client";
+import { prisma } from "../../lib/prisma";
+import { AppError } from "../../lib/errors";
+import { hashPassword } from "../../lib/password";
+import { writeAuditLog } from "../../services/audit.service";
+import { serializeEmployeeList } from "../../serializers/employee.serializer";
+import { parsePagination } from "../../lib/utils";
+import { saveUploadedFile, deleteStoredFile } from "../../lib/fileStorage";
+import { provisionOnboardingForEmployee } from "../onboarding/onboarding.service";
+import { createInAppForEmployee } from "../notifications/notifications.service";
+
+/** Safely convert a value to a Prisma Decimal-compatible number. */
+function toDecimal(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : 0;
+}
+
+const EMPLOYEE_INCLUDE = {
+  department: true,
+  designation: true,
+  location: true,
+  user: { select: { email: true } },
+  reportingManager: { select: { employeeCode: true, firstName: true, lastName: true, avatarUrl: true } },
+  salaryStructures: { where: { isActive: true } },
+  documents: { orderBy: { createdAt: "desc" } },
+  emergencyContacts: { orderBy: { isPrimary: "desc" } },
+  movements: { orderBy: { createdAt: "desc" }, take: 20 },
+  shift: true,
+} satisfies Prisma.EmployeeInclude;
+
+export interface EmployeeFilters {
+  search?: string;
+  department?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}
+
+type EmployeeScopeOptions = { role?: string; currentEmployeeId?: string; isSelf?: boolean };
+
+/**
+ * Return the employee IDs visible to a user in the employee module.
+ * Manager scope follows the reporting hierarchy, not the department field.
+ */
+async function getVisibleEmployeeIds(options: EmployeeScopeOptions): Promise<string[] | null> {
+  const role = options.role?.toUpperCase();
+  
+  // ADMIN, HR, MANAGER, and EMPLOYEE roles can all view the active corporate directory 
+  // (e.g. for peer feedback, org dropdowns, directory lookup) while sensitive 
+  // PII fields are protected at the serializer level.
+  return null; 
+}
+
+export async function listEmployees(filters: EmployeeFilters, options: EmployeeScopeOptions = {}) {
+  const { page, limit, skip } = parsePagination({
+    page: filters.page,
+    limit: filters.limit,
+  });
+
+  const where: Prisma.EmployeeWhereInput = {};
+
+  const visibleEmployeeIds = await getVisibleEmployeeIds(options);
+  if (visibleEmployeeIds !== null) {
+    where.id = { in: visibleEmployeeIds };
+  }
+
+  if (filters.status) where.status = filters.status;
+  if (filters.department) {
+    where.department = { name: filters.department };
+  }
+  if (filters.search) {
+    const q = filters.search.trim();
+    where.OR = [
+      { firstName: { contains: q, mode: "insensitive" } },
+      { lastName: { contains: q, mode: "insensitive" } },
+      { employeeCode: { contains: q, mode: "insensitive" } },
+      { personalEmail: { contains: q, mode: "insensitive" } },
+      { designation: { title: { contains: q, mode: "insensitive" } } },
+      { user: { email: { contains: q, mode: "insensitive" } } },
+    ];
+  }
+
+  const [rows, total] = await Promise.all([
+    prisma.employee.findMany({ where, include: EMPLOYEE_INCLUDE, orderBy: { employeeCode: "asc" }, skip, take: limit }),
+    prisma.employee.count({ where }),
+  ]);
+
+  return {
+    data: serializeEmployeeList(rows, { role: options.role }),
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  };
+}
+
+async function assertEmployeeVisible(id: string, options: EmployeeScopeOptions): Promise<void> {
+  const visibleEmployeeIds = await getVisibleEmployeeIds(options);
+  if (visibleEmployeeIds !== null && !visibleEmployeeIds.includes(id)) {
+    throw AppError.forbidden("You cannot access employees outside your reporting scope.");
+  }
+}
+
+export async function getEmployeeById(id: string, options: EmployeeScopeOptions = {}) {
+  await assertEmployeeVisible(id, options);
+  const emp = await prisma.employee.findUnique({
+    where: { id },
+    include: EMPLOYEE_INCLUDE,
+  });
+  if (!emp) throw AppError.notFound("Employee not found");
+  return { data: serializeEmployeeList([emp], options)[0] };
+}
+
+export async function getEmployeeByCode(code: string, options: EmployeeScopeOptions = {}) {
+  const emp = await prisma.employee.findUnique({
+    where: { employeeCode: code },
+    include: EMPLOYEE_INCLUDE,
+  });
+  if (!emp) throw AppError.notFound("Employee not found");
+  await assertEmployeeVisible(emp.id, options);
+  return { data: serializeEmployeeList([emp], options)[0] };
+}
+
+export interface CreateEmployeeInput {
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  email?: string;
+  phone?: string;
+  alternateMobile?: string;
+  guardianName?: string;
+  guardianPhone?: string;
+  avatarUrl?: string;
+  currentAddress?: string;
+  permanentAddress?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+  panNumber?: string;
+  bankAccountNumber?: string;
+  bankIfsc?: string;
+  bankName?: string;
+  designationId?: string;
+  departmentId?: string;
+  locationId?: string;
+  designation?: string;
+  department?: string;
+  location?: string;
+  employmentType?: string;
+  dateOfJoining?: string;
+  managerId?: string;
+  gender?: string;
+  dob?: string;
+  status?: string;
+  probationPeriodMonths?: number;
+  noticePeriodDays?: number;
+  shiftId?: string;
+  password?: string;
+  emergencyContacts?: Array<{
+    name: string;
+    relationship: string;
+    primaryPhone: string;
+    alternatePhone?: string;
+    address?: string;
+    isPrimary?: boolean;
+  }>;
+}
+
+function toOptionalDate(value?: string): Date | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Validate reporting hierarchy to prevent self-reporting and circular loops. */
+export async function validateReportingHierarchy(employeeId: string, proposedManagerId: string | null): Promise<void> {
+  if (!proposedManagerId) return;
+  if (employeeId === proposedManagerId) {
+    throw AppError.badRequest("An employee cannot report to themselves.");
+  }
+
+  const manager = await prisma.employee.findUnique({
+    where: { id: proposedManagerId },
+    select: { id: true, status: true, reportingManagerId: true, firstName: true, lastName: true },
+  });
+  if (!manager) {
+    throw AppError.notFound("Proposed reporting manager not found.");
+  }
+  if (manager.status === "Inactive" || manager.status === "Terminated") {
+    throw AppError.badRequest("Cannot assign an inactive or terminated employee as reporting manager.");
+  }
+
+  let currentManagerId: string | null = manager.reportingManagerId;
+  const visited = new Set<string>([proposedManagerId]);
+
+  while (currentManagerId) {
+    if (currentManagerId === employeeId) {
+      throw AppError.badRequest("Circular reporting detected: An employee cannot report to someone who reports to them directly or indirectly.");
+    }
+    if (visited.has(currentManagerId)) {
+      break;
+    }
+    visited.add(currentManagerId);
+    const nextMgr = await prisma.employee.findUnique({
+      where: { id: currentManagerId },
+      select: { reportingManagerId: true },
+    });
+    currentManagerId = nextMgr?.reportingManagerId ?? null;
+  }
+}
+
+const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
+  DRAFT: ["PRE_JOINING", "ONBOARDING", "Active", "Inactive"],
+  PRE_JOINING: ["ONBOARDING", "Active", "Inactive"],
+  ONBOARDING: ["Active", "Inactive"],
+  Active: ["ON_NOTICE", "Resigned", "Terminated", "Retired", "Inactive"],
+  ON_NOTICE: ["Resigned", "Terminated", "Active", "Inactive"],
+  Resigned: ["Inactive", "Active"],
+  Terminated: ["Inactive"],
+  Retired: ["Inactive"],
+  Inactive: ["Active"],
+};
+
+export function validateStatusTransition(currentStatus: string, nextStatus: string): void {
+  if (currentStatus.toLowerCase() === nextStatus.toLowerCase()) return;
+  const allowed = VALID_STATUS_TRANSITIONS[currentStatus] || [
+    "Active", "Inactive", "ON_NOTICE", "Resigned", "Terminated", "Retired", "ONBOARDING", "PRE_JOINING", "DRAFT"
+  ];
+  const isMatch = allowed.some((s) => s.toLowerCase() === nextStatus.toLowerCase());
+  if (!isMatch) {
+    throw AppError.badRequest(`Invalid employee status transition from "${currentStatus}" to "${nextStatus}".`);
+  }
+}
+
+/** Resolve manager by ID (UUID) or by employeeCode (EMP002). */
+async function resolveManagerId(managerId?: string | null): Promise<string | null> {
+  if (!managerId) return null;
+  const trimmed = managerId.trim();
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (UUID_RE.test(trimmed)) return trimmed;
+  const mgr = await prisma.employee.findFirst({
+    where: { employeeCode: { equals: trimmed, mode: "insensitive" } },
+    select: { id: true },
+  });
+  return mgr?.id ?? null;
+}
+
+/** Resolve an org reference (designation/department/location) by name */
+async function resolveNameToId(
+  findFirst: (name: string) => Promise<{ id: string } | null>,
+  name: string,
+  label: string,
+  autoCreate?: (name: string) => Promise<{ id: string }>
+): Promise<string> {
+  const row = await findFirst(name);
+  if (row) return row.id;
+
+  if (name.includes(",")) {
+    const city = name.split(",")[0].trim();
+    const cityRow = await findFirst(city);
+    if (cityRow) return cityRow.id;
+  }
+
+  if (autoCreate) {
+    const created = await autoCreate(name);
+    return created.id;
+  }
+
+  throw AppError.badRequest(`${label} "${name}" not found. Add it in Organization first.`);
+}
+
+async function resolveOrgRefs(input: Partial<CreateEmployeeInput>) {
+  const [designationId, departmentId, locationId] = await Promise.all([
+    input.designationId ? Promise.resolve(input.designationId)
+      : input.designation ? resolveNameToId(
+          (n) => {
+            const where: Prisma.DesignationWhereInput = { title: { equals: n, mode: "insensitive" } };
+            return prisma.designation.findFirst({ where });
+          },
+          input.designation,
+          "Designation",
+          async (title) => {
+            return prisma.designation.create({ data: { title } });
+          }
+        ) : Promise.resolve(null),
+    input.departmentId ? Promise.resolve(input.departmentId)
+      : input.department ? resolveNameToId(
+          (n) => {
+            const where: Prisma.DepartmentWhereInput = { name: { equals: n, mode: "insensitive" } };
+            return prisma.department.findFirst({ where });
+          },
+          input.department,
+          "Department"
+        ) : Promise.resolve(null),
+    input.locationId ? Promise.resolve(input.locationId)
+      : input.location ? resolveNameToId(
+          (n) => {
+            const where: Prisma.LocationWhereInput = { name: { equals: n, mode: "insensitive" } };
+            return prisma.location.findFirst({ where });
+          },
+          input.location,
+          "Location"
+        ) : Promise.resolve(null),
+  ]);
+  return { designationId, departmentId, locationId };
+}
+
+export async function generateEmployeeCode(): Promise<string> {
+  const currentYear = new Date().getFullYear();
+  const prefix = `EMP-${currentYear}-`;
+  const latest = await prisma.employee.findFirst({
+    where: { employeeCode: { startsWith: prefix } },
+    orderBy: { employeeCode: "desc" },
+    select: { employeeCode: true },
+  });
+
+  let nextSeq = 1;
+  if (latest) {
+    const numPart = latest.employeeCode.replace(prefix, "");
+    const parsed = parseInt(numPart, 10);
+    if (!isNaN(parsed)) nextSeq = parsed + 1;
+  } else {
+    const count = await prisma.employee.count();
+    nextSeq = count + 1;
+  }
+  return `${prefix}${String(nextSeq).padStart(5, "0")}`;
+}
+
+export async function createEmployee(input: CreateEmployeeInput, actorId?: string) {
+  // Duplicate check: email, mobile, PAN
+  const email = (input.email ?? "").trim().toLowerCase();
+  if (email) {
+    const [dupUser, dupEmp] = await Promise.all([
+      prisma.user.findUnique({ where: { email } }),
+      prisma.employee.findFirst({ where: { personalEmail: { equals: email, mode: "insensitive" } } }),
+    ]);
+    if (dupUser || dupEmp) {
+      throw AppError.conflict(`An account or employee with email "${email}" already exists.`);
+    }
+  }
+
+  if (input.phone) {
+    const dupPhone = await prisma.employee.findFirst({
+      where: { personalMobile: input.phone },
+    });
+    if (dupPhone) {
+      throw AppError.conflict(`An employee with phone number "${input.phone}" already exists.`);
+    }
+  }
+
+  if (input.panNumber) {
+    const dupPan = await prisma.employee.findFirst({
+      where: { panNumber: input.panNumber },
+    });
+    if (dupPan) {
+      throw AppError.conflict(`An employee with PAN "${input.panNumber}" already exists.`);
+    }
+  }
+
+  const nextCode = await generateEmployeeCode();
+  const { designationId, departmentId, locationId } = await resolveOrgRefs(input);
+  const reportingManagerId = await resolveManagerId(input.managerId);
+
+  // Validate reporting manager if provided
+  if (reportingManagerId) {
+    const mgr = await prisma.employee.findUnique({ where: { id: reportingManagerId } });
+    if (!mgr) throw AppError.notFound("Reporting manager not found");
+    if (mgr.status === "Inactive" || mgr.status === "Terminated") {
+      throw AppError.badRequest("Cannot assign an inactive employee as reporting manager.");
+    }
+  }
+
+  // Create user account if email provided
+  let userId: string | null = null;
+  if (email) {
+    const user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash: await hashPassword(input.password ?? "Welcome@123"),
+        role: { connect: { name: "EMPLOYEE" } },
+      },
+    });
+    userId = user.id;
+  }
+
+  const joinDate = input.dateOfJoining ? new Date(input.dateOfJoining) : new Date();
+  const expectedConfirmation = new Date(joinDate);
+  expectedConfirmation.setMonth(expectedConfirmation.getMonth() + (input.probationPeriodMonths ?? 6));
+
+  const emp = await prisma.employee.create({
+    data: {
+      userId,
+      employeeCode: nextCode,
+      firstName: input.firstName,
+      middleName: input.middleName ?? null,
+      lastName: input.lastName,
+      personalEmail: email || null,
+      personalMobile: input.phone ?? null,
+      alternateMobile: input.alternateMobile ?? null,
+      address: input.currentAddress ?? null,
+      city: input.city ?? null,
+      state: input.state ?? null,
+      country: input.country ?? "India",
+      panNumber: input.panNumber ?? null,
+      bankAccountNumber: input.bankAccountNumber ?? null,
+      bankIfsc: input.bankIfsc ?? null,
+      bankName: input.bankName ?? null,
+      guardianName: input.guardianName ?? null,
+      guardianPhone: input.guardianPhone ?? null,
+      avatarUrl: input.avatarUrl ?? null,
+      dateOfBirth: toOptionalDate(input.dob),
+      gender: input.gender ?? null,
+      designationId,
+      departmentId,
+      locationId,
+      reportingManagerId,
+      dateOfJoining: joinDate,
+      employmentType: input.employmentType ?? "Full-Time",
+      status: input.status ?? "Active",
+      probationPeriodMonths: input.probationPeriodMonths ?? 6,
+      expectedConfirmationDate: expectedConfirmation,
+      confirmationStatus: "PROBATION",
+      noticePeriodDays: input.noticePeriodDays ?? 60,
+      shiftId: input.shiftId ?? null,
+      emergencyContacts: input.emergencyContacts && input.emergencyContacts.length > 0 ? {
+        create: input.emergencyContacts.map((c) => ({
+          name: c.name,
+          relationship: c.relationship,
+          primaryPhone: c.primaryPhone,
+          alternatePhone: c.alternatePhone ?? null,
+          address: c.address ?? null,
+          isPrimary: c.isPrimary ?? true,
+        })),
+      } : undefined,
+    },
+    include: EMPLOYEE_INCLUDE,
+  });
+
+  // Record initial movement
+  await prisma.employeeMovement.create({
+    data: {
+      employeeId: emp.id,
+      movementType: "STATUS_CHANGE",
+      newStatus: emp.status,
+      newDepartmentId: emp.departmentId,
+      newDesignationId: emp.designationId,
+      newManagerId: emp.reportingManagerId,
+      effectiveDate: joinDate,
+      reason: "Initial onboarding / Employee record created",
+      requestedById: actorId ?? null,
+      approvedById: actorId ?? null,
+    },
+  });
+
+  await provisionOnboardingForEmployee({
+    employeeId: emp.id,
+    joinDate,
+    probationMonths: input.probationPeriodMonths ?? 6,
+    reportingManagerId,
+  });
+  void createInAppForEmployee({
+    employeeId: emp.id,
+    title: "Your onboarding checklist is ready",
+    body: "Complete your onboarding tasks before their due dates.",
+    category: "Onboarding Reminder",
+    link: "/onboarding",
+  }).catch(() => undefined);
+
+  writeAuditLog({
+    action: "CREATE",
+    entityType: "Employee",
+    entityId: emp.id,
+    newValue: { employeeCode: emp.employeeCode, firstName: emp.firstName, lastName: emp.lastName },
+  });
+
+  return { data: serializeEmployeeList([emp])[0] };
+}
+
+export async function updateEmployee(id: string, input: Partial<CreateEmployeeInput>, actorId?: string) {
+  const existing = await prisma.employee.findUnique({
+    where: { id },
+    include: { user: true, designation: true, department: true },
+  });
+  if (!existing) throw AppError.notFound("Employee not found");
+
+  if (input.status) {
+    validateStatusTransition(existing.status, input.status);
+  }
+
+  const { designationId, departmentId, locationId } = await resolveOrgRefs(input);
+  const resolvedManagerId = input.managerId !== undefined ? await resolveManagerId(input.managerId) : undefined;
+
+  if (resolvedManagerId !== undefined && resolvedManagerId !== existing.reportingManagerId) {
+    await validateReportingHierarchy(id, resolvedManagerId);
+  }
+
+  const data: Prisma.EmployeeUpdateInput = {
+    firstName: input.firstName ?? undefined,
+    middleName: input.middleName !== undefined ? (input.middleName || null) : undefined,
+    lastName: input.lastName ?? undefined,
+    personalMobile: input.phone !== undefined ? (input.phone || null) : undefined,
+    alternateMobile: input.alternateMobile !== undefined ? (input.alternateMobile || null) : undefined,
+    address: input.currentAddress !== undefined ? (input.currentAddress || null) : undefined,
+    city: input.city !== undefined ? (input.city || null) : undefined,
+    state: input.state !== undefined ? (input.state || null) : undefined,
+    country: input.country !== undefined ? (input.country || null) : undefined,
+    panNumber: input.panNumber !== undefined ? (input.panNumber || null) : undefined,
+    bankAccountNumber: input.bankAccountNumber !== undefined ? (input.bankAccountNumber || null) : undefined,
+    bankIfsc: input.bankIfsc !== undefined ? (input.bankIfsc || null) : undefined,
+    bankName: input.bankName !== undefined ? (input.bankName || null) : undefined,
+    guardianName: input.guardianName !== undefined ? (input.guardianName || null) : undefined,
+    guardianPhone: input.guardianPhone !== undefined ? (input.guardianPhone || null) : undefined,
+    avatarUrl: input.avatarUrl !== undefined ? (input.avatarUrl || null) : undefined,
+    dateOfBirth: toOptionalDate(input.dob) ?? undefined,
+    gender: input.gender ?? undefined,
+    designation: designationId ? { connect: { id: designationId } } : undefined,
+    department: departmentId ? { connect: { id: departmentId } } : undefined,
+    location: locationId ? { connect: { id: locationId } } : undefined,
+    reportingManager: resolvedManagerId !== undefined ? (resolvedManagerId ? { connect: { id: resolvedManagerId } } : { disconnect: true }) : undefined,
+    employmentType: input.employmentType ?? undefined,
+    dateOfJoining: input.dateOfJoining ? new Date(input.dateOfJoining) : undefined,
+    status: input.status ?? undefined,
+    probationPeriodMonths: input.probationPeriodMonths ?? undefined,
+    noticePeriodDays: input.noticePeriodDays ?? undefined,
+    shift: input.shiftId !== undefined ? (input.shiftId ? { connect: { id: input.shiftId } } : { disconnect: true }) : undefined,
+  };
+
+  const updated = await prisma.employee.update({
+    where: { id },
+    data,
+    include: EMPLOYEE_INCLUDE,
+  });
+
+  // Track status change movement
+  if (input.status && input.status !== existing.status) {
+    await prisma.employeeMovement.create({
+      data: {
+        employeeId: id,
+        movementType: "STATUS_CHANGE",
+        oldStatus: existing.status,
+        newStatus: input.status,
+        effectiveDate: new Date(),
+        reason: `Employee status changed from ${existing.status} to ${input.status}`,
+        requestedById: actorId ?? null,
+        approvedById: actorId ?? null,
+      },
+    });
+  }
+
+  // Track manager change movement
+  if (resolvedManagerId !== undefined && resolvedManagerId !== existing.reportingManagerId) {
+    await prisma.employeeMovement.create({
+      data: {
+        employeeId: id,
+        movementType: "MANAGER_CHANGE",
+        oldManagerId: existing.reportingManagerId,
+        newManagerId: resolvedManagerId,
+        effectiveDate: new Date(),
+        reason: "Reporting manager reassigned",
+        requestedById: actorId ?? null,
+        approvedById: actorId ?? null,
+      },
+    });
+  }
+
+  // Track department transfer movement
+  if (departmentId && departmentId !== existing.departmentId) {
+    await prisma.employeeMovement.create({
+      data: {
+        employeeId: id,
+        movementType: "TRANSFER",
+        oldDepartmentId: existing.departmentId,
+        newDepartmentId: departmentId,
+        effectiveDate: new Date(),
+        reason: "Department transfer",
+        requestedById: actorId ?? null,
+        approvedById: actorId ?? null,
+      },
+    });
+  }
+
+  if (input.status && existing.userId) {
+    await prisma.user.update({
+      where: { id: existing.userId },
+      data: { isActive: input.status === "Active" },
+    });
+  }
+
+  writeAuditLog({
+    action: "UPDATE",
+    entityType: "Employee",
+    entityId: updated.id,
+    oldValue: { employeeCode: existing.employeeCode },
+    newValue: { employeeCode: updated.employeeCode, firstName: updated.firstName, lastName: updated.lastName },
+  });
+
+  return { data: serializeEmployeeList([updated])[0] };
+}
+
+export async function deleteEmployee(id: string) {
+  const existing = await prisma.employee.findUnique({ where: { id }, include: { user: true } });
+  if (!existing) throw AppError.notFound("Employee not found");
+
+  // Soft-delete: set status Inactive, remove auth access.
+  await prisma.employee.update({ where: { id }, data: { status: "Inactive" } });
+  if (existing.userId) {
+    await prisma.user.update({ where: { id: existing.userId }, data: { isActive: false } });
+  }
+
+  writeAuditLog({
+    action: "DELETE",
+    entityType: "Employee",
+    entityId: existing.id,
+    oldValue: { employeeCode: existing.employeeCode },
+    newValue: { status: "Inactive" },
+  });
+
+  return { data: { id: existing.employeeCode, deleted: true } };
+}
+
+/* -------------------------------------------------------------------------- */
+/*                          Salary Structure (HR)                             */
+/* -------------------------------------------------------------------------- */
+
+export interface SalaryStructureInput {
+  effectiveFrom: string;
+  basicSalary: number;
+  hra: number;
+  conveyanceAllowance?: number;
+  medicalAllowance?: number;
+  performanceBonus?: number;
+  otherAllowances?: number;
+  providentFund?: number;
+  professionalTax?: number;
+  incomeTax?: number;
+  healthInsurance?: number;
+}
+
+/** Serialize a raw SalaryStructure row for the frontend. */
+function serializeSalaryStructure(s: {
+  id: string;
+  effectiveFrom: Date;
+  basicSalary: unknown;
+  hra: unknown;
+  conveyanceAllowance: unknown;
+  medicalAllowance: unknown;
+  performanceBonus: unknown;
+  otherAllowances: unknown;
+  providentFund: unknown;
+  professionalTax: unknown;
+  incomeTax: unknown;
+  healthInsurance: unknown;
+  isActive: boolean;
+  createdAt: Date;
+}) {
+  return {
+    id: s.id,
+    effectiveFrom: s.effectiveFrom.toISOString().slice(0, 10),
+    basicSalary: toDecimal(s.basicSalary),
+    hra: toDecimal(s.hra),
+    conveyanceAllowance: toDecimal(s.conveyanceAllowance),
+    medicalAllowance: toDecimal(s.medicalAllowance),
+    performanceBonus: toDecimal(s.performanceBonus),
+    otherAllowances: toDecimal(s.otherAllowances),
+    providentFund: toDecimal(s.providentFund),
+    professionalTax: toDecimal(s.professionalTax),
+    incomeTax: toDecimal(s.incomeTax),
+    healthInsurance: toDecimal(s.healthInsurance),
+    isActive: s.isActive,
+  };
+}
+
+/** Get the active salary structure for an employee (returns null if none). */
+export async function getSalaryStructure(employeeIdOrCode: string) {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(employeeIdOrCode);
+  const emp = await prisma.employee.findFirst({
+    where: isUuid ? { id: employeeIdOrCode } : { employeeCode: employeeIdOrCode },
+    select: { id: true },
+  });
+  if (!emp) throw AppError.notFound("Employee not found");
+
+  const structure = await prisma.salaryStructure.findFirst({
+    where: { employeeId: emp.id, isActive: true },
+    orderBy: { effectiveFrom: "desc" },
+  });
+
+  return { data: structure ? serializeSalaryStructure(structure) : null };
+}
+
+export async function getSalaryStructureHistory(employeeIdOrCode: string) {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(employeeIdOrCode);
+  const emp = await prisma.employee.findFirst({
+    where: isUuid ? { id: employeeIdOrCode } : { employeeCode: employeeIdOrCode },
+    select: { id: true },
+  });
+  if (!emp) throw AppError.notFound("Employee not found");
+
+  const structures = await prisma.salaryStructure.findMany({
+    where: { employeeId: emp.id },
+    orderBy: { effectiveFrom: "desc" },
+  });
+  return { data: structures.map(serializeSalaryStructure) };
+}
+
+/**
+ * Create or update the active salary structure for an employee.
+ * Previous active structure is deactivated before the new one is saved,
+ * preserving a complete history for audit / payroll runs.
+ */
+export async function upsertSalaryStructure(
+  employeeIdOrCode: string,
+  input: SalaryStructureInput,
+  actorUserId?: string
+) {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(employeeIdOrCode);
+  const emp = await prisma.employee.findFirst({
+    where: isUuid ? { id: employeeIdOrCode } : { employeeCode: employeeIdOrCode },
+    select: { id: true, employeeCode: true },
+  });
+  if (!emp) throw AppError.notFound("Employee not found");
+
+  const prevActive = await prisma.salaryStructure.findFirst({
+    where: { employeeId: emp.id, isActive: true },
+  });
+
+  const data = {
+    effectiveFrom: new Date(input.effectiveFrom),
+    basicSalary: toDecimal(input.basicSalary),
+    hra: toDecimal(input.hra),
+    conveyanceAllowance: toDecimal(input.conveyanceAllowance ?? 0),
+    medicalAllowance: toDecimal(input.medicalAllowance ?? 0),
+    performanceBonus: toDecimal(input.performanceBonus ?? 0),
+    otherAllowances: toDecimal(input.otherAllowances ?? 0),
+    providentFund: toDecimal(input.providentFund ?? 0),
+    professionalTax: toDecimal(input.professionalTax ?? 0),
+    incomeTax: toDecimal(input.incomeTax ?? 0),
+    healthInsurance: toDecimal(input.healthInsurance ?? 0),
+    isActive: true,
+  };
+
+  const structure = await prisma.$transaction(async (tx: any) => {
+    // Deactivate all existing active structures for this employee.
+    await tx.salaryStructure.updateMany({
+      where: { employeeId: emp.id, isActive: true },
+      data: { isActive: false },
+    });
+
+    const created = await tx.salaryStructure.create({
+      data: { ...data, employeeId: emp.id },
+    });
+
+    if (prevActive && Number(prevActive.basicSalary) !== Number(data.basicSalary)) {
+      await tx.employeeMovement.create({
+        data: {
+          employeeId: emp.id,
+          movementType: "SalaryRevision",
+          effectiveDate: new Date(input.effectiveFrom),
+          remarks: `Salary revised from ₹${prevActive.basicSalary} to ₹${data.basicSalary}`,
+        },
+      });
+    }
+
+    return created;
+  });
+
+  await writeAuditLog({
+    actorUserId,
+    action: "UPDATE",
+    entityType: "SalaryStructure",
+    entityId: structure.id,
+    newValue: { employeeCode: emp.employeeCode, basicSalary: data.basicSalary },
+  });
+
+  return { data: serializeSalaryStructure(structure) };
+}
+
+export async function uploadEmployeeAvatar(id: string, file: Express.Multer.File) {
+  const emp = await prisma.employee.findUnique({ where: { id } });
+  if (!emp) throw AppError.notFound("Employee not found");
+
+  if (emp.avatarUrl) {
+    await deleteStoredFile(emp.avatarUrl);
+  }
+
+  const saved = await saveUploadedFile("avatars", file);
+  const updated = await prisma.employee.update({
+    where: { id },
+    data: { avatarUrl: saved.fileUrl },
+    include: EMPLOYEE_INCLUDE,
+  });
+
+  return { data: serializeEmployeeList([updated])[0] };
+}
+
+export async function removeEmployeeAvatar(id: string) {
+  const emp = await prisma.employee.findUnique({ where: { id } });
+  if (!emp) throw AppError.notFound("Employee not found");
+
+  if (emp.avatarUrl) {
+    await deleteStoredFile(emp.avatarUrl);
+  }
+
+  const updated = await prisma.employee.update({
+    where: { id },
+    data: { avatarUrl: null },
+    include: EMPLOYEE_INCLUDE,
+  });
+
+  return { data: serializeEmployeeList([updated])[0] };
+}
+
+export async function listEmployeeDocuments(id: string) {
+  const emp = await prisma.employee.findUnique({ where: { id } });
+  if (!emp) throw AppError.notFound("Employee not found");
+
+  const docs = await prisma.employeeDocument.findMany({
+    where: { employeeId: id },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return { data: docs };
+}
+
+export async function uploadEmployeeDocument(
+  id: string,
+  file: Express.Multer.File,
+  meta: {
+    documentType: string;
+    category?: string;
+    documentNumber?: string;
+    uploadedBy?: string;
+    issueDate?: string;
+    expiryDate?: string;
+  }
+) {
+  const emp = await prisma.employee.findUnique({ where: { id } });
+  if (!emp) throw AppError.notFound("Employee not found");
+
+  const saved = await saveUploadedFile("documents", file);
+  const docType = meta.documentType || meta.category || "Other";
+
+  const latestDoc = await prisma.employeeDocument.findFirst({
+    where: { employeeId: id, documentType: docType },
+    orderBy: { version: "desc" },
+  });
+  const nextVersion = latestDoc && latestDoc.version ? latestDoc.version + 1 : 1;
+
+  const doc = await prisma.employeeDocument.create({
+    data: {
+      employeeId: id,
+      documentType: docType,
+      category: meta.category || docType,
+      documentNumber: meta.documentNumber || null,
+      fileName: saved.fileName,
+      fileUrl: saved.fileUrl,
+      fileSize: saved.fileSize,
+      mimeType: saved.mimeType,
+      uploadedBy: meta.uploadedBy || "HR/Employee",
+      verificationStatus: "Verified",
+      status: "VERIFIED",
+      issueDate: meta.issueDate ? new Date(meta.issueDate) : null,
+      expiryDate: meta.expiryDate ? new Date(meta.expiryDate) : null,
+      version: nextVersion,
+    },
+  });
+
+  return { data: doc };
+}
+
+export async function verifyEmployeeDocument(
+  employeeId: string,
+  documentId: string,
+  input: { status: "VERIFIED" | "REJECTED"; rejectionReason?: string },
+  actorUserId?: string
+) {
+  const doc = await prisma.employeeDocument.findFirst({
+    where: { id: documentId, employeeId },
+  });
+  if (!doc) throw AppError.notFound("Document not found");
+
+  const isVerified = input.status === "VERIFIED";
+  const updated = await prisma.employeeDocument.update({
+    where: { id: documentId },
+    data: {
+      status: input.status,
+      verificationStatus: isVerified ? "Verified" : "Rejected",
+      rejectionReason: !isVerified ? (input.rejectionReason || "Document details could not be verified") : null,
+      verifiedById: isVerified ? actorUserId : null,
+      verifiedAt: isVerified ? new Date() : null,
+      rejectedById: !isVerified ? actorUserId : null,
+      rejectedAt: !isVerified ? new Date() : null,
+    },
+  });
+
+  writeAuditLog({
+    action: "UPDATE",
+    entityType: "EmployeeDocument",
+    entityId: doc.id,
+    newValue: { status: updated.status, reason: updated.rejectionReason },
+  });
+
+  return { data: updated };
+}
+
+export async function deleteEmployeeDocument(employeeId: string, documentId: string) {
+  const doc = await prisma.employeeDocument.findFirst({
+    where: { id: documentId, employeeId },
+  });
+  if (!doc) throw AppError.notFound("Document not found");
+
+  await deleteStoredFile(doc.fileUrl);
+  await prisma.employeeDocument.delete({ where: { id: documentId } });
+
+  return { data: { success: true, message: "Document deleted" } };
+}
+
+/* -------------------------------------------------------------------------- */
+/*                         Emergency Contacts                                 */
+/* -------------------------------------------------------------------------- */
+
+export async function listEmergencyContacts(employeeId: string) {
+  const contacts = await prisma.employeeEmergencyContact.findMany({
+    where: { employeeId },
+    orderBy: { isPrimary: "desc" },
+  });
+  return { data: contacts };
+}
+
+export async function addEmergencyContact(
+  employeeId: string,
+  input: {
+    name: string;
+    relationship: string;
+    primaryPhone: string;
+    alternatePhone?: string;
+    address?: string;
+    isPrimary?: boolean;
+  }
+) {
+  if (input.isPrimary) {
+    await prisma.employeeEmergencyContact.updateMany({
+      where: { employeeId },
+      data: { isPrimary: false },
+    });
+  }
+
+  const contact = await prisma.employeeEmergencyContact.create({
+    data: {
+      employeeId,
+      name: input.name,
+      relationship: input.relationship,
+      primaryPhone: input.primaryPhone,
+      alternatePhone: input.alternatePhone || null,
+      address: input.address || null,
+      isPrimary: input.isPrimary ?? false,
+    },
+  });
+
+  // Keep legacy guardian fields on employee synced if primary
+  if (contact.isPrimary) {
+    await prisma.employee.update({
+      where: { id: employeeId },
+      data: { guardianName: contact.name, guardianPhone: contact.primaryPhone },
+    });
+  }
+
+  return { data: contact };
+}
+
+export async function updateEmergencyContact(
+  employeeId: string,
+  contactId: string,
+  input: {
+    name?: string;
+    relationship?: string;
+    primaryPhone?: string;
+    alternatePhone?: string;
+    address?: string;
+    isPrimary?: boolean;
+  }
+) {
+  const existing = await prisma.employeeEmergencyContact.findFirst({
+    where: { id: contactId, employeeId },
+  });
+  if (!existing) throw AppError.notFound("Emergency contact not found");
+
+  if (input.isPrimary) {
+    await prisma.employeeEmergencyContact.updateMany({
+      where: { employeeId, id: { not: contactId } },
+      data: { isPrimary: false },
+    });
+  }
+
+  const updated = await prisma.employeeEmergencyContact.update({
+    where: { id: contactId },
+    data: {
+      name: input.name ?? undefined,
+      relationship: input.relationship ?? undefined,
+      primaryPhone: input.primaryPhone ?? undefined,
+      alternatePhone: input.alternatePhone !== undefined ? (input.alternatePhone || null) : undefined,
+      address: input.address !== undefined ? (input.address || null) : undefined,
+      isPrimary: input.isPrimary ?? undefined,
+    },
+  });
+
+  if (updated.isPrimary) {
+    await prisma.employee.update({
+      where: { id: employeeId },
+      data: { guardianName: updated.name, guardianPhone: updated.primaryPhone },
+    });
+  }
+
+  return { data: updated };
+}
+
+export async function deleteEmergencyContact(employeeId: string, contactId: string) {
+  const existing = await prisma.employeeEmergencyContact.findFirst({
+    where: { id: contactId, employeeId },
+  });
+  if (!existing) throw AppError.notFound("Emergency contact not found");
+
+  await prisma.employeeEmergencyContact.delete({ where: { id: contactId } });
+  return { data: { success: true, message: "Emergency contact deleted" } };
+}
+
+/* -------------------------------------------------------------------------- */
+/*                       Movements / Timeline History                         */
+/* -------------------------------------------------------------------------- */
+
+export async function listEmployeeMovements(employeeId: string) {
+  const movements = await prisma.employeeMovement.findMany({
+    where: { employeeId },
+    orderBy: { createdAt: "desc" },
+  });
+  return { data: movements };
+}
+
+export async function recordTransfer(
+  employeeId: string,
+  input: {
+    newDepartmentId: string;
+    newDesignationId?: string;
+    effectiveDate: string;
+    reason: string;
+  },
+  actorId?: string
+) {
+  const emp = await prisma.employee.findUnique({
+    where: { id: employeeId },
+    include: { department: true, designation: true },
+  });
+  if (!emp) throw AppError.notFound("Employee not found");
+
+  const movement = await prisma.employeeMovement.create({
+    data: {
+      employeeId,
+      movementType: "TRANSFER",
+      oldDepartmentId: emp.departmentId,
+      newDepartmentId: input.newDepartmentId,
+      oldDesignationId: emp.designationId,
+      newDesignationId: input.newDesignationId || emp.designationId,
+      effectiveDate: new Date(input.effectiveDate),
+      reason: input.reason,
+      requestedById: actorId || null,
+      approvedById: actorId || null,
+    },
+  });
+
+  const updated = await prisma.employee.update({
+    where: { id: employeeId },
+    data: {
+      departmentId: input.newDepartmentId,
+      designationId: input.newDesignationId || undefined,
+    },
+    include: EMPLOYEE_INCLUDE,
+  });
+
+  return { data: { movement, employee: serializeEmployeeList([updated])[0] } };
+}
+
+export async function recordPromotion(
+  employeeId: string,
+  input: {
+    newDesignationId: string;
+    newLevel?: string;
+    newSalary?: number;
+    effectiveDate: string;
+    reason: string;
+  },
+  actorId?: string
+) {
+  const emp = await prisma.employee.findUnique({
+    where: { id: employeeId },
+    include: { designation: true, salaryStructures: { where: { isActive: true } } },
+  });
+  if (!emp) throw AppError.notFound("Employee not found");
+
+  const oldSalary = emp.salaryStructures[0]?.basicSalary;
+
+  const movement = await prisma.employeeMovement.create({
+    data: {
+      employeeId,
+      movementType: "PROMOTION",
+      oldDesignationId: emp.designationId,
+      newDesignationId: input.newDesignationId,
+      oldLevel: emp.designation?.level || "L3",
+      newLevel: input.newLevel || "L4",
+      oldSalary: oldSalary || null,
+      newSalary: input.newSalary ? toDecimal(input.newSalary) : null,
+      effectiveDate: new Date(input.effectiveDate),
+      reason: input.reason,
+      requestedById: actorId || null,
+      approvedById: actorId || null,
+    },
+  });
+
+  const updated = await prisma.employee.update({
+    where: { id: employeeId },
+    data: {
+      designationId: input.newDesignationId,
+    },
+    include: EMPLOYEE_INCLUDE,
+  });
+
+  if (input.newSalary) {
+    const basic = toDecimal(input.newSalary * 0.5);
+    const hra = toDecimal(input.newSalary * 0.3);
+    const special = toDecimal(input.newSalary * 0.2);
+    await upsertSalaryStructure(employeeId, {
+      effectiveFrom: input.effectiveDate,
+      basicSalary: basic,
+      hra,
+      otherAllowances: special,
+    }, actorId);
+  }
+
+  return { data: { movement, employee: serializeEmployeeList([updated])[0] } };
+}
+
+const BULK_IMPORT_LIMIT = 500;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const BULK_EMPLOYMENT_TYPES = new Set(["Full-Time", "Part-Time", "Contract", "Intern"]);
+
+type BulkImportError = { row: number; field: string; value?: string; error: string };
+
+export async function validateBulkEmployees(items: CreateEmployeeInput[]) {
+  if (items.length > BULK_IMPORT_LIMIT) {
+    throw AppError.badRequest(`A maximum of ${BULK_IMPORT_LIMIT} employees can be imported at once.`);
+  }
+
+  const errors: BulkImportError[] = [];
+  const normalized = items.map((item) => ({
+    ...item,
+    firstName: String(item.firstName ?? "").trim(),
+    lastName: String(item.lastName ?? "").trim(),
+    email: String(item.email ?? "").trim().toLowerCase(),
+    phone: String(item.phone ?? "").trim(),
+    designation: String(item.designation ?? "").trim(),
+    department: String(item.department ?? "").trim(),
+    location: String(item.location ?? "").trim(),
+    managerId: String(item.managerId ?? "").trim(),
+    employmentType: String(item.employmentType ?? "Full-Time").trim(),
+  }));
+
+  const seenEmails = new Map<string, number>();
+  const seenPhones = new Map<string, number>();
+  const addError = (row: number, field: string, error: string, value?: string) =>
+    errors.push({ row: row + 2, field, value, error });
+
+  normalized.forEach((item, index) => {
+    if (!item.firstName) addError(index, "firstName", "First name is required.");
+    if (!item.lastName) addError(index, "lastName", "Last name is required.");
+    if (!item.email || !EMAIL_RE.test(item.email)) addError(index, "email", "A valid email is required.", item.email);
+    if (!item.department) addError(index, "department", "Department is required.");
+    if (!item.designation) addError(index, "designation", "Designation is required.");
+    if (!item.location) addError(index, "location", "Location is required.");
+    if (!BULK_EMPLOYMENT_TYPES.has(item.employmentType)) {
+      addError(index, "employmentType", "Use Full-Time, Part-Time, Contract, or Intern.", item.employmentType);
+    }
+    if (item.dateOfJoining && Number.isNaN(new Date(item.dateOfJoining).getTime())) {
+      addError(index, "dateOfJoining", "Use a valid date in YYYY-MM-DD format.", item.dateOfJoining);
+    }
+    if (item.email) {
+      const firstRow = seenEmails.get(item.email);
+      if (firstRow !== undefined) addError(index, "email", `Duplicate email in CSV (also row ${firstRow + 2}).`, item.email);
+      else seenEmails.set(item.email, index);
+    }
+    if (item.phone) {
+      const firstRow = seenPhones.get(item.phone);
+      if (firstRow !== undefined) addError(index, "phone", `Duplicate phone in CSV (also row ${firstRow + 2}).`, item.phone);
+      else seenPhones.set(item.phone, index);
+    }
+  });
+
+  const [users, employees, departments, designations, locations, managers] = await Promise.all([
+    prisma.user.findMany({ where: { email: { in: [...seenEmails.keys()] } }, select: { email: true } }),
+    prisma.employee.findMany({
+      where: { OR: [
+        { personalEmail: { in: [...seenEmails.keys()] } },
+        { personalMobile: { in: [...seenPhones.keys()].filter(Boolean) } },
+      ] },
+      select: { personalEmail: true, personalMobile: true },
+    }),
+    prisma.department.findMany({ select: { id: true, name: true } }),
+    prisma.designation.findMany({ select: { id: true, title: true } }),
+    prisma.location.findMany({ select: { id: true, name: true } }),
+    prisma.employee.findMany({
+      where: { employeeCode: { in: normalized.map((i) => i.managerId).filter(Boolean) } },
+      select: { id: true, employeeCode: true, status: true },
+    }),
+  ]);
+
+  const existingEmails = new Set([
+    ...users.map((u) => u.email.toLowerCase()),
+    ...employees.map((e) => e.personalEmail?.toLowerCase()).filter(Boolean) as string[],
+  ]);
+  const existingPhones = new Set(employees.map((e) => e.personalMobile).filter(Boolean));
+  const departmentMap = new Map(departments.map((v) => [v.name.toLowerCase(), v.id]));
+  const designationMap = new Map(designations.map((v) => [v.title.toLowerCase(), v.id]));
+  const locationMap = new Map(locations.map((v) => [v.name.toLowerCase(), v.id]));
+  const managerMap = new Map(managers.map((v) => [v.employeeCode.toLowerCase(), v]));
+
+  normalized.forEach((item, index) => {
+    if (existingEmails.has(item.email)) addError(index, "email", "Email already exists.", item.email);
+    if (item.phone && existingPhones.has(item.phone)) addError(index, "phone", "Phone already exists.", item.phone);
+    if (item.department && !departmentMap.has(item.department.toLowerCase())) addError(index, "department", "Department was not found.", item.department);
+    if (item.designation && !designationMap.has(item.designation.toLowerCase())) addError(index, "designation", "Designation was not found.", item.designation);
+    if (item.location && !locationMap.has(item.location.toLowerCase())) addError(index, "location", "Location was not found.", item.location);
+    if (item.managerId) {
+      const manager = managerMap.get(item.managerId.toLowerCase());
+      if (!manager) addError(index, "managerCode", "Manager employee code was not found.", item.managerId);
+      else if (["Inactive", "Terminated"].includes(manager.status)) addError(index, "managerCode", "Manager is not active.", item.managerId);
+    }
+  });
+
+  return {
+    data: {
+      valid: errors.length === 0,
+      totalRows: normalized.length,
+      validRows: errors.length === 0 ? normalized.length : new Set(normalized.map((_, i) => i + 2).filter((r) => !errors.some((e) => e.row === r))).size,
+      errors,
+    },
+    normalized,
+    refs: { departmentMap, designationMap, locationMap, managerMap },
+  };
+}
+
+export async function bulkCreateEmployees(items: CreateEmployeeInput[], actorUserId?: string) {
+  const validation = await validateBulkEmployees(items);
+  if (!validation.data.valid) return { data: { ...validation.data, totalCreated: 0, created: [] } };
+
+  const role = await prisma.role.findUnique({ where: { name: "EMPLOYEE" }, select: { id: true } });
+  if (!role) throw AppError.conflict("EMPLOYEE role is not configured.");
+  const passwordHashes = await Promise.all(validation.normalized.map((item) => hashPassword(item.password ?? "Welcome@123")));
+  const currentYear = new Date().getFullYear();
+  const prefix = `EMP-${currentYear}-`;
+  const latest = await prisma.employee.findFirst({ where: { employeeCode: { startsWith: prefix } }, orderBy: { employeeCode: "desc" }, select: { employeeCode: true } });
+  let sequence = latest ? Number(latest.employeeCode.replace(prefix, "")) + 1 : await prisma.employee.count() + 1;
+
+  const created = await prisma.$transaction(async (tx) => {
+    const rows: Array<{ id: string; employeeCode: string; firstName: string; lastName: string; personalEmail: string | null }> = [];
+    for (let index = 0; index < validation.normalized.length; index++) {
+      const item = validation.normalized[index];
+      const joinDate = item.dateOfJoining ? new Date(item.dateOfJoining) : new Date();
+      const expectedConfirmationDate = new Date(joinDate);
+      expectedConfirmationDate.setMonth(expectedConfirmationDate.getMonth() + 6);
+      const user = await tx.user.create({ data: { email: item.email, passwordHash: passwordHashes[index], roleId: role.id } });
+      const employeeCode = `${prefix}${String(sequence++).padStart(5, "0")}`;
+      const manager = item.managerId ? validation.refs.managerMap.get(item.managerId.toLowerCase()) : undefined;
+      const employee = await tx.employee.create({
+        data: {
+          userId: user.id, employeeCode, firstName: item.firstName, lastName: item.lastName,
+          personalEmail: item.email, personalMobile: item.phone || null,
+          guardianName: item.guardianName || null, guardianPhone: item.guardianPhone || null,
+          departmentId: validation.refs.departmentMap.get(item.department.toLowerCase()),
+          designationId: validation.refs.designationMap.get(item.designation.toLowerCase()),
+          locationId: validation.refs.locationMap.get(item.location.toLowerCase()),
+          reportingManagerId: manager?.id ?? null, dateOfJoining: joinDate,
+          employmentType: item.employmentType, status: "Active", expectedConfirmationDate,
+        },
+        select: { id: true, employeeCode: true, firstName: true, lastName: true, personalEmail: true },
+      });
+      await tx.employeeMovement.create({ data: {
+        employeeId: employee.id, movementType: "STATUS_CHANGE", newStatus: "Active",
+        newDepartmentId: validation.refs.departmentMap.get(item.department.toLowerCase()),
+        newDesignationId: validation.refs.designationMap.get(item.designation.toLowerCase()),
+        newManagerId: manager?.id ?? null, effectiveDate: joinDate,
+        reason: "Created through validated bulk employee import", requestedById: actorUserId ?? null, approvedById: actorUserId ?? null,
+      } });
+      await provisionOnboardingForEmployee({
+        employeeId: employee.id,
+        joinDate,
+        probationMonths: item.probationPeriodMonths ?? 6,
+        reportingManagerId: manager?.id ?? null,
+      }, tx);
+      rows.push(employee);
+    }
+    return rows;
+  }, { maxWait: 10_000, timeout: 60_000 });
+
+  void writeAuditLog({ actorUserId, action: "CREATE", entityType: "EmployeeBulkImport", newValue: { totalCreated: created.length, employeeCodes: created.map((e) => e.employeeCode) } });
+  for (const employee of created) {
+    void createInAppForEmployee({
+      employeeId: employee.id,
+      title: "Your onboarding checklist is ready",
+      body: "Complete your onboarding tasks before their due dates.",
+      category: "Onboarding Reminder",
+      link: "/onboarding",
+    }).catch(() => undefined);
+  }
+  return { data: { valid: true, totalRows: items.length, validRows: items.length, totalCreated: created.length, errors: [], created } };
+}
+

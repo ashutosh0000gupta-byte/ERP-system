@@ -1,0 +1,392 @@
+import { Router, Request, Response } from "express";
+import path from "path";
+import fs from "fs";
+import { pipeline } from "stream/promises";
+import minioClient, {
+    MINIO_BUCKET,
+} from "../config/minio";
+
+const router = Router();
+const UPLOADS_ROOT = path.resolve(__dirname, "../../uploads");
+
+// Ensure upload directories exist
+const DOCUMENTS_DIR = path.join(UPLOADS_ROOT, "documents");
+if (!fs.existsSync(DOCUMENTS_DIR)) {
+    fs.mkdirSync(DOCUMENTS_DIR, { recursive: true });
+}
+
+router.get(
+    "/avatars/*",
+    async (req: Request, res: Response) => {
+        try {
+            const fileName = req.params[0];
+            const localPath = path.join(UPLOADS_ROOT, "avatars", fileName);
+
+            res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+
+            if (fs.existsSync(localPath)) {
+                return res.sendFile(localPath);
+            }
+
+            // MinIO fallback
+            const objectName = `avatars/${fileName}`;
+            const stat = await minioClient.statObject(MINIO_BUCKET, objectName);
+            const stream = await minioClient.getObject(MINIO_BUCKET, objectName);
+            const contentType = stat.metaData?.["content-type"];
+            if (contentType) res.setHeader("Content-Type", contentType);
+            res.setHeader("Content-Length", stat.size.toString());
+            stream.pipe(res);
+        } catch {
+            return res.status(404).json({ success: false, message: "Avatar not found" });
+        }
+    }
+);
+
+router.get(
+    "/documents/*",
+    async (req: Request, res: Response) => {
+        try {
+            const fileName = req.params[0];
+            const localPath = path.join(UPLOADS_ROOT, "documents", fileName);
+
+            res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+
+            if (fs.existsSync(localPath)) {
+                res.setHeader("Content-Disposition", "inline");
+                return res.sendFile(localPath);
+            }
+
+            // MinIO fallback
+            const objectName = `documents/${fileName}`;
+            const stat = await minioClient.statObject(MINIO_BUCKET, objectName);
+            const stream = await minioClient.getObject(MINIO_BUCKET, objectName);
+            const contentType = stat.metaData?.["content-type"];
+            if (contentType) res.setHeader("Content-Type", contentType);
+            res.setHeader("Content-Length", stat.size.toString());
+            res.setHeader("Content-Disposition", "inline");
+            stream.pipe(res);
+        } catch {
+            return res.status(404).json({ success: false, message: "Document not found" });
+        }
+    }
+);
+
+// PUT /uploads/documents/* - Local file upload (fallback when MinIO unavailable)
+router.put(
+    "/documents/*",
+    async (req: Request, res: Response) => {
+        try {
+            const fileName = req.params[0];
+            const localPath = path.join(UPLOADS_ROOT, "documents", fileName);
+
+            // Ensure directory exists
+            const dir = path.dirname(localPath);
+            if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir, { recursive: true });
+            }
+
+            // Pipe request body to file
+            const writeStream = fs.createWriteStream(localPath);
+            await pipeline(req, writeStream);
+
+            res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+            return res.status(200).json({
+                success: true,
+                message: "File uploaded to local storage",
+                path: localPath,
+            });
+        } catch (error) {
+            console.error("Local document upload error:", error);
+            return res.status(500).json({ success: false, message: "Upload failed" });
+        }
+    }
+);
+
+router.get(
+    "/lms/*",
+    async (req: Request, res: Response) => {
+        try {
+            const objectName =
+                `lms/${req.params[0]}`;
+
+            const stat =
+                await minioClient.statObject(
+                    MINIO_BUCKET,
+                    objectName
+                );
+
+            const stream =
+                await minioClient.getObject(
+                    MINIO_BUCKET,
+                    objectName
+                );
+
+            const contentType =
+                stat.metaData?.["content-type"];
+
+            if (contentType) {
+                res.setHeader(
+                    "Content-Type",
+                    contentType
+                );
+            }
+
+            res.setHeader(
+                "Content-Length",
+                stat.size.toString()
+            );
+
+            res.setHeader(
+                "Cross-Origin-Resource-Policy",
+                "cross-origin"
+            );
+
+            stream.pipe(res);
+        } catch (error) {
+            console.error(
+                "MinIO file retrieval error:",
+                error
+            );
+
+            return res.status(404).json({
+                success: false,
+                message: "File not found",
+            });
+        }
+    }
+);
+
+router.get(
+    "/leave/*",
+    async (req: Request, res: Response) => {
+        try {
+            const fileName = req.params[0];
+
+            const objectName =
+                `leave/documents/${fileName}`;
+
+            const stat =
+                await minioClient.statObject(
+                    MINIO_BUCKET,
+                    objectName
+                );
+
+            const stream =
+                await minioClient.getObject(
+                    MINIO_BUCKET,
+                    objectName
+                );
+
+            const contentType =
+                stat.metaData?.["content-type"];
+
+            if (contentType) {
+                res.setHeader(
+                    "Content-Type",
+                    contentType
+                );
+            }
+
+            res.setHeader(
+                "Content-Length",
+                stat.size.toString()
+            );
+
+            res.setHeader(
+                "Content-Disposition",
+                "inline"
+            );
+
+            res.setHeader(
+                "Cross-Origin-Resource-Policy",
+                "cross-origin"
+            );
+
+            stream.pipe(res);
+
+        } catch (error) {
+            console.error(
+                "MinIO Leave document retrieval error:",
+                error
+            );
+
+            return res.status(404).json({
+                success: false,
+                message: "Leave document not found",
+            });
+        }
+    }
+);
+
+router.get(
+    "/candidate/*",
+    async (req: Request, res: Response) => {
+        try {
+            const fileName = req.params[0];
+
+            const objectName =
+                `candidate/documents/${fileName}`;
+
+            const stat =
+                await minioClient.statObject(
+                    MINIO_BUCKET,
+                    objectName
+                );
+
+            const stream =
+                await minioClient.getObject(
+                    MINIO_BUCKET,
+                    objectName
+                );
+
+            const contentType =
+                stat.metaData?.["content-type"];
+
+            if (contentType) {
+                res.setHeader(
+                    "Content-Type",
+                    contentType
+                );
+            }
+
+            res.setHeader(
+                "Content-Length",
+                stat.size.toString()
+            );
+
+            res.setHeader(
+                "Content-Disposition",
+                "inline"
+            );
+
+            res.setHeader(
+                "Cross-Origin-Resource-Policy",
+                "cross-origin"
+            );
+
+            stream.pipe(res);
+        } catch (error) {
+            console.error(
+                "MinIO Candidate document retrieval error:",
+                error
+            );
+
+            return res.status(404).json({
+                success: false,
+                message: "Candidate document not found",
+            });
+        }
+    }
+);
+
+router.get(
+    "/payroll/*",
+    async (req: Request, res: Response) => {
+        try {
+            const fileName = req.params[0];
+
+            const objectName = `payroll/payslips/${fileName}`;
+
+            const stat = await minioClient.statObject(
+                MINIO_BUCKET,
+                objectName
+            );
+
+            const stream = await minioClient.getObject(
+                MINIO_BUCKET,
+                objectName
+            );
+
+            const contentType =
+                stat.metaData?.["content-type"];
+
+            if (contentType) {
+                res.setHeader(
+                    "Content-Type",
+                    contentType
+                );
+            }
+
+            res.setHeader(
+                "Content-Length",
+                stat.size.toString()
+            );
+
+            res.setHeader(
+                "Content-Disposition",
+                "inline"
+            );
+
+            res.setHeader(
+                "Cross-Origin-Resource-Policy",
+                "cross-origin"
+            );
+
+            stream.pipe(res);
+        } catch (error) {
+            console.error(
+                "MinIO Payroll payslip retrieval error:",
+                error
+            );
+
+            return res.status(404).json({
+                success: false,
+                message: "Payslip not found",
+            });
+        }
+    }
+);
+
+router.get("/expense/*", async (req: Request, res: Response) => {
+    try {
+        const fileName = req.params[0];
+
+        // First try local storage (for development without MinIO)
+        const localPath = path.join(UPLOADS_ROOT, "documents", "expense-receipts", fileName);
+
+        res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+
+        if (fs.existsSync(localPath)) {
+            res.setHeader("Content-Disposition", "inline");
+            return res.sendFile(localPath);
+        }
+
+        // MinIO object:
+        // expense-receipts/{employeeId}/{fileName}
+        const objectName = `expense-receipts/${fileName}`;
+
+        const stat = await minioClient.statObject(
+            MINIO_BUCKET,
+            objectName
+        );
+
+        const stream = await minioClient.getObject(
+            MINIO_BUCKET,
+            objectName
+        );
+
+        const contentType = stat.metaData?.["content-type"];
+
+        if (contentType) {
+            res.setHeader("Content-Type", contentType);
+        }
+
+        res.setHeader("Content-Length", stat.size.toString());
+        res.setHeader("Content-Disposition", "inline");
+        res.setHeader(
+            "Cross-Origin-Resource-Policy",
+            "cross-origin"
+        );
+
+        stream.pipe(res);
+    } catch (error) {
+        console.error("Expense receipt not found:", error);
+
+        return res.status(404).json({
+            success: false,
+            message: "Expense receipt not found",
+        });
+    }
+});
+
+export default router;
