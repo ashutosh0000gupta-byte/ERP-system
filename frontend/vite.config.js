@@ -8,7 +8,7 @@ export default defineConfig({
     tailwindcss(),
   ],
   preview: {
-    allowedHosts: true,
+    allowedHosts: ['innovative-smile-production.up.railway.app'],
   },
   build: {
     rollupOptions: {
