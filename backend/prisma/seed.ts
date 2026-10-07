@@ -1,7 +1,6 @@
 /// <reference types="node" />
 import { PrismaClient, Prisma } from "@prisma/client";
-import { hashPassword } from "../src/lib/password";
-import { encryptPII } from "../src/lib/encryption";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -435,7 +434,7 @@ async function main() {
 
   // Users + Employees
   const empByCode = new Map<string, string>(); // code -> employee PK
-  const passwordHash = await hashPassword("Password@123");
+  const passwordHash = await bcrypt.hash("Password@123", 12);
 
   for (const e of EMPLOYEES) {
     const user = await prisma.user.create({
