@@ -1,6 +1,27 @@
 /// <reference types="node" />
 import { PrismaClient, Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+
+const ALGORITHM = "aes-256-gcm";
+
+function getKey(): Buffer {
+  const secret = process.env.PII_ENCRYPTION_KEY;
+  if (!secret) {
+    throw new Error("PII_ENCRYPTION_KEY is not configured");
+  }
+  return crypto.createHash("sha256").update(secret).digest();
+}
+
+export function encryptPII(value: string): string {
+  if (!value) return value;
+  const key = getKey();
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+  const encrypted = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return [iv.toString("base64"), authTag.toString("base64"), encrypted.toString("base64")].join(".");
+}
 
 const prisma = new PrismaClient();
 
