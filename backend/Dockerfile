@@ -20,6 +20,7 @@ ENV NODE_ENV=production
 RUN mkdir -p /app/uploads && chown node:node /app/uploads
 COPY --chown=node:node --from=build /app/node_modules ./node_modules
 COPY --chown=node:node --from=build /app/dist ./dist
+COPY --chown=node:node --from=build /app/dist-seed ./dist-seed
 COPY --chown=node:node --from=build /app/prisma ./prisma
 COPY --chown=node:node --from=build /app/prisma.config.ts ./prisma.config.ts
 COPY --chown=node:node package*.json ./
