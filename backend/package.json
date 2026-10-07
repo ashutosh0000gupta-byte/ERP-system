@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsgo -p tsconfig.json",
+    "build": "tsgo -p tsconfig.json && tsc prisma/seed.ts --esModuleInterop",
     "test": "tsx --test runtime.test.mjs \"src/**/*.test.ts\"",
     "start": "node dist/index.js",
     "typecheck": "tsgo -p tsconfig.json --noEmit",
