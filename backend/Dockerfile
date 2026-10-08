@@ -26,4 +26,4 @@ COPY --chown=node:node --from=build /app/prisma.config.ts ./prisma.config.ts
 COPY --chown=node:node package*.json ./
 USER node
 EXPOSE 4000
-CMD ["node", "dist/index.js"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node dist-seed/prisma/seed.js && node dist/index.js"]
