@@ -1,6 +1,8 @@
+import React, { useState, useEffect } from "react";
 import MainLayout from "../../components/layout/MainLayout";
 import WelcomeCard from "../../components/shared/Dashboardgreeting";
 import { Users, CheckCircle, Clock, MapPin, IndianRupee, TrendingUp } from "lucide-react";
+import api from "../../services/api";
 
 const KpiCard = ({ title, value, subtitle, icon: Icon, color }) => (
   <div style={{
@@ -45,6 +47,17 @@ const KpiCard = ({ title, value, subtitle, icon: Icon, color }) => (
 );
 
 export default function AdminDashboard() {
+  const [stats, setStats] = useState({
+    totalWorkers: 0,
+    activeSites: 0,
+    totalAdvance: 0,
+    presentToday: 0
+  });
+
+  useEffect(() => {
+    api.get("/snmr/dashboard").then(res => setStats(res.data)).catch(console.error);
+  }, []);
+
   return (
     <MainLayout>
       <div style={{ maxWidth: "1480px", margin: "0 auto", paddingBottom: "40px" }}>
@@ -58,58 +71,32 @@ export default function AdminDashboard() {
         }}>
           <KpiCard 
             title="Total Workers" 
-            value="156" 
-            subtitle="+12 new this month"
+            value={stats.totalWorkers} 
+            subtitle="Active on all sites"
             icon={Users} 
             color="#3b82f6" 
           />
           <KpiCard 
             title="Present Today" 
-            value="142" 
-            subtitle="91% Attendance Rate"
+            value={stats.presentToday} 
+            subtitle="Current attendance"
             icon={CheckCircle} 
             color="#10b981" 
           />
           <KpiCard 
-            title="Total Overtime (Month)" 
-            value="420 hrs" 
-            subtitle="Across 3 active sites"
-            icon={Clock} 
-            color="#f59e0b" 
-          />
-          <KpiCard 
             title="Active Sites" 
-            value="3" 
-            subtitle="HCCB Khurda, Jalpaiguri, Siliguri"
+            value={stats.activeSites} 
+            subtitle="Ongoing construction projects"
             icon={MapPin} 
             color="#8b5cf6" 
           />
           <KpiCard 
             title="Total Advance" 
-            value="₹45,000" 
-            subtitle="Outstanding balance"
+            value={`₹${Number(stats.totalAdvance).toLocaleString()}`} 
+            subtitle="Outstanding balance to deduct"
             icon={IndianRupee} 
             color="#ef4444" 
           />
-          <KpiCard 
-            title="This Month Labour Cost" 
-            value="₹8.4L" 
-            subtitle="Estimated running cost"
-            icon={TrendingUp} 
-            color="#0ea5e9" 
-          />
-        </div>
-
-        {/* Future expansion for charts/tables */}
-        <div style={{ marginTop: "32px", display: "grid", gridTemplateColumns: "2fr 1fr", gap: "24px" }}>
-          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.03)" }}>
-            <h3 style={{ margin: "0 0 20px", fontSize: "16px", color: "#1e293b" }}>Recent Worker Activity</h3>
-            <p style={{ color: "#94a3b8", fontSize: "14px", fontStyle: "italic" }}>Attendance trends chart will be displayed here...</p>
-          </div>
-          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.03)" }}>
-            <h3 style={{ margin: "0 0 20px", fontSize: "16px", color: "#1e293b" }}>Site Status</h3>
-            <p style={{ color: "#94a3b8", fontSize: "14px", fontStyle: "italic" }}>Site-wise distribution will be displayed here...</p>
-          </div>
         </div>
       </div>
     </MainLayout>

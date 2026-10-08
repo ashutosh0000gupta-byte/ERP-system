@@ -221,3 +221,27 @@ export const payWorkerSalary = async (id: string) => {
     }
   });
 };
+
+export const getDashboardStats = async () => {
+  const [totalWorkers, activeSites, pendingAdvances, presentToday] = await Promise.all([
+    prisma.worker.count({ where: { status: "Active" } }),
+    prisma.site.count({ where: { status: "Active" } }),
+    prisma.workerAdvance.aggregate({
+      where: { isDeducted: false },
+      _sum: { amount: true }
+    }),
+    prisma.workerAttendance.count({
+      where: {
+        date: { gte: new Date(new Date().setUTCHours(0,0,0,0)) },
+        status: "Present"
+      }
+    })
+  ]);
+
+  return {
+    totalWorkers,
+    activeSites,
+    totalAdvance: pendingAdvances._sum.amount || 0,
+    presentToday
+  };
+};

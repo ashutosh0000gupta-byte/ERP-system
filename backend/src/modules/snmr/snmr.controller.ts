@@ -114,3 +114,12 @@ export const payWorkerSalary = async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const getDashboardStats = async (req: Request, res: Response) => {
+  try {
+    const stats = await snmrService.getDashboardStats();
+    res.json(stats);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};

@@ -11,12 +11,16 @@ import {
   createWorkerAdvance,
   getWorkerSalaries,
   generateWorkerSalaries,
-  payWorkerSalary
+  payWorkerSalary,
+  getDashboardStats
 } from "./snmr.controller";
 
 const router = Router();
 
 router.use(authenticate);
+
+// Dashboard
+router.get("/dashboard", getDashboardStats);
 
 // Sites
 router.get("/sites", getSites);
