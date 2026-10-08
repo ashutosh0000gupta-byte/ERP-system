@@ -131,7 +131,7 @@ export const generateWorkerSalaries = async (month: number, year: number) => {
     where: { status: "Active" }
   });
 
-  const salaries = [];
+  const salaries: any[] = [];
 
   for (const worker of workers) {
     if (!worker.dailyWage) continue;
