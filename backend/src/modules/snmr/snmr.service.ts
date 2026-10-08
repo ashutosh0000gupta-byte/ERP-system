@@ -245,3 +245,15 @@ export const getDashboardStats = async () => {
     presentToday
   };
 };
+
+export const getWorkerById = async (id: string) => {
+  return prisma.worker.findUnique({
+    where: { id },
+    include: {
+      site: true,
+      attendances: { orderBy: { date: 'desc' }, take: 30 },
+      advances: { orderBy: { date: 'desc' } },
+      salaries: { orderBy: [{ year: 'desc' }, { month: 'desc' }] }
+    }
+  });
+};

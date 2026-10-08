@@ -12,7 +12,8 @@ import {
   getWorkerSalaries,
   generateWorkerSalaries,
   payWorkerSalary,
-  getDashboardStats
+  getDashboardStats,
+  getWorkerById
 } from "./snmr.controller";
 
 const router = Router();
@@ -29,6 +30,7 @@ router.post("/sites", createSite);
 // Workers
 router.get("/workers", getWorkers);
 router.post("/workers", createWorker);
+router.get("/workers/:id", getWorkerById);
 
 // Worker Attendance
 router.get("/attendance", getWorkerAttendance);

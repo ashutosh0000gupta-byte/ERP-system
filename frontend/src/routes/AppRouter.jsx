@@ -23,6 +23,7 @@ const Sites = lazy(() => import("../pages/Sites/Sites"));
 const WorkerAttendance = lazy(() => import("../pages/Attendance/WorkerAttendance"));
 const Advances = lazy(() => import("../pages/Advances/Advances"));
 const Salary = lazy(() => import("../pages/Salary/Salary"));
+const WorkerProfile = lazy(() => import("../pages/Workers/WorkerProfile"));
 const Attendance = lazy(() => import("../pages/Attendance/Attendance"));
 const Leave = lazy(() => import("../pages/Leave/Leave"));
 const Payroll = lazy(() => import("../pages/Payroll/Payroll"));
@@ -81,6 +82,7 @@ export default function AppRouter() {
 
           {/* Core HR */}
           <Route path="/workers" element={<RequireAuth><Workers /></RequireAuth>} />
+          <Route path="/workers/:id" element={<RequireAuth><WorkerProfile /></RequireAuth>} />
           <Route path="/sites" element={<RequireAuth><Sites /></RequireAuth>} />
           <Route path="/worker-attendance" element={<RequireAuth><WorkerAttendance /></RequireAuth>} />
           <Route path="/salary" element={<RequireAuth><Salary /></RequireAuth>} />

@@ -128,6 +128,7 @@ export default function Workers() {
                     <th style={styles.th}>Current Site</th>
                     <th style={styles.th}>Daily Wage</th>
                     <th style={styles.th}>Status</th>
+                    <th style={styles.th}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -161,6 +162,22 @@ export default function Workers() {
                         }}>
                           {w.status || "Active"}
                         </span>
+                      </td>
+                      <td style={styles.td}>
+                        <a 
+                          href={`/workers/${w.id}`}
+                          style={{
+                            background: "#2563eb",
+                            color: "#fff",
+                            padding: "6px 12px",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            textDecoration: "none"
+                          }}
+                        >
+                          Profile
+                        </a>
                       </td>
                     </tr>
                   ))}
