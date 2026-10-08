@@ -289,3 +289,48 @@ export const createSiteExpense = async (data: any) => {
     include: { site: true }
   });
 };
+
+export const getDocuments = async (entityType?: string, entityId?: string) => {
+  const where: any = {};
+  if (entityType) where.entityType = entityType;
+  if (entityId) where.entityId = entityId;
+  return prisma.snmrDocument.findMany({
+    where,
+    orderBy: { createdAt: 'desc' }
+  });
+};
+
+export const uploadDocument = async (data: any) => {
+  return prisma.snmrDocument.create({
+    data: {
+      title: data.title,
+      type: data.type,
+      url: data.url,
+      entityType: data.entityType,
+      entityId: data.entityId,
+      uploadedBy: data.uploadedBy
+    }
+  });
+};
+
+export const getSystemUsers = async () => {
+  return prisma.user.findMany({
+    include: { role: true },
+    orderBy: { createdAt: 'desc' }
+  });
+};
+
+export const createSystemUser = async (data: any) => {
+  const role = await prisma.role.findFirst({ where: { name: data.roleName || 'SUPERVISOR' } });
+  if (!role) throw new Error('Role not found');
+  
+  return prisma.user.create({
+    data: {
+      email: data.email,
+      passwordHash: data.passwordHash || 'placeholder_hash', // In a real scenario, use bcrypt
+      roleId: role.id
+    },
+    include: { role: true }
+  });
+};
+

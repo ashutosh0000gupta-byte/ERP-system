@@ -151,3 +151,39 @@ export const createSiteExpense = async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const getDocuments = async (req: Request, res: Response) => {
+  try {
+    const documents = await snmrService.getDocuments(req.query.entityType as string, req.query.entityId as string);
+    res.json(documents);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const uploadDocument = async (req: Request, res: Response) => {
+  try {
+    const doc = await snmrService.uploadDocument({ ...req.body, uploadedBy: (req as any).user?.email || 'Admin' });
+    res.json(doc);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getSystemUsers = async (req: Request, res: Response) => {
+  try {
+    const users = await snmrService.getSystemUsers();
+    res.json(users);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const createSystemUser = async (req: Request, res: Response) => {
+  try {
+    const user = await snmrService.createSystemUser(req.body);
+    res.json(user);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};

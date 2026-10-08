@@ -2497,3 +2497,19 @@ model SiteExpense {
   @@index([date])
   @@map("site_expenses")
 }
+
+model SnmrDocument {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String   @db.VarChar(150)
+  type        String   @db.VarChar(50) // e.g., 'Aadhar', 'Blueprint', 'Contract'
+  url         String   @db.Text
+  entityType  String   @map("entity_type") @db.VarChar(50) // 'Worker' or 'Site'
+  entityId    String   @map("entity_id") @db.Uuid
+  uploadedBy  String   @map("uploaded_by") @db.VarChar(100)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([entityType, entityId])
+  @@map("snmr_documents")
+}
+

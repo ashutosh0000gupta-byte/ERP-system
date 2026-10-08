@@ -16,6 +16,8 @@ import Login from "../pages/Auth/Login";
 import ChangePassword from "../pages/Auth/ChangePassword";
 import UserManual from "../pages/Manual/UserManual";
 import ComingSoon from "../pages/Shared/ComingSoon";
+import DocumentsList from "../pages/Documents/DocumentsList";
+import UsersList from "../pages/Users/UsersList";
 
 // ── Lazily loaded modules ────────────────────────────────────────────────────
 const Employees = lazy(() => import("../pages/Employees/Employees"));
@@ -99,10 +101,10 @@ export default function AppRouter() {
           <Route path="/payroll" element={<RequireAuth><Payroll /></RequireAuth>} />
           <Route path="/performance" element={<RequireAuth><Performance /></RequireAuth>} />
           
-          {/* Missing Sidebar Sections mapped to Coming Soon */}
+          {/* Missing Sidebar Sections */}
           <Route path="/reports" element={<RequireAuth><ComingSoon title="Reports & Analytics" /></RequireAuth>} />
-          <Route path="/documents" element={<RequireAuth><ComingSoon title="Document Management" /></RequireAuth>} />
-          <Route path="/users" element={<RequireAuth><ComingSoon title="Users & Roles" /></RequireAuth>} />
+          <Route path="/documents" element={<RequireAuth><DocumentsList /></RequireAuth>} />
+          <Route path="/users" element={<RequireAuth><UsersList /></RequireAuth>} />
           <Route path="/settings" element={<RequireAuth><ComingSoon title="System Settings" /></RequireAuth>} />
 
           {/* Talent */}
