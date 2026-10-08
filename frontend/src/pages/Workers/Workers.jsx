@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import MainLayout from "../../components/layout/MainLayout";
 import api from "../../services/api";
-import { Users, Search, Plus, X, Briefcase, MapPin, IndianRupee, HardHat } from "lucide-react";
+import { Users, Search, Plus, X, Briefcase, MapPin, IndianRupee, HardHat, Printer } from "lucide-react";
+import WorkerIdCard from "../../components/shared/WorkerIdCard";
 
 export default function Workers() {
   const [workers, setWorkers] = useState([]);
@@ -10,6 +11,7 @@ export default function Workers() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [printWorker, setPrintWorker] = useState(null);
   
   const [formData, setFormData] = useState({
     workerId: "",
@@ -70,6 +72,15 @@ export default function Workers() {
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (printWorker) {
+      setTimeout(() => {
+        window.print();
+        setPrintWorker(null);
+      }, 500);
+    }
+  }, [printWorker]);
 
   const filteredWorkers = workers.filter(w => 
     w.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -164,20 +175,40 @@ export default function Workers() {
                         </span>
                       </td>
                       <td style={styles.td}>
-                        <a 
-                          href={`/workers/${w.id}`}
-                          style={{
-                            background: "#2563eb",
-                            color: "#fff",
-                            padding: "6px 12px",
-                            borderRadius: "6px",
-                            fontSize: "12px",
-                            fontWeight: 600,
-                            textDecoration: "none"
-                          }}
-                        >
-                          Profile
-                        </a>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <a 
+                            href={`/workers/${w.id}`}
+                            style={{
+                              background: "#2563eb",
+                              color: "#fff",
+                              padding: "6px 12px",
+                              borderRadius: "6px",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                              textDecoration: "none"
+                            }}
+                          >
+                            Profile
+                          </a>
+                          <button
+                            onClick={() => setPrintWorker(w)}
+                            style={{
+                              background: "#f1f5f9",
+                              color: "#475569",
+                              padding: "6px 12px",
+                              borderRadius: "6px",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                              border: "none",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px"
+                            }}
+                          >
+                            <Printer size={14} /> Print ID
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -283,6 +314,8 @@ export default function Workers() {
           </div>
         )}
       </div>
+
+      {printWorker && <WorkerIdCard worker={printWorker} />}
     </MainLayout>
   );
 }
