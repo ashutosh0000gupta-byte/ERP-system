@@ -200,6 +200,9 @@ export const updateWorkerStatus = async (req: Request, res: Response) => {
 
 export const deleteWorker = async (req: Request, res: Response) => {
   try {
+    if (req.query.password !== 'Password@123') {
+      return res.status(403).json({ error: 'Incorrect admin password.' });
+    }
     await snmrService.deleteWorker(req.params.id);
     res.json({ message: 'Worker deleted successfully' });
   } catch (err: any) {

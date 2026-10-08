@@ -41,11 +41,13 @@ export default function WorkerProfile() {
 
   const handleDelete = async () => {
     if (window.confirm("Are you sure you want to PERMANENTLY delete this worker and all their data (attendance, salaries, etc)? This cannot be undone.")) {
+      const pwd = window.prompt("Enter Admin Password to confirm deletion:");
+      if (!pwd) return;
       try {
-        await api.delete(`/snmr/workers/${id}`);
+        await api.delete(`/snmr/workers/${id}?password=${encodeURIComponent(pwd)}`);
         navigate("/workers");
       } catch (err) {
-        alert(err.response?.data?.message || err.message);
+        alert(err.response?.data?.error || err.response?.data?.message || err.message);
       }
     }
   };
