@@ -223,7 +223,7 @@ export const payWorkerSalary = async (id: string) => {
 };
 
 export const getDashboardStats = async () => {
-  const [totalWorkers, activeSites, pendingAdvances, presentToday] = await Promise.all([
+  const [totalWorkers, activeSites, pendingAdvances, presentToday, siteWorkers] = await Promise.all([
     prisma.worker.count({ where: { status: "Active" } }),
     prisma.site.count({ where: { status: "Active" } }),
     prisma.workerAdvance.aggregate({
@@ -235,14 +235,23 @@ export const getDashboardStats = async () => {
         date: { gte: new Date(new Date().setUTCHours(0,0,0,0)) },
         status: "Present"
       }
+    }),
+    prisma.site.findMany({
+      include: { _count: { select: { workers: true } } }
     })
   ]);
+
+  const chartData = siteWorkers.map(s => ({
+    name: s.name,
+    workers: s._count.workers
+  }));
 
   return {
     totalWorkers,
     activeSites,
     totalAdvance: pendingAdvances._sum.amount || 0,
-    presentToday
+    presentToday,
+    chartData
   };
 };
 
@@ -255,5 +264,28 @@ export const getWorkerById = async (id: string) => {
       advances: { orderBy: { date: 'desc' } },
       salaries: { orderBy: [{ year: 'desc' }, { month: 'desc' }] }
     }
+  });
+};
+
+export const getSiteExpenses = async (siteId?: string) => {
+  const where = siteId ? { siteId } : {};
+  return prisma.siteExpense.findMany({
+    where,
+    orderBy: { date: 'desc' },
+    include: { site: true }
+  });
+};
+
+export const createSiteExpense = async (data: any) => {
+  return prisma.siteExpense.create({
+    data: {
+      siteId: data.siteId,
+      date: new Date(data.date),
+      category: data.category,
+      amount: data.amount,
+      description: data.description,
+      recordedBy: data.recordedBy,
+    },
+    include: { site: true }
   });
 };

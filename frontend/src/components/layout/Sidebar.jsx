@@ -27,6 +27,7 @@ const NAV_GROUPS = [
       { icon: Wallet, title: "Salary & Payment", href: "/salary", permission: "dashboard" },
       { icon: CreditCard, title: "Advance / Expense", href: "/advances", permission: "dashboard" },
       { icon: Building2, title: "Sites / Projects", href: "/sites", permission: "dashboard" },
+      { icon: Receipt, title: "Site Expenses", href: "/site-expenses", permission: "dashboard" },
     ],
   },
   {

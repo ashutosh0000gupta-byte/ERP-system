@@ -2,7 +2,10 @@ import React, { useState, useEffect } from "react";
 import MainLayout from "../../components/layout/MainLayout";
 import WelcomeCard from "../../components/shared/Dashboardgreeting";
 import { Users, CheckCircle, Clock, MapPin, IndianRupee, TrendingUp } from "lucide-react";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import api from "../../services/api";
+
+const COLORS = ['#0f766e', '#0ea5e9', '#8b5cf6', '#f59e0b', '#ef4444', '#10b981'];
 
 const KpiCard = ({ title, value, subtitle, icon: Icon, color }) => (
   <div style={{
@@ -51,7 +54,8 @@ export default function AdminDashboard() {
     totalWorkers: 0,
     activeSites: 0,
     totalAdvance: 0,
-    presentToday: 0
+    presentToday: 0,
+    chartData: []
   });
 
   useEffect(() => {
@@ -98,6 +102,44 @@ export default function AdminDashboard() {
             color="#ef4444" 
           />
         </div>
+
+        {stats.chartData && stats.chartData.length > 0 && (
+          <div style={{
+            background: "#fff",
+            borderRadius: "16px",
+            padding: "24px",
+            marginTop: "24px",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.03)",
+            height: "400px"
+          }}>
+            <h3 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 20px 0", color: "#0f172a" }}>
+              Worker Distribution by Site
+            </h3>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={stats.chartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={80}
+                  outerRadius={120}
+                  paddingAngle={5}
+                  dataKey="workers"
+                >
+                  {stats.chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  itemStyle={{ color: '#0f172a', fontWeight: 600 }}
+                />
+                <Legend verticalAlign="bottom" height={36} iconType="circle" />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
       </div>
     </MainLayout>
   );

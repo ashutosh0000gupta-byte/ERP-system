@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import MainLayout from "../../components/layout/MainLayout";
 import api from "../../services/api";
-import { Wallet, Search, Play, Check, X, Calendar, AlertCircle, Download } from "lucide-react";
+import { Wallet, Search, Play, Check, X, Calendar, AlertCircle, Download, Printer } from "lucide-react";
+import PayslipPrint from "../../components/shared/PayslipPrint";
 
 export default function Salary() {
   const [salaries, setSalaries] = useState([]);
@@ -10,6 +11,7 @@ export default function Salary() {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
   const [isGenerating, setIsGenerating] = useState(false);
+  const [printSalary, setPrintSalary] = useState(null);
 
   useEffect(() => {
     fetchSalaries();
@@ -26,6 +28,15 @@ export default function Salary() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (printSalary) {
+      setTimeout(() => {
+        window.print();
+        setPrintSalary(null);
+      }, 500);
+    }
+  }, [printSalary]);
 
   const handleGenerate = async () => {
     if (!window.confirm(`Generate salaries for ${month}/${year}? This will deduct active advances.`)) return;
@@ -174,11 +185,16 @@ export default function Salary() {
                       )}
                     </td>
                     <td style={styles.td}>
-                      {s.status !== "Paid" && (
-                        <button onClick={() => handlePay(s.id)} style={styles.payBtn}>
-                          Mark Paid
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        {s.status !== "Paid" && (
+                          <button onClick={() => handlePay(s.id)} style={styles.payBtn}>
+                            Mark Paid
+                          </button>
+                        )}
+                        <button onClick={() => setPrintSalary(s)} style={styles.printBtn}>
+                          <Printer size={14} /> Print
                         </button>
-                      )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -187,6 +203,7 @@ export default function Salary() {
           )}
         </div>
       </div>
+      {printSalary && <PayslipPrint salary={printSalary} />}
     </MainLayout>
   );
 }
@@ -212,6 +229,7 @@ const styles = {
   statusPaid: { background: "#dcfce7", color: "#166534", padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: "600" },
   statusPending: { background: "#fef3c7", color: "#92400e", padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: "600" },
   payBtn: { background: "#2563eb", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer" },
+  printBtn: { display: "flex", alignItems: "center", gap: "4px", background: "#f1f5f9", color: "#475569", border: "none", padding: "6px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer" },
   loadingContainer: { display: "flex", flexDirection: "column", alignItems: "center", padding: "60px 0", color: "#64748b" },
   spinner: { width: "30px", height: "30px", border: "3px solid #f1f5f9", borderTop: "3px solid #0f766e", borderRadius: "50%", animation: "spin 1s linear infinite", marginBottom: "16px" },
   emptyState: { display: "flex", flexDirection: "column", alignItems: "center", padding: "60px 0" },

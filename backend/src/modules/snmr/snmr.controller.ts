@@ -133,3 +133,21 @@ export const getWorkerById = async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const getSiteExpenses = async (req: Request, res: Response) => {
+  try {
+    const expenses = await snmrService.getSiteExpenses(req.query.siteId as string);
+    res.json(expenses);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const createSiteExpense = async (req: Request, res: Response) => {
+  try {
+    const expense = await snmrService.createSiteExpense({ ...req.body, recordedBy: (req as any).user?.email || 'Admin' });
+    res.json(expense);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};

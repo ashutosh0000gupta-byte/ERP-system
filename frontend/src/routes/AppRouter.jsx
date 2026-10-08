@@ -23,6 +23,7 @@ const Sites = lazy(() => import("../pages/Sites/Sites"));
 const WorkerAttendance = lazy(() => import("../pages/Attendance/WorkerAttendance"));
 const Advances = lazy(() => import("../pages/Advances/Advances"));
 const Salary = lazy(() => import("../pages/Salary/Salary"));
+const SiteExpenses = lazy(() => import("../pages/Expenses/SiteExpenses"));
 const WorkerProfile = lazy(() => import("../pages/Workers/WorkerProfile"));
 const Attendance = lazy(() => import("../pages/Attendance/Attendance"));
 const Leave = lazy(() => import("../pages/Leave/Leave"));
@@ -87,6 +88,7 @@ export default function AppRouter() {
           <Route path="/worker-attendance" element={<RequireAuth><WorkerAttendance /></RequireAuth>} />
           <Route path="/salary" element={<RequireAuth><Salary /></RequireAuth>} />
           <Route path="/advances" element={<RequireAuth><Advances /></RequireAuth>} />
+          <Route path="/site-expenses" element={<RequireAuth><SiteExpenses /></RequireAuth>} />
           <Route path="/employees" element={<RequireAuth><Employees /></RequireAuth>} />
           <Route path="/employees/:id" element={<RequireAuth><EmployeeProfile /></RequireAuth>} />
           <Route path="/attendance" element={<RequireAuth><Attendance /></RequireAuth>} />

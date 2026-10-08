@@ -13,7 +13,9 @@ import {
   generateWorkerSalaries,
   payWorkerSalary,
   getDashboardStats,
-  getWorkerById
+  getWorkerById,
+  getSiteExpenses,
+  createSiteExpense
 } from "./snmr.controller";
 
 const router = Router();
@@ -44,5 +46,9 @@ router.post("/advances", createWorkerAdvance);
 router.get("/salaries", getWorkerSalaries);
 router.post("/salaries/generate", generateWorkerSalaries);
 router.post("/salaries/:id/pay", payWorkerSalary);
+
+// Expenses
+router.get("/expenses", getSiteExpenses);
+router.post("/expenses", createSiteExpense);
 
 export default router;
