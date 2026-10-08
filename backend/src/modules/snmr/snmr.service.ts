@@ -334,3 +334,15 @@ export const createSystemUser = async (data: any) => {
   });
 };
 
+
+export const updateWorkerStatus = async (id: string, status: string, exitReason?: string) => {
+  return prisma.worker.update({
+    where: { id },
+    data: {
+      status,
+      exitDate: status === 'Inactive' ? new Date() : null,
+      exitReason: status === 'Inactive' ? exitReason : null
+    }
+  });
+};
+

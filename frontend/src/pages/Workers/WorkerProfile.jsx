@@ -10,12 +10,34 @@ export default function WorkerProfile() {
   const [worker, setWorker] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchWorker = () => {
+    setLoading(true);
     api.get(`/snmr/workers/${id}`)
       .then(res => setWorker(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchWorker();
   }, [id]);
+
+  const handleToggleStatus = async () => {
+    const newStatus = worker.status === "Active" ? "Inactive" : "Active";
+    let exitReason = null;
+    
+    if (newStatus === "Inactive") {
+      exitReason = window.prompt("Reason for deactivation/leaving (optional):");
+      if (exitReason === null) return; // User cancelled
+    }
+    
+    try {
+      await api.put(`/snmr/workers/${id}/status`, { status: newStatus, exitReason });
+      fetchWorker(); // refresh
+    } catch (err) {
+      alert(err.response?.data?.message || err.message);
+    }
+  };
 
   if (loading) {
     return (
@@ -69,6 +91,22 @@ export default function WorkerProfile() {
                 )}
               </div>
             </div>
+            <button 
+              style={{
+                background: worker.status === "Active" ? "#fee2e2" : "#dcfce7",
+                color: worker.status === "Active" ? "#991b1b" : "#166534",
+                border: "none",
+                fontWeight: "600",
+                marginLeft: "auto",
+                padding: "8px 16px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "13px"
+              }}
+              onClick={handleToggleStatus}
+            >
+              {worker.status === "Active" ? "Deactivate Worker" : "Re-activate Worker"}
+            </button>
           </div>
           
           <div style={styles.contactGrid}>

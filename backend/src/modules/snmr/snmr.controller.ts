@@ -187,3 +187,13 @@ export const createSystemUser = async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const updateWorkerStatus = async (req: Request, res: Response) => {
+  try {
+    const worker = await snmrService.updateWorkerStatus(req.params.id, req.body.status, req.body.exitReason);
+    res.json(worker);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+

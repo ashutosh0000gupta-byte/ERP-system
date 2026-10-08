@@ -14,6 +14,7 @@ import {
   payWorkerSalary,
   getDashboardStats,
   getWorkerById,
+  updateWorkerStatus,
   getSiteExpenses,
   createSiteExpense,
   getDocuments,
@@ -37,6 +38,7 @@ router.post("/sites", createSite);
 router.get("/workers", getWorkers);
 router.post("/workers", createWorker);
 router.get("/workers/:id", getWorkerById);
+router.put("/workers/:id/status", updateWorkerStatus);
 
 // Worker Attendance
 router.get("/attendance", getWorkerAttendance);
