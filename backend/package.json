@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsgo -p tsconfig.json && tsc -p tsconfig.seed.json",
+    "build": "npx prisma generate && tsgo -p tsconfig.json && tsc -p tsconfig.seed.json",
     "test": "tsx --test runtime.test.mjs \"src/**/*.test.ts\"",
     "start": "npx prisma db push --accept-data-loss && node dist-seed/prisma/seed.js && node dist/index.js",
     "typecheck": "tsgo -p tsconfig.json --noEmit",
