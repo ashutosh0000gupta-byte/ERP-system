@@ -69,7 +69,6 @@ export default function AppRouter() {
           <Routes>
           {/* Public */}
           <Route path="/login" element={<Login />} />
-          <Route path="/manual" element={<UserManual />} />
           <Route path="/change-password" element={<RequireAuth><ChangePassword /></RequireAuth>} />
           <Route path="/careers" element={<CandidatePortal />} />
           <Route path="/candidate/offer/:token" element={<CandidatePortal />} />
@@ -91,6 +90,7 @@ export default function AppRouter() {
           <Route path="/salary" element={<RequireAuth><Salary /></RequireAuth>} />
           <Route path="/advances" element={<RequireAuth><Advances /></RequireAuth>} />
           <Route path="/site-expenses" element={<RequireAuth><SiteExpenses /></RequireAuth>} />
+          <Route path="/help" element={<RequireAuth><UserManual /></RequireAuth>} />
           <Route path="/employees" element={<RequireAuth><Employees /></RequireAuth>} />
           <Route path="/employees/:id" element={<RequireAuth><EmployeeProfile /></RequireAuth>} />
           <Route path="/attendance" element={<RequireAuth><Attendance /></RequireAuth>} />

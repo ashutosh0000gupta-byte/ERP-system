@@ -265,13 +265,6 @@ export default function Login() {
               </button>
             </form>
 
-            {/* Link to manual */}
-            <div style={{ textAlign: "center", marginTop: "24px" }}>
-              <a href="/manual" style={{ color: "#0f766e", fontSize: "14px", fontWeight: "700", textDecoration: "none" }}>
-                📖 View System User Manual
-              </a>
-            </div>
-
             {/* ── Quick sign-in ── */}
             <div style={{ marginTop: "28px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
