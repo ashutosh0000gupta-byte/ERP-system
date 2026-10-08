@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
@@ -23,7 +24,11 @@ export function encryptPII(value: string): string {
   return [iv.toString("base64"), authTag.toString("base64"), encrypted.toString("base64")].join(".");
 }
 
-const prisma = new PrismaClient();
+import { Pool } from "pg";
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 // ── Permissions (mirrors frontend/src/context/AuthContext.jsx ROLE_PERMISSIONS) ──
 
