@@ -46,16 +46,6 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(
     async (email, password) => {
-      // Mock Supervisor login for demo
-      if (email === "supervisor@snmrfab.in") {
-        const mockUser = { id: "sup-1", role: "SUPERVISOR", email, firstName: "Site", lastName: "Supervisor" };
-        const mockPerms = ["dashboard:read", "attendance:read", "attendance:write"];
-        localStorage.setItem(TOKEN_KEY, "mock-token-supervisor");
-        localStorage.setItem("hrms_role", "SUPERVISOR");
-        applySession({ user: mockUser, permissions: mockPerms, role: "SUPERVISOR" });
-        return mockUser;
-      }
-
       const res = await api.post("/auth/login", { email, password });
       const { user: u, token, refreshToken, permissions: perms } = res.data.data;
       localStorage.setItem(TOKEN_KEY, token);
