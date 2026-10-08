@@ -100,7 +100,13 @@ export async function login(email: string, password: string, ip?: string) {
     const hash = await hashPassword('Password@123');
     await prisma.user.create({
       data: { email: normalized, passwordHash: hash, roleId: role.id, employee: {
-        create: { employeeCode: 'SUP001', firstName: 'Site', lastName: 'Supervisor', employmentType: 'Full-Time' }
+        create: { 
+          employeeCode: 'SUP001', 
+          firstName: 'Site', 
+          lastName: 'Supervisor', 
+          employmentType: 'Full-Time',
+          dateOfJoining: new Date()
+        }
       }}
     });
     account = await loadUserWithPermissions({ email: normalized });
