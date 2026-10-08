@@ -23,7 +23,7 @@ const NAV_GROUPS = [
     items: [
       { icon: LayoutDashboard, title: "Dashboard", href: "/", permission: "dashboard" },
       { icon: Users, title: "Workers", href: "/workers", permission: "dashboard" },
-      { icon: CheckSquare, title: "Attendance", href: "/attendance", permission: "dashboard" },
+      { icon: CheckSquare, title: "Worker Attendance", href: "/worker-attendance", permission: "dashboard" },
       { icon: Wallet, title: "Salary & Payment", href: "/salary", permission: "dashboard" },
       { icon: CreditCard, title: "Advance / Expense", href: "/expenses", permission: "dashboard" },
       { icon: Building2, title: "Sites / Projects", href: "/sites", permission: "dashboard" },
