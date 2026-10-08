@@ -127,7 +127,7 @@ export default function Login() {
         alignItems: "center",
         justifyContent: "center",
         padding: "40px 24px",
-        background: "#f0f4f8",
+        background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
         overflowY: "auto",
       }}>
         <div style={{
@@ -137,14 +137,21 @@ export default function Login() {
         }}>
           {/* Card */}
           <div style={{
-            background: "#fff",
-            borderRadius: "20px",
-            boxShadow: "0 4px 32px rgba(13,27,42,0.10), 0 1px 6px rgba(13,27,42,0.06)",
+            background: "rgba(255, 255, 255, 0.9)",
+            backdropFilter: "blur(20px)",
+            borderRadius: "24px",
+            boxShadow: "0 20px 40px rgba(13,27,42,0.08), 0 1px 10px rgba(13,27,42,0.05)",
             padding: "40px 36px",
-            border: "1px solid rgba(13,27,42,0.06)",
+            border: "1px solid rgba(255,255,255,0.6)",
           }}>
-            <div style={{ marginBottom: "28px" }}>
-              <h2 style={{ fontSize: "24px", fontWeight: 800, color: "#0e1e2c", letterSpacing: "-0.3px" }}>
+            <div style={{ marginBottom: "28px", textAlign: "center" }}>
+              <div style={{
+                width: "64px", height: "64px", background: "#0f766e", color: "#fff",
+                borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "32px", fontWeight: "bold", margin: "0 auto 16px",
+                boxShadow: "0 8px 24px rgba(15, 118, 110, 0.4)"
+              }}>S</div>
+              <h2 style={{ fontSize: "28px", fontWeight: 800, color: "#0e1e2c", letterSpacing: "-0.5px" }}>
                 Welcome back
               </h2>
               <p style={{ fontSize: "13.5px", color: "#5a7a8e", marginTop: "6px" }}>
@@ -257,6 +264,13 @@ export default function Login() {
                 {busy ? <Spinner size={18} /> : "Sign In →"}
               </button>
             </form>
+
+            {/* Link to manual */}
+            <div style={{ textAlign: "center", marginTop: "24px" }}>
+              <a href="/manual" style={{ color: "#0f766e", fontSize: "14px", fontWeight: "700", textDecoration: "none" }}>
+                📖 View System User Manual
+              </a>
+            </div>
 
             {/* ── Quick sign-in ── */}
             <div style={{ marginTop: "28px" }}>
