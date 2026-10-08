@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth } from "../../middlewares/auth.middleware";
+import { authenticate } from "../../middlewares/auth";
 import {
   getSites,
   createSite,
@@ -11,7 +11,7 @@ import {
 
 const router = Router();
 
-router.use(requireAuth);
+router.use(authenticate);
 
 // Sites
 router.get("/sites", getSites);
