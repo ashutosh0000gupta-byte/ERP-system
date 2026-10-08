@@ -346,3 +346,10 @@ export const updateWorkerStatus = async (id: string, status: string, exitReason?
   });
 };
 
+
+export const deleteWorker = async (id: string) => {
+  return prisma.worker.delete({
+    where: { id }
+  });
+};
+

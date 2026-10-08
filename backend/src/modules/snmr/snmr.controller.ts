@@ -197,3 +197,13 @@ export const updateWorkerStatus = async (req: Request, res: Response) => {
   }
 };
 
+
+export const deleteWorker = async (req: Request, res: Response) => {
+  try {
+    await snmrService.deleteWorker(req.params.id);
+    res.json({ message: 'Worker deleted successfully' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+

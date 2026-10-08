@@ -15,6 +15,7 @@ import {
   getDashboardStats,
   getWorkerById,
   updateWorkerStatus,
+  deleteWorker,
   getSiteExpenses,
   createSiteExpense,
   getDocuments,
@@ -39,6 +40,7 @@ router.get("/workers", getWorkers);
 router.post("/workers", createWorker);
 router.get("/workers/:id", getWorkerById);
 router.put("/workers/:id/status", updateWorkerStatus);
+router.delete("/workers/:id", deleteWorker);
 
 // Worker Attendance
 router.get("/attendance", getWorkerAttendance);

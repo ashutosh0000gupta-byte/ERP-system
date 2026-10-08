@@ -39,6 +39,17 @@ export default function WorkerProfile() {
     }
   };
 
+  const handleDelete = async () => {
+    if (window.confirm("Are you sure you want to PERMANENTLY delete this worker and all their data (attendance, salaries, etc)? This cannot be undone.")) {
+      try {
+        await api.delete(`/snmr/workers/${id}`);
+        navigate("/workers");
+      } catch (err) {
+        alert(err.response?.data?.message || err.message);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <MainLayout>
@@ -91,22 +102,42 @@ export default function WorkerProfile() {
                 )}
               </div>
             </div>
-            <button 
-              style={{
-                background: worker.status === "Active" ? "#fee2e2" : "#dcfce7",
-                color: worker.status === "Active" ? "#991b1b" : "#166534",
-                border: "none",
-                fontWeight: "600",
-                marginLeft: "auto",
-                padding: "8px 16px",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontSize: "13px"
-              }}
-              onClick={handleToggleStatus}
-            >
-              {worker.status === "Active" ? "Deactivate Worker" : "Re-activate Worker"}
-            </button>
+            <div style={{ marginLeft: "auto", display: "flex", gap: "10px" }}>
+              <button 
+                style={{
+                  background: worker.status === "Active" ? "#fee2e2" : "#dcfce7",
+                  color: worker.status === "Active" ? "#991b1b" : "#166534",
+                  border: "none",
+                  fontWeight: "600",
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontSize: "13px"
+                }}
+                onClick={handleToggleStatus}
+              >
+                {worker.status === "Active" ? "Deactivate Worker" : "Re-activate Worker"}
+              </button>
+              <button 
+                style={{
+                  background: "#fee2e2",
+                  color: "#991b1b",
+                  border: "1px solid #fca5a5",
+                  fontWeight: "600",
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px"
+                }}
+                onClick={handleDelete}
+                title="Permanently Delete"
+              >
+                Delete
+              </button>
+            </div>
           </div>
           
           <div style={styles.contactGrid}>
