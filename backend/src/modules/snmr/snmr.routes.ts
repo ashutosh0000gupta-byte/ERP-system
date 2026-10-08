@@ -6,7 +6,12 @@ import {
   getWorkers,
   createWorker,
   getWorkerAttendance,
-  markWorkerAttendance
+  markWorkerAttendance,
+  getWorkerAdvances,
+  createWorkerAdvance,
+  getWorkerSalaries,
+  generateWorkerSalaries,
+  payWorkerSalary
 } from "./snmr.controller";
 
 const router = Router();
@@ -24,5 +29,14 @@ router.post("/workers", createWorker);
 // Worker Attendance
 router.get("/attendance", getWorkerAttendance);
 router.post("/attendance", markWorkerAttendance);
+
+// Advances
+router.get("/advances", getWorkerAdvances);
+router.post("/advances", createWorkerAdvance);
+
+// Salary
+router.get("/salaries", getWorkerSalaries);
+router.post("/salaries/generate", generateWorkerSalaries);
+router.post("/salaries/:id/pay", payWorkerSalary);
 
 export default router;

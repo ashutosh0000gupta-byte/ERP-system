@@ -2404,6 +2404,8 @@ model Worker {
 
   site             Site?     @relation(fields: [siteId], references: [id], onDelete: SetNull)
   attendances      WorkerAttendance[]
+  advances         WorkerAdvance[]
+  salaries         WorkerSalary[]
 
   @@index([status])
   @@index([siteId])
@@ -2430,4 +2432,47 @@ model WorkerAttendance {
   @@unique([workerId, date])
   @@index([siteId, date])
   @@map("worker_attendances")
+}
+
+model WorkerAdvance {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workerId    String   @map("worker_id") @db.Uuid
+  siteId      String?  @map("site_id") @db.Uuid
+  date        DateTime @db.Date
+  amount      Decimal  @db.Decimal(10, 2)
+  reason      String?  @db.Text
+  isDeducted  Boolean  @default(false) @map("is_deducted")
+  deductedAt  DateTime? @map("deducted_at") @db.Timestamp(6)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  worker      Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  site        Site?    @relation(fields: [siteId], references: [id], onDelete: SetNull)
+
+  @@index([workerId])
+  @@index([siteId])
+  @@map("worker_advances")
+}
+
+model WorkerSalary {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workerId       String   @map("worker_id") @db.Uuid
+  month          Int
+  year           Int
+  totalDays      Int      @map("total_days")
+  presentDays    Decimal  @map("present_days") @db.Decimal(5, 2) // can be 20.5 for half days
+  dailyWage      Decimal  @map("daily_wage") @db.Decimal(10, 2)
+  grossAmount    Decimal  @map("gross_amount") @db.Decimal(10, 2)
+  advanceDeducted Decimal @default(0) @map("advance_deducted") @db.Decimal(10, 2)
+  netAmount      Decimal  @map("net_amount") @db.Decimal(10, 2)
+  status         String   @default("Pending") @db.VarChar(30) // Pending, Paid
+  paidAt         DateTime? @map("paid_at") @db.Timestamp(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  worker         Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@unique([workerId, month, year])
+  @@index([workerId])
+  @@map("worker_salaries")
 }
