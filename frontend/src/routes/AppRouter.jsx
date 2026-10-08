@@ -15,6 +15,7 @@ import DashboardRouter from "./DashboardRouter";
 import Login from "../pages/Auth/Login";
 import ChangePassword from "../pages/Auth/ChangePassword";
 import UserManual from "../pages/Manual/UserManual";
+import ComingSoon from "../pages/Shared/ComingSoon";
 
 // ── Lazily loaded modules ────────────────────────────────────────────────────
 const Employees = lazy(() => import("../pages/Employees/Employees"));
@@ -97,6 +98,12 @@ export default function AppRouter() {
           <Route path="/leave" element={<RequireAuth><Leave /></RequireAuth>} />
           <Route path="/payroll" element={<RequireAuth><Payroll /></RequireAuth>} />
           <Route path="/performance" element={<RequireAuth><Performance /></RequireAuth>} />
+          
+          {/* Missing Sidebar Sections mapped to Coming Soon */}
+          <Route path="/reports" element={<RequireAuth><ComingSoon title="Reports & Analytics" /></RequireAuth>} />
+          <Route path="/documents" element={<RequireAuth><ComingSoon title="Document Management" /></RequireAuth>} />
+          <Route path="/users" element={<RequireAuth><ComingSoon title="Users & Roles" /></RequireAuth>} />
+          <Route path="/settings" element={<RequireAuth><ComingSoon title="System Settings" /></RequireAuth>} />
 
           {/* Talent */}
           <Route path="/recruitment" element={<RequireAuth permission="recruitment:read"><Recruitment /></RequireAuth>} />
