@@ -294,6 +294,9 @@ async function main() {
   console.log("🌱 Seeding database…");
 
   // Wipe in FK-safe order
+  await prisma.workerAttendance.deleteMany();
+  await prisma.worker.deleteMany();
+  await prisma.site.deleteMany();
   await prisma.onboardingChecklistItem.deleteMany();
   await prisma.onboarding.deleteMany();
   await prisma.candidateDocument.deleteMany();
