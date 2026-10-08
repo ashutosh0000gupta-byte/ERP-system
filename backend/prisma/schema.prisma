@@ -2368,6 +2368,7 @@ model Site {
   supervisor   Employee? @relation("SiteSupervisor", fields: [supervisorId], references: [id], onDelete: SetNull)
   workers      Worker[]
   attendances  WorkerAttendance[]
+  advances     WorkerAdvance[]
 
   @@index([status])
   @@map("sites")
