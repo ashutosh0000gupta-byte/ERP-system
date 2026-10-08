@@ -1,4 +1,4 @@
-﻿// Sidebar navigation — collapsible groups for enterprise HRMS.
+// Sidebar navigation — collapsible groups for enterprise HRMS.
 // Preserves existing icon-only collapse mode, adds group expand/collapse with localStorage persistence.
 
 import {
@@ -16,67 +16,29 @@ import { useState, useEffect, useMemo } from "react";
 // Permission strings match backend RBAC (e.g., "employees:read").
 const NAV_GROUPS = [
   {
-    key: "workforce",
-    label: "Workforce",
-    icon: Users,
-    category: "CORE HR",
+    key: "main",
+    label: "Main",
+    icon: LayoutDashboard,
+    category: "CORE",
     items: [
       { icon: LayoutDashboard, title: "Dashboard", href: "/", permission: "dashboard" },
-      { icon: Users, title: "Employees", href: "/employees", permission: "employees" },
-      { icon: UserCheck, title: "Attendance", href: "/attendance", permission: "attendance" },
-      { icon: CalendarDays, title: "Leave", href: "/leave", permission: "leave" },
-      { icon: Wallet, title: "Payroll", href: "/payroll", permission: "payroll" },
-      { icon: TrendingUp, title: "Performance", href: "/performance", permission: "performance" },
+      { icon: Users, title: "Workers", href: "/workers", permission: "dashboard" },
+      { icon: CheckSquare, title: "Attendance", href: "/attendance", permission: "dashboard" },
+      { icon: Wallet, title: "Salary & Payment", href: "/salary", permission: "dashboard" },
+      { icon: CreditCard, title: "Advance / Expense", href: "/expenses", permission: "dashboard" },
+      { icon: Building2, title: "Sites / Projects", href: "/sites", permission: "dashboard" },
     ],
   },
   {
-    key: "talent",
-    label: "Talent Management",
-    icon: UserPlus,
-    category: "TALENT",
+    key: "other",
+    label: "Other",
+    icon: FileText,
+    category: "SYSTEM",
     items: [
-      { icon: UserPlus, title: "Recruitment", href: "/recruitment", permission: "recruitment" },
-      { icon: ClipboardList, title: "Onboarding", href: "/onboarding", permission: "onboarding" },
-      { icon: GraduationCap, title: "LMS", href: "/lms", permission: "lms" },
-    ],
-  },
-  {
-    key: "operations",
-    label: "Operations",
-    icon: Briefcase,
-    category: "OPERATIONS",
-    items: [
-      { icon: CreditCard, title: "Expenses", href: "/expenses", permission: "expenses" },
-      { icon: Laptop, title: "Assets", href: "/assets", permission: "assets" },
-      { icon: CheckSquare, title: "Tasks", href: "/tasks", permission: "tasks" },
-      { icon: Plane, title: "Travel", href: "/travel", permission: "travel" },
-    ],
-  },
-  {
-    key: "selfservice",
-    label: "Self Service",
-    icon: UserRound,
-    category: "EMPLOYEE",
-    items: [
-      { icon: Home, title: "My Profile", href: "/ess", permission: "ess" },
-      { icon: UserCheck, title: "My Attendance", href: "/attendance", permission: "attendance" },
-      { icon: CalendarDays, title: "My Leave", href: "/leave", permission: "leave" },
-      { icon: CreditCard, title: "My Expenses", href: "/expenses", permission: "expenses" },
-    ],
-  },
-  {
-    key: "admin",
-    label: "Administration",
-    icon: Shield,
-    category: "ADMIN",
-    items: [
-      { icon: LogOut, title: "Separation", href: "/separation", permission: "separation" },
-      { icon: Building2, title: "Org Management", href: "/org-management", permission: "orgmanagement" },
-      { icon: GitBranch, title: "Workflows", href: "/workflows", permission: "workflows" },
-      { icon: BarChart3, title: "Reports", href: "/reports", permission: "reports" },
-      { icon: Bell, title: "Notifications", href: "/notifications", permission: "notifications" },
-      { icon: Shield, title: "Compliance", href: "/compliance", permission: "compliance" },
-      { icon: Shield, title: "Security", href: "/security", permission: "security" },
+      { icon: BarChart3, title: "Reports", href: "/reports", permission: "dashboard" },
+      { icon: FileText, title: "Documents", href: "/documents", permission: "dashboard" },
+      { icon: UserCheck, title: "Users & Roles", href: "/users", permission: "dashboard" },
+      { icon: Shield, title: "Settings", href: "/settings", permission: "dashboard" },
     ],
   },
 ];
@@ -366,10 +328,10 @@ export default function Sidebar({ isOpen }) {
         {isOpen && (
           <div style={{ overflow: "hidden", whiteSpace: "nowrap" }}>
             <p style={{ fontWeight: 800, fontSize: "14.5px", color: "#f0f9ff", lineHeight: 1.2, letterSpacing: "-0.2px" }}>
-              Proteccio HRMS
+              SNMR FAB
             </p>
             <p style={{ fontSize: "10px", color: "var(--sidebar-text)", lineHeight: 1.3 }}>
-              Enterprise Suite
+              INDIA PRIVATE LIMITED
             </p>
           </div>
         )}
