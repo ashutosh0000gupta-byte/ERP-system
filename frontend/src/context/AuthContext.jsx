@@ -7,6 +7,7 @@ import api from "../services/api";
 // Role accounts for quick sign-in (same credentials as the seeded database).
 const DEMO_ACCOUNTS = [
   { label: "Admin",    email: "rajesh.menon@company.com", password: "Password@123" },
+  { label: "Supervisor", email: "supervisor@snmrfab.in", password: "Password@123" },
   { label: "HR",       email: "sunita.reddy@company.com", password: "Password@123" },
   { label: "Manager",  email: "anjali.desai@company.com",  password: "Password@123" },
   { label: "Employee", email: "matsya.singh@company.com", password: "Password@123" },
@@ -45,6 +46,16 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(
     async (email, password) => {
+      // Mock Supervisor login for demo
+      if (email === "supervisor@snmrfab.in") {
+        const mockUser = { id: "sup-1", role: "SUPERVISOR", email, firstName: "Site", lastName: "Supervisor" };
+        const mockPerms = ["dashboard:read", "attendance:read", "attendance:write"];
+        localStorage.setItem(TOKEN_KEY, "mock-token-supervisor");
+        localStorage.setItem("hrms_role", "SUPERVISOR");
+        applySession({ user: mockUser, permissions: mockPerms, role: "SUPERVISOR" });
+        return mockUser;
+      }
+
       const res = await api.post("/auth/login", { email, password });
       const { user: u, token, refreshToken, permissions: perms } = res.data.data;
       localStorage.setItem(TOKEN_KEY, token);

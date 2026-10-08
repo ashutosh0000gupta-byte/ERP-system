@@ -255,14 +255,22 @@ export default function Sidebar({ isOpen }) {
     return location.pathname.startsWith(href);
   };
 
-  const canView = (item) => permissions.includes(`${item.permission}:read`);
+  const canView = (item) => {
+    // Role-based restrictions for SNMR FAB INDIA
+    if (user?.role === "SUPERVISOR") {
+      const allowed = ["/worker-attendance", "/workers", "/"];
+      return allowed.includes(item.href);
+    }
+    // Admin / HR sees everything they have permissions for
+    return permissions.includes(`${item.permission}:read`);
+  };
 
   // Filter groups by permissions, drop empty groups
   const visibleGroups = useMemo(() =>
     NAV_GROUPS
       .map((group) => ({ ...group, items: group.items.filter(canView) }))
       .filter((group) => group.items.length > 0),
-    [permissions]
+    [permissions, user?.role]
   );
 
   // Auto-expand group if one of its children is the active route
