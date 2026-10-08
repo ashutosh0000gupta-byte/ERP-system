@@ -18,6 +18,8 @@ import UserManual from "../pages/Manual/UserManual";
 import ComingSoon from "../pages/Shared/ComingSoon";
 import DocumentsList from "../pages/Documents/DocumentsList";
 import UsersList from "../pages/Users/UsersList";
+import ReportsPage from "../pages/Reports/ReportsPage";
+import SettingsPage from "../pages/Settings/SettingsPage";
 
 // ── Lazily loaded modules ────────────────────────────────────────────────────
 const Employees = lazy(() => import("../pages/Employees/Employees"));
@@ -102,10 +104,10 @@ export default function AppRouter() {
           <Route path="/performance" element={<RequireAuth><Performance /></RequireAuth>} />
           
           {/* Missing Sidebar Sections */}
-          <Route path="/reports" element={<RequireAuth><ComingSoon title="Reports & Analytics" /></RequireAuth>} />
+          <Route path="/reports" element={<RequireAuth><ReportsPage /></RequireAuth>} />
           <Route path="/documents" element={<RequireAuth><DocumentsList /></RequireAuth>} />
           <Route path="/users" element={<RequireAuth><UsersList /></RequireAuth>} />
-          <Route path="/settings" element={<RequireAuth><ComingSoon title="System Settings" /></RequireAuth>} />
+          <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
 
           {/* Talent */}
           <Route path="/recruitment" element={<RequireAuth permission="recruitment:read"><Recruitment /></RequireAuth>} />
