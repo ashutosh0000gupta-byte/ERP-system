@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import MainLayout from "../../components/layout/MainLayout";
 import api from "../../services/api";
-import { Wallet, Search, Play, Check, X, Calendar, AlertCircle } from "lucide-react";
+import { Wallet, Search, Play, Check, X, Calendar, AlertCircle, Download } from "lucide-react";
 
 export default function Salary() {
   const [salaries, setSalaries] = useState([]);
@@ -51,6 +51,41 @@ export default function Salary() {
     }
   };
 
+  const handleExportCSV = () => {
+    if (salaries.length === 0) {
+      alert("No data to export");
+      return;
+    }
+
+    // Prepare CSV header
+    const headers = ["Worker ID", "Name", "Site", "Present Days", "Total Days", "Daily Wage", "Gross Amount", "Advance Deducted", "Net Payable", "Status"];
+    
+    // Prepare CSV rows
+    const rows = salaries.map(s => [
+      s.worker?.workerId || "N/A",
+      `"${s.worker?.fullName || "Unknown"}"`,
+      `"${s.worker?.site?.name || "Unassigned"}"`,
+      s.presentDays,
+      s.totalDays,
+      s.dailyWage,
+      s.grossAmount,
+      s.advanceDeducted,
+      s.netAmount,
+      s.status
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Salary_Report_${month}_${year}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <MainLayout>
       <div style={styles.container}>
@@ -77,6 +112,9 @@ export default function Salary() {
             </div>
             <button style={styles.generateBtn} onClick={handleGenerate} disabled={isGenerating}>
               <Play size={16} /> {isGenerating ? "Generating..." : "Generate Payroll"}
+            </button>
+            <button style={styles.exportBtn} onClick={handleExportCSV} disabled={salaries.length === 0}>
+              <Download size={16} /> Export CSV
             </button>
           </div>
         </div>
@@ -163,6 +201,7 @@ const styles = {
   label: { fontSize: "13px", fontWeight: "600", color: "#475569" },
   input: { padding: "10px 14px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "14px", outline: "none", background: "#f8fafc", width: "140px" },
   generateBtn: { display: "flex", alignItems: "center", gap: "8px", background: "linear-gradient(135deg, #0f766e 0%, #0d9488 100%)", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "10px", fontSize: "14px", fontWeight: "600", cursor: "pointer", boxShadow: "0 4px 12px rgba(13, 148, 136, 0.25)", height: "42px" },
+  exportBtn: { display: "flex", alignItems: "center", gap: "8px", background: "#fff", color: "#334155", border: "1px solid #cbd5e1", padding: "10px 20px", borderRadius: "10px", fontSize: "14px", fontWeight: "600", cursor: "pointer", height: "42px" },
   tableCard: { background: "#fff", borderRadius: "16px", boxShadow: "0 4px 12px rgba(0,0,0,0.03)", border: "1px solid #e2e8f0", overflow: "hidden" },
   table: { width: "100%", borderCollapse: "collapse", textAlign: "left" },
   tableHead: { background: "#f8fafc", borderBottom: "1px solid #e2e8f0" },

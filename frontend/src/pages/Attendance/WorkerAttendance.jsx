@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import MainLayout from "../../components/layout/MainLayout";
 import api from "../../services/api";
-import { CheckSquare, Calendar, Building2, HardHat, Check, X, Clock, Loader2 } from "lucide-react";
+import { CheckSquare, Calendar, Building2, HardHat, Check, X, Clock, Loader2, Download } from "lucide-react";
 
 export default function WorkerAttendance() {
   const [sites, setSites] = useState([]);
@@ -86,6 +86,36 @@ export default function WorkerAttendance() {
     };
   });
 
+  const handleExportCSV = () => {
+    if (list.length === 0) {
+      alert("No data to export");
+      return;
+    }
+
+    const headers = ["Worker ID", "Name", "Trade", "Daily Wage", "Attendance Status"];
+    
+    const rows = list.map(w => [
+      w.workerId || "N/A",
+      `"${w.fullName || "Unknown"}"`,
+      `"${w.skillTrade || "N/A"}"`,
+      w.dailyWage || 0,
+      w.attendanceStatus || "Not Marked"
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    
+    const siteName = sites.find(s => s.id === selectedSite)?.name || "Site";
+    link.setAttribute("download", `Attendance_${siteName}_${date}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <MainLayout>
       <div style={styles.container}>
@@ -98,6 +128,7 @@ export default function WorkerAttendance() {
 
         {/* Controls */}
         <div style={styles.controlsCard}>
+          <div style={{ display: "flex", gap: "24px", flex: 1 }}>
           <div style={styles.controlGroup}>
             <label style={styles.label}><Building2 size={16} /> Select Site</label>
             <select 
@@ -109,15 +140,23 @@ export default function WorkerAttendance() {
               {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
-          <div style={styles.controlGroup}>
-            <label style={styles.label}><Calendar size={16} /> Date</label>
-            <input 
-              type="date"
-              style={styles.input}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
+            <div style={styles.controlGroup}>
+              <label style={styles.label}><Calendar size={16} /> Date</label>
+              <input 
+                type="date"
+                style={styles.input}
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
           </div>
+          <button 
+            style={styles.exportBtn} 
+            onClick={handleExportCSV} 
+            disabled={list.length === 0}
+          >
+            <Download size={16} /> Export CSV
+          </button>
         </div>
 
         {/* Table */}
@@ -212,10 +251,11 @@ const styles = {
   header: { marginBottom: "24px" },
   title: { fontSize: "32px", fontWeight: "700", color: "#0f172a", margin: "0 0 8px 0", letterSpacing: "-0.5px" },
   subtitle: { fontSize: "15px", color: "#64748b", margin: 0 },
+  exportBtn: { display: "flex", alignItems: "center", gap: "8px", background: "#fff", color: "#334155", border: "1px solid #cbd5e1", padding: "12px 20px", borderRadius: "12px", fontSize: "14px", fontWeight: "600", cursor: "pointer", height: "46px" },
   controlsCard: {
     background: "#fff", padding: "20px", borderRadius: "16px",
     boxShadow: "0 4px 12px rgba(0,0,0,0.03)", border: "1px solid #e2e8f0",
-    display: "flex", gap: "24px", marginBottom: "24px", alignItems: "flex-end"
+    display: "flex", gap: "24px", marginBottom: "24px", alignItems: "flex-end", justifyContent: "space-between"
   },
   controlGroup: { display: "flex", flexDirection: "column", gap: "8px", flex: 1 },
   label: { display: "flex", alignItems: "center", gap: "6px", fontSize: "14px", fontWeight: "600", color: "#334155" },
