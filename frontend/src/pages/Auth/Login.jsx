@@ -1,4 +1,4 @@
-﻿// Sign-in page — supports both email/password and role-based quick access.
+// Sign-in page — supports both email/password and role-based quick access.
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth, DEMO_ACCOUNTS } from "../../context/AuthContext";
@@ -6,10 +6,10 @@ import Spinner from "../../components/shared/Spinner";
 
 /* ─── Feature bullets shown on the left panel ───────── */
 const FEATURES = [
-  { icon: "👥", text: "Manage 23+ HR modules in one place" },
-  { icon: "📊", text: "Real-time analytics & reporting" },
-  { icon: "🔒", text: "Role-based access control" },
-  { icon: "⚡", text: "Automated payroll & compliance" },
+  { icon: "🏗️", text: "Manage multiple construction sites easily" },
+  { icon: "👷", text: "Track worker attendance & daily wages" },
+  { icon: "💸", text: "Process cash advances & deductions" },
+  { icon: "📊", text: "Real-time site cost & payroll analytics" },
 ];
 
 /* ─── Component ─────────────────────────────────────── */
@@ -74,24 +74,27 @@ export default function Login() {
 
         {/* Brand */}
         <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "52px" }}>
-          <img
-            src="/logo.png"
-            alt="Proteccio HRMS"
-            style={{ width: "48px", height: "48px", borderRadius: "12px", objectFit: "contain", filter: "drop-shadow(0 4px 12px rgba(15,118,110,0.5))" }}
-          />
+          <div style={{
+            width: "48px", height: "48px", borderRadius: "12px", background: "#f59e0b",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "24px", fontWeight: "bold", color: "#fff",
+            boxShadow: "0 4px 12px rgba(245,158,11,0.4)"
+          }}>
+            S
+          </div>
           <div>
-            <p style={{ fontWeight: 800, fontSize: "20px", color: "#f0f9ff", letterSpacing: "-0.3px" }}>Proteccio HRMS</p>
-            <p style={{ fontSize: "12px", color: "#8ba3b8", marginTop: "1px" }}>Enterprise Suite</p>
+            <p style={{ fontWeight: 800, fontSize: "20px", color: "#f0f9ff", letterSpacing: "-0.3px", textTransform: "uppercase" }}>SNMR ERP</p>
+            <p style={{ fontSize: "12px", color: "#8ba3b8", marginTop: "1px" }}>SNMR FAB INDIA PRIVATE LIMITED</p>
           </div>
         </div>
 
         <h1 style={{ fontSize: "36px", fontWeight: 800, color: "#f0f9ff", lineHeight: 1.2, letterSpacing: "-0.5px", marginBottom: "16px" }}>
           Your complete<br />
-          <span style={{ color: "#2dd4bf" }}>HR platform.</span>
+          <span style={{ color: "#f59e0b" }}>Construction ERP.</span>
         </h1>
 
         <p style={{ fontSize: "15px", color: "#8ba3b8", lineHeight: 1.7, marginBottom: "44px", maxWidth: "360px" }}>
-          Everything your team needs — from payroll to performance — in one powerful, easy-to-use suite.
+          Streamline site management, worker attendance, and wage calculations in one unified platform.
         </p>
 
         {/* Feature list */}
@@ -113,7 +116,7 @@ export default function Login() {
 
         {/* Footer */}
         <p style={{ position: "absolute", bottom: "28px", left: "56px", fontSize: "11px", color: "#5a7a8e" }}>
-          © 2026 Proteccio HRMS · Enterprise Grade Security
+          © 2026 SNMR FAB INDIA PRIVATE LIMITED
         </p>
       </div>
 
