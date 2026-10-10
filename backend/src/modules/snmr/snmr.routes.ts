@@ -15,6 +15,7 @@ import {
   getDashboardStats,
   getWorkerById,
   updateWorkerStatus,
+  updateWorker,
   deleteWorker,
   getSiteExpenses,
   createSiteExpense,
@@ -45,6 +46,7 @@ router.post("/workers", createWorker);
 router.post("/workers/import", importWorkers);
 router.get("/workers/:id", getWorkerById);
 router.put("/workers/:id/status", updateWorkerStatus);
+router.put("/workers/:id", updateWorker);
 router.delete("/workers/:id", deleteWorker);
 
 // Worker Attendance

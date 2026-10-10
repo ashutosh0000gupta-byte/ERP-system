@@ -468,3 +468,10 @@ export const deleteWorker = async (id: string) => {
 export const deleteDocument = async (id: string) => {
   return prisma.snmrDocument.delete({ where: { id } });
 };
+
+export const updateWorker = async (id: string, data: any) => {
+  return prisma.worker.update({
+    where: { id },
+    data
+  });
+};

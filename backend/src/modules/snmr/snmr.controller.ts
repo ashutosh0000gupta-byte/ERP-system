@@ -247,3 +247,12 @@ export const importWorkers = async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const updateWorker = async (req: Request, res: Response) => {
+  try {
+    const worker = await snmrService.updateWorker(req.params.id, req.body);
+    res.json(worker);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};

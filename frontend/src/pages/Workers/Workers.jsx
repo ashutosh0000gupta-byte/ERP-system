@@ -23,7 +23,9 @@ export default function Workers() {
     joiningDate: new Date().toISOString().split("T")[0],
     siteId: "",
     bankAccount: "",
-    ifsc: ""
+    ifsc: "",
+    mobileNumber: "",
+    currentAddress: ""
   });
 
   useEffect(() => {
@@ -62,6 +64,8 @@ export default function Workers() {
       if (!payload.siteId) delete payload.siteId;
       if (!payload.bankAccount) delete payload.bankAccount;
       if (!payload.ifsc) delete payload.ifsc;
+      if (!payload.mobileNumber) delete payload.mobileNumber;
+      if (!payload.currentAddress) delete payload.currentAddress;
 
       const res = await api.post("/snmr/workers", payload);
       
@@ -334,6 +338,27 @@ export default function Workers() {
                       placeholder="e.g. Ramesh Kumar" 
                       value={formData.fullName}
                       onChange={e => setFormData({...formData, fullName: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div style={styles.formRow}>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>Phone Number</label>
+                    <input 
+                      style={styles.input} 
+                      placeholder="e.g. 9876543210" 
+                      value={formData.mobileNumber}
+                      onChange={e => setFormData({...formData, mobileNumber: e.target.value})}
+                    />
+                  </div>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>Address</label>
+                    <input 
+                      style={styles.input} 
+                      placeholder="e.g. 123 Main St, City" 
+                      value={formData.currentAddress}
+                      onChange={e => setFormData({...formData, currentAddress: e.target.value})}
                     />
                   </div>
                 </div>
