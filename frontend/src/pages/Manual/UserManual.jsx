@@ -36,145 +36,145 @@ export default function UserManual() {
   const guides = [
     {
       id: "salary",
-      title: "Salary & Wage Payment (वेतन और भुगतान कैसे करें)",
+      title: "Salary & Wage Payment (Payroll Processing Guide)",
       category: "salary",
-      badge: "Crucial Module",
+      badge: "Core Workflow",
       badgeColor: "#059669",
       icon: <IndianRupee size={22} color="#059669" />,
-      summary: "Workers ki daily wage, overtime, bonus, aur advances deduct karke net salary calculate aur pay karne ka pura tarika.",
+      summary: "Complete guide to calculating wages, managing overtime, auto-reconciling advances, disbursing payments, and generating salary slips.",
       steps: [
         {
-          title: "Step 1: Month, Year aur Site Select Karein",
-          desc: "Salary & Payment page par jaakar sabse pehle upar diye gaye dropdown se Month (jaise October 2026) aur Site select karein jiska payroll nikalna hai."
+          title: "Step 1: Select Month, Year, and Site",
+          desc: "Navigate to the Salary & Payment module. Use the top filter controls to select your target payroll month (e.g., October 2026), year, and optional site filter."
         },
         {
-          title: "Step 2: 'Generate Wages & Payroll' par click karein",
-          desc: "Green button 'Generate Wages & Payroll' dabayein. System attendance module se workers ke Present Days, Half Days, aur Overtime Hours scan karke automatically gross earnings calculate kar lega."
+          title: "Step 2: Click 'Generate Wages & Payroll'",
+          desc: "Click the green 'Generate Wages & Payroll' button. The system automatically scans attendance muster records, aggregating Present Days, Half Days, and Overtime Hours to calculate gross earnings."
         },
         {
-          title: "Step 3: Auto Advance Deduction Check Karein",
-          desc: "Agar kisi worker ne us mahine koi advance liya tha, toh system usko 'Advance Ded.' column me automatically minus kar dega taaki extra payment na ho."
+          title: "Step 3: Automated Advance Reconciliation",
+          desc: "If any worker took mid-month cash advances, the system automatically deducts them in the 'Advance Ded.' column, ensuring zero risk of double payment."
         },
         {
-          title: "Step 4: Bonus ya Other Deductions Add Karein (Optional)",
-          desc: "Aap kisi bhi worker ke row me click karke extra incentive/bonus add kar sakte hain, ya mess/khana/penalty ka deduction manually adjust kar sakte hain."
+          title: "Step 4: Adjust Bonuses or Custom Deductions (Optional)",
+          desc: "You can click on any worker record to add special performance incentives/bonuses or adjust manual deductions such as mess, uniform, or penalty charges."
         },
         {
-          title: "Step 5: 'Mark Paid' par click karein aur Payment Record Karein",
-          desc: "Jab worker ko payment ho jaye, 'Pay / Mark Paid' button dabayein. Payment Mode (Bank Transfer, Cash, UPI), Payment Date aur Transaction/UTR No. enter karein."
+          title: "Step 5: Record Payment Disbursal ('Mark Paid')",
+          desc: "Once payment is issued, click 'Pay / Mark Paid'. Select the Payment Mode (Bank Transfer, Cash, or UPI), enter the payment date, and provide the Transaction/UTR Reference number."
         },
         {
-          title: "Step 6: Print Payslip & Excel Export",
-          desc: "'Print' button se worker ka official Salary Voucher/Slip print karein, ya 'Export Excel' se bank transfer ke liye puri sheet download karein."
+          title: "Step 6: Print Salary Slips & Export Bank Excel Sheet",
+          desc: "Click 'Slip' to print physical payslips with company branding. Click 'Export Excel' to download the bank transfer batch sheet containing worker names, account numbers, IFSC codes, and net payable amounts."
         },
         {
-          title: "Step 7: Worker SMS Notification",
-          desc: "'Send SMS' button par click karke worker ke registered mobile number par salary payment ka automated confirmation SMS/WhatsApp bhej sakte hain."
+          title: "Step 7: Automated SMS & WhatsApp Notifications",
+          desc: "Click 'Notify SMS/WhatsApp' to send automated payment confirmation alerts directly to the workers' registered mobile numbers."
         }
       ],
       formula: {
-        title: "📐 Salary Calculation Formula (वेतन गणना सूत्र)",
+        title: "Salary Calculation Formula",
         formulaText: "Net Payable = (Present Days × Daily Wage) + (Half Days × Half Wage) + (OT Hours × OT Rate) + Bonus - Unpaid Advances - Other Deductions",
-        example: "Example: Ramesh (Daily Wage ₹700, OT Rate ₹150/hr). 24 Days Present = ₹16,800 + 10 OT Hours = ₹1,500. Total Gross = ₹18,300. Usne ₹2,000 Advance liya tha. Toh Net Payable = ₹18,300 - ₹2,000 = ₹16,300."
+        example: "Example: Worker Ramesh Kumar (Daily Wage: ₹700, OT Rate: ₹150/hr). With 24 Present Days (₹16,800) and 10 OT Hours (₹1,500), Gross Pay is ₹18,300. He took a mid-month Advance of ₹2,000. Net Payable = ₹18,300 - ₹2,000 = ₹16,300."
       },
       salaryTypes: [
-        { type: "Daily Wage", desc: "Har working day ke hisab se payment (Sabse common)." },
-        { type: "Weekly Wage", desc: "Hafte ke hisab se fixed rate (Weekly payroll frequency)." },
-        { type: "Monthly Salary", desc: "Fixed monthly salary (Supervisors aur Staff ke liye)." },
-        { type: "Hourly Wage", desc: "Har ghante ke hisab se calculation." },
-        { type: "Contract-Based", desc: "Theka ya project completion par lumpsum amount." }
+        { type: "Daily Wage", desc: "Calculated per working day based on daily attendance logs." },
+        { type: "Weekly Wage", desc: "Fixed rate computed on a weekly basis." },
+        { type: "Monthly Salary", desc: "Fixed monthly salary for supervisors, engineers, and site staff." },
+        { type: "Hourly Wage", desc: "Calculated strictly by recorded working hours." },
+        { type: "Contract-Based", desc: "Milestone-based or lump-sum payment tied to project completion." }
       ]
     },
     {
       id: "advance",
-      title: "Advance & Expenses (एडवांस और साइट खर्च कैसे मैनेज करें)",
+      title: "Worker Advance & Site Expenses Guide",
       category: "advance",
       badge: "Cash & Ledger",
       badgeColor: "#2563eb",
       icon: <CreditCard size={22} color="#2563eb" />,
-      summary: "Workers ko beech mahine me diye gaye advance paise aur site ke daily kharchon ko record aur adjust karne ka tarika.",
+      summary: "Instructions for issuing mid-month worker cash advances and managing operational site expenditures.",
       steps: [
         {
-          title: "Step 1: 'Advance / Expense' Page Kholein",
-          desc: "Sidebar me 'Advance / Expense' par click karein. Yaha aapko Total Advances Given, Pending Deductions, aur Settled history dikhegi."
+          title: "Step 1: Open the 'Advance / Expense' Page",
+          desc: "Click 'Advance / Expense' in the sidebar to view total advances issued, pending deductions, and historical records."
         },
         {
-          title: "Step 2: 'Record Advance Payment' Button Dabayein",
-          desc: "Naya advance dene ke liye button par click karein. Modal open hoga."
+          title: "Step 2: Click 'Record Advance Payment'",
+          desc: "Click the primary button to open the advance issuance modal."
         },
         {
-          title: "Step 3: Worker, Amount aur Reason Bharein",
-          desc: "Worker ka naam select karein, Site chunein, Amount (₹) dalein, Date select karein, aur Reason dalein (jaise: Medical Emergency, Festival, Ghar jana, etc.). Payment Mode (Cash, UPI, Bank) select karein."
+          title: "Step 3: Enter Worker, Amount, and Reason",
+          desc: "Select the worker name, assigned site, advance amount (₹), payment date, reason (e.g., Medical Emergency, Family Support, Festival), and payment method (Cash, UPI, Bank)."
         },
         {
-          title: "Step 4: Status Lifecycle (Pending ➔ Deducted)",
-          desc: "• PENDING: Advance diya gaya hai, par abhi salary se kata nahi hai.\n• DEDUCTED: Jab monthly salary banegi, ye advance automatically salary se deduct ho jayega aur status 'Deducted' ho jayega."
+          title: "Step 4: Advance Status Lifecycle (Pending ➔ Deducted)",
+          desc: "• PENDING: The worker has received the advance; amount is awaiting recovery.\n• DEDUCTED: When monthly salary payroll is generated, the advance is automatically deducted and marked as settled."
         },
         {
-          title: "Step 5: Worker Ledger (Hisab-Kitab) Me Track Karein",
-          desc: "Worker ke profile me jakar 'Ledger / Hisab-Kitab' button dabayein. Waha har advance ka exact date, amount aur status transparent dikhega."
+          title: "Step 5: Audit via Worker Ledger (Hisab-Kitab)",
+          desc: "Open the worker's profile and click 'Ledger (Hisab-Kitab)' to review the timestamped chronological history of all earnings, advances, and payments."
         }
       ],
       siteExpensesInfo: {
-        title: "🏗️ Site Expenses (साइट के अन्य खर्चे)",
-        desc: "Site par hone wale daily kharche (jaise Diesel, Cement, Reti, Transport, Khana, Safety Tools, Local Vendor Payment) ko 'Site Expenses' module me record kiya jata hai. Isse har site ka real-time profit & loss aur expense budget track hota hai."
+        title: "Site Operational Expenses (Petty Cash & Materials)",
+        desc: "Day-to-day site expenses (such as Diesel, Cement, Sand, Scaffolding, Transport, Worker Meals, Safety Gear, and Local Vendor Bills) are managed in the 'Site Expenses' module. This provides real-time budget tracking and project-level financial auditing."
       }
     },
     {
       id: "workers",
-      title: "Worker Master & Excel Import / Export (मजदूरों का रिकॉर्ड और एक्सेल)",
+      title: "Worker Master & Bulk Excel Management",
       category: "workers",
       badge: "Excel Integration",
       badgeColor: "#0284c7",
       icon: <Users size={22} color="#0284c7" />,
-      summary: "Bulk workers ko Excel sheet se import karna, naya worker add karna, aur puri list Excel me export karna.",
+      summary: "Importing workforce data via pre-formatted Excel sheets, registering workers, and exporting data.",
       steps: [
         {
-          title: "1. Download Template",
-          desc: "'Workers' page par 'Download Template' button dabayein. Ek ready-made sample Excel sheet download ho jayegi jisme sabhi columns pre-formatted hain."
+          title: "1. Download the Sample Template",
+          desc: "On the Workers page, click 'Download Template' to get a pre-formatted Excel file with all required headers."
         },
         {
-          title: "2. Fill Excel Data",
-          desc: "Excel sheet me Worker ID (e.g. SNMR0057), Name, Site, Daily Wage, Trade (Fitter, Welder, Helper, etc.), aur Bank details bharein. Agar father name ya bank details nahi hain toh 'NA' likh sakte hain."
+          title: "2. Populate Excel Records",
+          desc: "Fill in Worker ID (e.g., SNMR0057), Full Name, Site, Daily Wage, Trade (Fitter, Welder, Helper, etc.), and Bank Information. Unprovided fields can be marked as 'NA'."
         },
         {
-          title: "3. Click 'Import Excel/CSV'",
-          desc: "'Import Excel/CSV' par click karke apni file upload karein. 1 click me 100+ workers system me bina kisi error ke add ho jayenge."
+          title: "3. Upload with 'Import Excel/CSV'",
+          desc: "Click 'Import Excel/CSV' and upload your file. Hundreds of worker profiles are processed and saved in a single click."
         },
         {
-          title: "4. Export Excel Anytime",
-          desc: "'Export Excel' button par click karke sabhi existing workers ka updated data (.xlsx format) apne computer/mobile par download karein."
+          title: "4. Export Complete Workforce to Excel",
+          desc: "Click 'Export Excel' anytime to download the full worker database (.xlsx format) to your computer."
         },
         {
           title: "5. Print Physical ID Cards",
-          desc: "Kisi bhi worker ke card/row par 'Print ID' click karein aur SNMR branded photo ID card direct printer se nikal lein."
+          desc: "Click 'Print ID' on any worker card to generate a high-resolution, print-ready identification card with company branding."
         }
       ]
     },
     {
       id: "attendance",
-      title: "Daily Attendance Marking (दैनिक हाजिरी कैसे लगाएं)",
+      title: "Daily Attendance & Overtime Tracking",
       category: "attendance",
       badge: "Daily Routine",
       badgeColor: "#d97706",
       icon: <CalendarCheck size={22} color="#d97706" />,
-      summary: "Har din subah/shaam site par workers ki Present, Half Day, Absent aur Overtime hours mark karna.",
+      summary: "Daily tracking of workforce presence, half-days, absenteeism, and overtime hours across project sites.",
       steps: [
         {
-          title: "1. Site aur Date Select Karein",
-          desc: "'Worker Attendance' page kholein. Apni active Site aur aaj ki date select karein."
+          title: "1. Select Active Site and Date",
+          desc: "Open the Worker Attendance module. Choose the project site and target date."
         },
         {
-          title: "2. Quick Single-Click Marking",
-          desc: "Har worker ke aage 'Present (P)', 'Half Day (HD)', ya 'Absent (A)' button par tap karein. Ek click me status save ho jata hai."
+          title: "2. Single-Click Status Marking",
+          desc: "Mark each worker as 'Present (P)', 'Half Day (HD)', or 'Absent (A)' with a single click. Records are saved instantly."
         },
         {
-          title: "3. Overtime (OT) Hours Bharein",
-          desc: "Agar kisi worker ne extra time kaam kiya hai, toh OT column me hours dalein (jaise 2 hrs, 4 hrs). Ye salary calculation me automatically add hoga."
+          title: "3. Record Overtime (OT) Hours",
+          desc: "Enter extra overtime hours in the OT field (e.g., 2 hrs, 4 hrs). These hours are automatically factored into the month-end wage calculation."
         },
         {
-          title: "4. Export Daily Sheet",
-          desc: "'Export CSV / Excel' dabakar us din ka attendance muster roll download karein."
+          title: "4. Export Muster Roll",
+          desc: "Click 'Export CSV / Excel' to download the daily site attendance sheet for auditing and labor compliance."
         }
       ]
     }
@@ -200,10 +200,10 @@ export default function UserManual() {
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                 <h1 style={styles.title}>System Help & User Manual</h1>
-                <span style={styles.versionBadge}>ERP v2.4 Active</span>
+                <span style={styles.versionBadge}>Enterprise ERP Active</span>
               </div>
               <p style={styles.subtitle}>
-                Complete operational guide for <strong>Salary & Payment</strong>, <strong>Worker Advances</strong>, <strong>Attendance</strong>, and <strong>Excel Integration</strong>.
+                Complete operational guide for <strong>Salary & Payment</strong>, <strong>Worker Advances</strong>, <strong>Attendance Tracking</strong>, and <strong>Excel Integration</strong>.
               </p>
             </div>
           </div>
@@ -213,20 +213,20 @@ export default function UserManual() {
             <Search size={18} color="#94a3b8" />
             <input 
               type="text" 
-              placeholder="Search help guide (e.g. Salary, Advance, Overtime, Excel)..."
+              placeholder="Search user manual (e.g., Salary, Advance, Overtime, Excel, Bank)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={styles.searchInput}
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery("")} style={styles.clearSearchBtn}>
+              <button onClick={() => setSearchQuery("")} style={styles.clearSearchBtn} title="Clear search">
                 <X size={16} />
               </button>
             )}
           </div>
         </div>
 
-        {/* Quick Category Filter Pills */}
+        {/* Category Filter Navigation */}
         <div style={styles.filterBar}>
           <button 
             style={activeTab === "all" ? styles.tabActive : styles.tabInactive}
@@ -246,7 +246,7 @@ export default function UserManual() {
             onClick={() => setActiveTab("advance")}
           >
             <CreditCard size={16} />
-            <span>Advance / Expense</span>
+            <span>Advance & Expenses</span>
           </button>
           <button 
             style={activeTab === "workers" ? styles.tabActive : styles.tabInactive}
@@ -297,7 +297,7 @@ export default function UserManual() {
                 ))}
               </div>
 
-              {/* Special Mathematical Formula Box for Salary */}
+              {/* Mathematical Formula Box for Salary */}
               {guide.formula && (
                 <div style={styles.formulaBox}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
@@ -317,7 +317,7 @@ export default function UserManual() {
               {guide.salaryTypes && (
                 <div style={{ marginTop: "18px" }}>
                   <h4 style={{ fontSize: "14px", fontWeight: "700", color: "#1e293b", marginBottom: "10px" }}>
-                    💼 5 Supported Salary Calculation Types (वेतन प्रकार):
+                    💼 5 Supported Salary Calculation Types:
                   </h4>
                   <div style={styles.typesGrid}>
                     {guide.salaryTypes.map((stype, sIdx) => (
@@ -347,20 +347,20 @@ export default function UserManual() {
             </section>
           ))}
 
-          {/* Quick FAQ & Best Practices Section */}
+          {/* Best Practices Section */}
           <section style={styles.faqSection}>
             <h3 style={styles.faqHeader}>
               <Sparkles size={20} color="#2563eb" />
-              <span>Important Tips & Best Practices (जरूरी सावधानियां)</span>
+              <span>Operational Tips & Best Practices</span>
             </h3>
 
             <div style={styles.faqGrid}>
               <div style={styles.faqCard}>
                 <div style={styles.faqIcon}>⚠️</div>
                 <div>
-                  <h4 style={styles.faqTitle}>Double Payment Se Bachne Ka Tarika</h4>
+                  <h4 style={styles.faqTitle}>Preventing Overpayments & Discrepancies</h4>
                   <p style={styles.faqText}>
-                    Hamesha worker ko advance dete waqt <strong>Advance / Expense</strong> page me record karein. Jab mahine ke aakhiri me aap <strong>Salary & Payment</strong> me "Generate Payroll" dabayenge, toh system automatically un advances ko kaat kar hi Net Amount banayega.
+                    Always record mid-month payments in the <strong>Advance / Expense</strong> module. When you generate monthly payroll in the <strong>Salary & Payment</strong> section, the system automatically subtracts outstanding advances from gross earnings before calculating net payable amounts.
                   </p>
                 </div>
               </div>
@@ -368,9 +368,9 @@ export default function UserManual() {
               <div style={styles.faqCard}>
                 <div style={styles.faqIcon}>📑</div>
                 <div>
-                  <h4 style={styles.faqTitle}>Excel Import Karte Samay Columns</h4>
+                  <h4 style={styles.faqTitle}>Excel Import Column Integrity</h4>
                   <p style={styles.faqText}>
-                    Excel sheet upload karne se pehle hamesha <strong>"Download Template"</strong> button se sample template lein. Usme diye gaye columns (Worker ID, Name, Site, Daily Wage, Trade, Bank Name, Account No, IFSC) me data bharkar upload karein.
+                    Always download the standard template before preparing bulk imports. Retain standard column titles (Worker ID, Name, Site, Daily Wage, Trade, Bank Name, Bank Account, IFSC) to ensure seamless validation.
                   </p>
                 </div>
               </div>
@@ -378,9 +378,9 @@ export default function UserManual() {
               <div style={styles.faqCard}>
                 <div style={styles.faqIcon}>📱</div>
                 <div>
-                  <h4 style={styles.faqTitle}>Mobile & Screen Responsive Design</h4>
+                  <h4 style={styles.faqTitle}>Responsive Screen Optimization</h4>
                   <p style={styles.faqText}>
-                    ERP system har device (Laptop, Tablet, Mobile phone) par bina cut hue kaam karta hai. Modals aur forms me scroll aur sticky buttons hain taaki choti screen par bhi koi button gayab na ho.
+                    All tables, forms, and dialog windows automatically resize across laptops, tablets, and mobile devices. Modals feature sticky headers and action footers with scrollable form bodies to ensure all buttons remain accessible.
                   </p>
                 </div>
               </div>
@@ -388,9 +388,9 @@ export default function UserManual() {
               <div style={styles.faqCard}>
                 <div style={styles.faqIcon}>🏦</div>
                 <div>
-                  <h4 style={styles.faqTitle}>Direct Bank Transfer Sheet</h4>
+                  <h4 style={styles.faqTitle}>Bank Batch Payment Export</h4>
                   <p style={styles.faqText}>
-                    Salary generate hone ke baad <strong>"Export Excel"</strong> button se ek aisi sheet milti hai jisme Worker Name, Bank Name, Account Number, IFSC Code aur Net Salary hoti hai, jise aap direct bank portal par NEFT/RTGS batch upload ke liye de sakte hain.
+                    After finalizing salary calculations, use the <strong>Export Excel</strong> button to obtain a structured spreadsheet containing Worker Names, Bank Names, Account Numbers, IFSC Codes, and Net Amounts ready for corporate NEFT/RTGS batch processing.
                   </p>
                 </div>
               </div>
