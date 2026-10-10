@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import MainLayout from "../../components/layout/MainLayout";
 import api from "../../services/api";
-import { Users, Search, Plus, X, Briefcase, MapPin, IndianRupee, HardHat, Printer, UploadCloud, Download, ShieldCheck } from "lucide-react";
+import { Users, Search, Plus, X, Briefcase, MapPin, IndianRupee, HardHat, Printer, UploadCloud, Download, ShieldCheck, FileSpreadsheet } from "lucide-react";
 import * as XLSX from 'xlsx';
 import WorkerIdCard from "../../components/shared/WorkerIdCard";
 
@@ -137,34 +137,58 @@ export default function Workers() {
         const worksheet = workbook.Sheets[firstSheetName];
         
         // Convert sheet to JSON objects using header names
-        const rows = XLSX.utils.sheet_to_json(worksheet);
+        const rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
         
+        // Robust value extractor with case/whitespace/punctuation stripping
+        const getVal = (row, aliases) => {
+          const keys = Object.keys(row);
+          for (const alias of aliases) {
+            const cleanAlias = alias.toLowerCase().replace(/[^a-z0-9]/g, '');
+            for (const key of keys) {
+              const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+              if (cleanKey === cleanAlias) {
+                const val = row[key];
+                if (val !== undefined && val !== null) {
+                  const str = val.toString().trim();
+                  if (str.length > 0 && str.toUpperCase() !== "NA" && str.toUpperCase() !== "N/A" && str.toLowerCase() !== "null") {
+                    return str;
+                  }
+                }
+              }
+            }
+          }
+          return "";
+        };
+
         const parsedWorkers = [];
         for (const row of rows) {
-          const workerId = (row["Worker ID"] || row["ID"] || row["WorkerID"] || row["Emp ID"] || row["id"] || row["worker_id"])?.toString()?.trim() || "";
-          const name = (row["Name"] || row["Full Name"] || row["Worker Name"] || row["name"] || row["full_name"])?.toString()?.trim() || "";
-          const siteName = (row["Site"] || row["Site Name"] || row["Location"] || row["Project"] || row["site"])?.toString()?.trim() || "Unassigned";
-          const dailyWage = parseFloat(row["Daily Wage"] || row["Wage"] || row["Basic"] || row["Rate"] || row["daily_wage"] || row["DailyWage"]) || 0;
-          const mobileNumber = (row["Mobile"] || row["Phone"] || row["Mobile Number"] || row["Contact"] || row["Phone Number"] || row["mobile_number"])?.toString()?.trim() || "";
-          const skillTrade = (row["Trade"] || row["Skill"] || row["Skill Trade"] || row["Category"] || row["Role"] || row["skill_trade"])?.toString()?.trim() || "";
-          const fatherName = (row["Father Name"] || row["Father's Name"] || row["Father"] || row["father_name"])?.toString()?.trim() || "";
-          const address = (row["Address"] || row["Current Address"] || row["Permanent Address"] || row["current_address"])?.toString()?.trim() || "";
-          const bankName = (row["Bank Name"] || row["Bank"] || row["BankName"] || row["bank_name"] || row["Bank Branch"])?.toString()?.trim() || "";
-          const bankAccount = (row["Bank Account"] || row["Account No"] || row["A/C"] || row["bankAccount"] || row["Account Number"] || row["bank_account"])?.toString()?.trim() || "";
-          const ifsc = (row["IFSC Code"] || row["IFSC"] || row["ifsc"])?.toString()?.trim() || "";
-          const pan = (row["PAN"] || row["PAN No"] || row["pan"] || row["PAN Number"])?.toString()?.trim() || "";
-          const aadhaar = (row["Aadhaar"] || row["Aadhar"] || row["Aadhaar No"] || row["Aadhar No"] || row["UID"] || row["aadhaar"])?.toString()?.trim() || "";
+          const workerId = getVal(row, ["Worker ID", "ID", "WorkerID", "Emp ID", "worker_id", "emp_id"]);
+          const name = getVal(row, ["Name", "Full Name", "Worker Name", "Employee Name", "name", "full_name"]);
+          const siteName = getVal(row, ["Site", "Site Name", "Location", "Project", "site"]) || "Unassigned";
           
-          const salaryType = (row["Salary Type"] || row["SalaryType"] || row["Wage Type"] || "Daily").toString().trim();
-          const paymentFrequency = (row["Pay Frequency"] || row["Payment Frequency"] || row["Frequency"] || "Monthly").toString().trim();
-          const paymentMethod = (row["Payment Mode"] || row["Payment Method"] || "Bank Transfer").toString().trim();
-          const otRatePerHour = parseFloat(row["OT Rate"] || row["Overtime Rate"] || 0) || 0;
+          const rawDailyWage = getVal(row, ["Daily Wage", "DailyWage", "Wage", "Basic", "Rate", "daily_wage"]);
+          const dailyWage = parseFloat(rawDailyWage.replace(/[^0-9.]/g, '') || "0") || 0;
+          
+          const mobileNumber = getVal(row, ["Mobile", "Phone", "Mobile Number", "Contact", "Phone Number", "mobile_number"]);
+          const skillTrade = getVal(row, ["Trade", "Skill", "Skill Trade", "Category", "Role", "Designation", "skill_trade"]);
+          const fatherName = getVal(row, ["Father Name", "Father's Name", "Father", "father_name"]);
+          const address = getVal(row, ["Address", "Current Address", "Permanent Address", "current_address"]);
+          const bankName = getVal(row, ["Bank Name", "Bank", "BankName", "bank_name", "Bank Branch"]);
+          const bankAccount = getVal(row, ["Bank Account", "Account No", "A/C", "bankAccount", "Account Number", "bank_account"]);
+          const ifsc = getVal(row, ["IFSC Code", "IFSC", "ifsc"]);
+          const pan = getVal(row, ["PAN", "PAN No", "pan", "PAN Number"]);
+          const aadhaar = getVal(row, ["Aadhaar", "Aadhar", "Aadhaar No", "Aadhar No", "UID", "aadhaar"]);
+          
+          const salaryType = getVal(row, ["Salary Type", "SalaryType", "Wage Type"]) || "Daily";
+          const paymentFrequency = getVal(row, ["Pay Frequency", "Payment Frequency", "Frequency"]) || "Weekly";
+          const paymentMethod = getVal(row, ["Payment Mode", "Payment Method", "PaymentMode"]) || "Bank Transfer";
+          const rawOtRate = getVal(row, ["OT Rate", "Overtime Rate", "OTRate"]);
+          const otRatePerHour = parseFloat(rawOtRate.replace(/[^0-9.]/g, '') || "0") || 0;
           
           if (!workerId || !name) continue;
           
           const isStaff = /supervisor|incharge|in-charge|engineer|foreman/i.test(skillTrade);
-          // Match site by name
-          const siteMatch = sites.find(s => s.name?.toLowerCase() === siteName.toLowerCase());
+          const siteMatch = sites.find(s => s.name?.toLowerCase().trim() === siteName.toLowerCase().trim());
           
           parsedWorkers.push({
             workerId,
@@ -180,14 +204,14 @@ export default function Workers() {
             mobileNumber,
             skillTrade,
             category: isStaff ? "Supervisor" : "Worker",
-            fatherName,
-            currentAddress: address,
-            permanentAddress: address,
-            bankName,
-            bankAccount,
-            ifsc,
-            pan,
-            aadhaar,
+            fatherName: fatherName || null,
+            currentAddress: address || null,
+            permanentAddress: address || null,
+            bankName: bankName || null,
+            bankAccount: bankAccount || null,
+            ifsc: ifsc || null,
+            pan: pan || null,
+            aadhaar: aadhaar || null,
             joiningDate: new Date().toISOString(),
             status: "Active"
           });
@@ -198,19 +222,88 @@ export default function Workers() {
         }
         
         setLoading(true);
-        await api.post("/snmr/workers/import", { workers: parsedWorkers });
-        alert(`Successfully imported ${parsedWorkers.length} workers!`);
+        const res = await api.post("/snmr/workers/import", { workers: parsedWorkers });
+        const resData = res.data;
+        if (resData && resData.importedCount !== undefined) {
+          alert(`Successfully imported ${resData.importedCount} workers!` + (resData.errorCount > 0 ? ` (${resData.errorCount} skipped/failed)` : ""));
+        } else {
+          alert(`Successfully imported ${parsedWorkers.length} workers!`);
+        }
         fetchWorkersAndSites();
       } catch (error) {
         console.error("Import error:", error);
-        alert("Failed to import workers. Please check the file format.");
+        const errDetail = error.response?.data?.error || error.response?.data?.message || error.message || "Please check the file format.";
+        alert(`Failed to import workers: ${errDetail}`);
       } finally {
         setLoading(false);
-        if (fileInputRef.current) fileInputRef.current.value = ""; // reset input
+        if (fileInputRef.current) fileInputRef.current.value = "";
       }
     };
-    // Read file as ArrayBuffer for xlsx compatibility
     reader.readAsArrayBuffer(file);
+  };
+
+  const handleExportWorkersExcel = () => {
+    try {
+      if (!workers || workers.length === 0) {
+        return alert("No workers available to export!");
+      }
+
+      const exportData = workers.map((w) => ({
+        "Worker ID": w.workerId || "",
+        "Name": w.fullName || "",
+        "Site": w.site?.name || "Unassigned",
+        "Daily Wage": w.dailyWage || w.wageRate || 0,
+        "Salary Type": w.salaryType || "Daily",
+        "Pay Frequency": w.paymentFrequency || "Weekly",
+        "Payment Mode": w.paymentMethod || "Bank Transfer",
+        "OT Rate": w.otRatePerHour || 0,
+        "Mobile": w.mobileNumber || "",
+        "Trade": w.skillTrade || "",
+        "Category": w.category || (/supervisor|incharge|in-charge|engineer/i.test(w.skillTrade) ? "Supervisor" : "Worker"),
+        "Father Name": w.fatherName || "",
+        "Address": w.currentAddress || w.permanentAddress || "",
+        "Bank Name": w.bankName || "",
+        "Bank Account": w.bankAccount || "",
+        "IFSC Code": w.ifsc || "",
+        "PAN": w.pan || "",
+        "Aadhaar": w.aadhaar || "",
+        "Status": w.status || "Active"
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      
+      const colWidths = [
+        { wch: 14 }, // Worker ID
+        { wch: 22 }, // Name
+        { wch: 18 }, // Site
+        { wch: 12 }, // Daily Wage
+        { wch: 12 }, // Salary Type
+        { wch: 14 }, // Pay Frequency
+        { wch: 16 }, // Payment Mode
+        { wch: 10 }, // OT Rate
+        { wch: 14 }, // Mobile
+        { wch: 18 }, // Trade
+        { wch: 14 }, // Category
+        { wch: 18 }, // Father Name
+        { wch: 24 }, // Address
+        { wch: 22 }, // Bank Name
+        { wch: 18 }, // Bank Account
+        { wch: 14 }, // IFSC Code
+        { wch: 14 }, // PAN
+        { wch: 16 }, // Aadhaar
+        { wch: 10 }  // Status
+      ];
+      worksheet['!cols'] = colWidths;
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Workers Master");
+      
+      const fileName = `Workers_List_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+    } catch (err) {
+      console.error("Export error:", err);
+      alert("Failed to export workers: " + err.message);
+    }
   };
 
   const downloadSampleTemplate = () => {
@@ -407,6 +500,23 @@ export default function Workers() {
             >
               <Download size={18} color="#15803d" />
               <span>Download Template</span>
+            </button>
+            <button 
+              id="export-workers-btn"
+              style={{
+                ...styles.createButton, 
+                background: "#f0f9ff", 
+                color: "#0369a1", 
+                border: "1.5px solid #bae6fd",
+                boxShadow: "0 2px 8px rgba(14, 165, 233, 0.12)",
+                display: "inline-flex",
+                alignItems: "center"
+              }} 
+              onClick={handleExportWorkersExcel}
+              title="Export all workers to Excel sheet"
+            >
+              <FileSpreadsheet size={18} color="#0369a1" />
+              <span>Export Excel</span>
             </button>
             <button style={{...styles.createButton, background: "#fff", color: "#334155", border: "1px solid #cbd5e1"}} onClick={() => fileInputRef.current?.click()}>
               <UploadCloud size={18} />

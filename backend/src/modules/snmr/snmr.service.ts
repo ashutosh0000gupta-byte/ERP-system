@@ -53,70 +53,146 @@ export const createWorker = async (data: any) => {
 };
 
 export const importWorkers = async (workers: any[]) => {
+  if (!Array.isArray(workers)) {
+    throw new Error("Invalid request: 'workers' array is required.");
+  }
+
   const results: any[] = [];
-  for (const w of workers) {
-    if (!w.workerId || !w.fullName) continue;
+  const errors: any[] = [];
 
-    let siteId = w.siteId;
-    if (!siteId && w.siteName) {
-      let site = await prisma.site.findFirst({
-        where: { name: { equals: w.siteName, mode: 'insensitive' } }
-      });
-      if (!site) {
-        site = await prisma.site.create({
-          data: { 
-            siteId: `SITE-${Math.floor(1000 + Math.random() * 9000)}`,
-            name: w.siteName, 
-            location: w.siteName, 
-            status: "Active" 
-          }
-        });
-      }
-      siteId = site.id;
+  // Helper to clean and sanitize string fields
+  const cleanStr = (val: any): string | null => {
+    if (val === undefined || val === null) return null;
+    const s = String(val).trim();
+    if (!s || s.toUpperCase() === "NA" || s.toUpperCase() === "N/A" || s === "null" || s === "undefined") {
+      return null;
     }
-    
-    if (!siteId) continue;
-    
-    const isStaff = /supervisor|incharge|in-charge|engineer|foreman/i.test(w.skillTrade || "");
-    const category = w.category || (isStaff ? "Supervisor" : "Worker");
+    return s;
+  };
 
-    const dataToSave = {
-      workerId: w.workerId,
-      fullName: w.fullName,
-      dailyWage: w.dailyWage,
-      wageRate: w.wageRate || w.dailyWage || 0,
-      salaryType: w.salaryType || "Daily",
-      paymentFrequency: w.paymentFrequency || "Monthly",
-      paymentMethod: w.paymentMethod || "Bank Transfer",
-      otRatePerHour: w.otRatePerHour || 0,
-      joiningDate: w.joiningDate,
-      status: w.status || "Active",
-      siteId: siteId,
-      category,
-      ...(w.bankAccount && { bankAccount: w.bankAccount }),
-      ...(w.bankName && { bankName: w.bankName }),
-      ...(w.ifsc && { ifsc: w.ifsc }),
-      ...(w.pan && { pan: w.pan }),
-      ...(w.mobileNumber && { mobileNumber: w.mobileNumber }),
-      ...(w.aadhaar && { aadhaar: w.aadhaar }),
-      ...(w.skillTrade && { skillTrade: w.skillTrade }),
-      ...(w.fatherName && { fatherName: w.fatherName }),
-      ...(w.currentAddress && { currentAddress: w.currentAddress }),
-      ...(w.permanentAddress && { permanentAddress: w.permanentAddress })
-    };
+  // Cache existing sites in memory to avoid repetitive queries and race conditions
+  const siteCache = new Map<string, string>();
+  try {
+    const allSites = await prisma.site.findMany();
+    for (const s of allSites) {
+      siteCache.set(s.name.trim().toLowerCase(), s.id);
+    }
+  } catch (err) {
+    console.warn("Could not pre-fetch sites:", err);
+  }
 
-    // Check if worker exists
-    const existing = await prisma.worker.findUnique({ where: { workerId: w.workerId } });
-    if (existing) {
-      results.push(await prisma.worker.update({
-        where: { workerId: w.workerId },
-        data: dataToSave
-      }));
-    } else {
-      results.push(await prisma.worker.create({ data: dataToSave }));
+  for (let i = 0; i < workers.length; i++) {
+    const w = workers[i];
+    if (!w) continue;
+
+    const workerId = cleanStr(w.workerId);
+    const fullName = cleanStr(w.fullName);
+    if (!workerId || !fullName) continue;
+
+    try {
+      let siteId: string | null = w.siteId || null;
+      const rawSiteName = cleanStr(w.siteName);
+
+      if (!siteId && rawSiteName && rawSiteName.toLowerCase() !== "unassigned") {
+        const lowerName = rawSiteName.toLowerCase();
+        if (siteCache.has(lowerName)) {
+          siteId = siteCache.get(lowerName)!;
+        } else {
+          // Look up or create site safely
+          let site = await prisma.site.findFirst({
+            where: { name: { equals: rawSiteName, mode: 'insensitive' } }
+          });
+          if (!site) {
+            const count = await prisma.site.count();
+            let candidate = `SITE-${String(count + 1).padStart(3, '0')}`;
+            while (await prisma.site.findUnique({ where: { siteId: candidate } })) {
+              candidate = `SITE-${Math.floor(100 + Math.random() * 900)}`;
+            }
+            site = await prisma.site.create({
+              data: {
+                siteId: candidate,
+                name: rawSiteName,
+                location: rawSiteName,
+                status: "Active"
+              }
+            });
+          }
+          siteCache.set(lowerName, site.id);
+          siteId = site.id;
+        }
+      }
+
+      const isStaff = /supervisor|incharge|in-charge|engineer|foreman/i.test(w.skillTrade || "");
+      const category = w.category || (isStaff ? "Supervisor" : "Worker");
+
+      // Parse joining date safely into Date object
+      let joiningDate = new Date();
+      if (w.joiningDate) {
+        const parsed = new Date(w.joiningDate);
+        if (!isNaN(parsed.getTime())) {
+          joiningDate = parsed;
+        }
+      }
+
+      // Parse numerical fields safely
+      const rawDw = String(w.dailyWage !== undefined && w.dailyWage !== null ? w.dailyWage : 0).replace(/[^0-9.]/g, '');
+      const parsedDw = parseFloat(rawDw);
+      const dailyWage = isNaN(parsedDw) ? 0 : parsedDw;
+
+      const rawWr = String(w.wageRate !== undefined && w.wageRate !== null ? w.wageRate : (w.dailyWage || 0)).replace(/[^0-9.]/g, '');
+      const parsedWr = parseFloat(rawWr);
+      const wageRate = isNaN(parsedWr) ? dailyWage : parsedWr;
+
+      const rawOt = String(w.otRatePerHour !== undefined && w.otRatePerHour !== null ? w.otRatePerHour : 0).replace(/[^0-9.]/g, '');
+      const parsedOt = parseFloat(rawOt);
+      const otRatePerHour = isNaN(parsedOt) ? 0 : parsedOt;
+
+      const dataToSave = {
+        fullName,
+        dailyWage,
+        wageRate,
+        salaryType: cleanStr(w.salaryType) || "Daily",
+        paymentFrequency: cleanStr(w.paymentFrequency) || "Monthly",
+        paymentMethod: cleanStr(w.paymentMethod) || "Bank Transfer",
+        otRatePerHour,
+        joiningDate,
+        status: cleanStr(w.status) || "Active",
+        category,
+        siteId: siteId || null,
+        bankAccount: cleanStr(w.bankAccount),
+        bankName: cleanStr(w.bankName),
+        ifsc: cleanStr(w.ifsc),
+        pan: cleanStr(w.pan),
+        mobileNumber: cleanStr(w.mobileNumber),
+        aadhaar: cleanStr(w.aadhaar),
+        skillTrade: cleanStr(w.skillTrade),
+        fatherName: cleanStr(w.fatherName),
+        currentAddress: cleanStr(w.currentAddress),
+        permanentAddress: cleanStr(w.permanentAddress)
+      };
+
+      const workerRecord = await prisma.worker.upsert({
+        where: { workerId },
+        update: dataToSave,
+        create: {
+          workerId,
+          ...dataToSave
+        }
+      });
+
+      results.push(workerRecord);
+    } catch (err: any) {
+      console.error(`Error importing worker row ${i + 1} (${workerId}):`, err);
+      errors.push({ workerId, row: i + 1, error: err.message });
     }
   }
-  return results;
+
+  return {
+    importedCount: results.length,
+    errorCount: errors.length,
+    results,
+    errors
+  };
 };
 
 export const getWorkerAttendance = async (siteId: string, date: string) => {
