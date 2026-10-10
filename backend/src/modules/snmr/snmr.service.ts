@@ -77,6 +77,9 @@ export const importWorkers = async (workers: any[]) => {
     
     if (!siteId) continue;
     
+    const isStaff = /supervisor|incharge|in-charge|engineer|foreman/i.test(w.skillTrade || "");
+    const category = w.category || (isStaff ? "Supervisor" : "Worker");
+
     const dataToSave = {
       workerId: w.workerId,
       fullName: w.fullName,
@@ -84,7 +87,9 @@ export const importWorkers = async (workers: any[]) => {
       joiningDate: w.joiningDate,
       status: w.status || "Active",
       siteId: siteId,
+      category,
       ...(w.bankAccount && { bankAccount: w.bankAccount }),
+      ...(w.bankName && { bankName: w.bankName }),
       ...(w.ifsc && { ifsc: w.ifsc }),
       ...(w.pan && { pan: w.pan }),
       ...(w.mobileNumber && { mobileNumber: w.mobileNumber }),

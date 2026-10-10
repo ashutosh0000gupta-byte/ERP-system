@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import MainLayout from "../../components/layout/MainLayout";
 import api from "../../services/api";
-import { Users, Search, Plus, X, Briefcase, MapPin, IndianRupee, HardHat, Printer, UploadCloud, Download } from "lucide-react";
+import { Users, Search, Plus, X, Briefcase, MapPin, IndianRupee, HardHat, Printer, UploadCloud, Download, ShieldCheck } from "lucide-react";
 import * as XLSX from 'xlsx';
 import WorkerIdCard from "../../components/shared/WorkerIdCard";
 
@@ -11,6 +11,9 @@ export default function Workers() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("all"); // "all" | "supervisors" | "workers"
+  const [tradeFilter, setTradeFilter] = useState("all");
+  const [siteFilter, setSiteFilter] = useState("all");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [printWorker, setPrintWorker] = useState(null);
   const fileInputRef = React.useRef(null);
@@ -22,6 +25,7 @@ export default function Workers() {
     dailyWage: "",
     joiningDate: new Date().toISOString().split("T")[0],
     siteId: "",
+    bankName: "",
     bankAccount: "",
     ifsc: "",
     mobileNumber: "",
@@ -52,8 +56,10 @@ export default function Workers() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      const isStaff = /supervisor|incharge|in-charge|engineer|foreman/i.test(formData.skillTrade || "");
       const payload = {
         ...formData,
+        category: isStaff ? "Supervisor" : "Worker",
         dailyWage: formData.dailyWage ? parseFloat(formData.dailyWage) : null,
       };
       // Format date for Prisma
@@ -62,10 +68,12 @@ export default function Workers() {
       }
       // Remove empty optional fields
       if (!payload.siteId) delete payload.siteId;
+      if (!payload.bankName) delete payload.bankName;
       if (!payload.bankAccount) delete payload.bankAccount;
       if (!payload.ifsc) delete payload.ifsc;
       if (!payload.mobileNumber) delete payload.mobileNumber;
       if (!payload.currentAddress) delete payload.currentAddress;
+      if (!payload.skillTrade) delete payload.skillTrade;
 
       const res = await api.post("/snmr/workers", payload);
       
@@ -77,7 +85,17 @@ export default function Workers() {
       setWorkers([res.data, ...workers]);
       setIsModalOpen(false);
       setFormData({
-        workerId: "", fullName: "", skillTrade: "", dailyWage: "", joiningDate: new Date().toISOString().split("T")[0], siteId: ""
+        workerId: "",
+        fullName: "",
+        skillTrade: "",
+        dailyWage: "",
+        joiningDate: new Date().toISOString().split("T")[0],
+        siteId: "",
+        bankName: "",
+        bankAccount: "",
+        ifsc: "",
+        mobileNumber: "",
+        currentAddress: ""
       });
     } catch (err) {
       console.error("Error creating worker:", err);
@@ -112,6 +130,7 @@ export default function Workers() {
           const skillTrade = (row["Trade"] || row["Skill"] || row["Skill Trade"] || row["Category"] || row["Role"] || row["skill_trade"])?.toString()?.trim() || "";
           const fatherName = (row["Father Name"] || row["Father's Name"] || row["Father"] || row["father_name"])?.toString()?.trim() || "";
           const address = (row["Address"] || row["Current Address"] || row["Permanent Address"] || row["current_address"])?.toString()?.trim() || "";
+          const bankName = (row["Bank Name"] || row["Bank"] || row["BankName"] || row["bank_name"] || row["Bank Branch"])?.toString()?.trim() || "";
           const bankAccount = (row["Bank Account"] || row["Account No"] || row["A/C"] || row["bankAccount"] || row["Account Number"] || row["bank_account"])?.toString()?.trim() || "";
           const ifsc = (row["IFSC Code"] || row["IFSC"] || row["ifsc"])?.toString()?.trim() || "";
           const pan = (row["PAN"] || row["PAN No"] || row["pan"] || row["PAN Number"])?.toString()?.trim() || "";
@@ -119,6 +138,7 @@ export default function Workers() {
           
           if (!workerId || !name) continue;
           
+          const isStaff = /supervisor|incharge|in-charge|engineer|foreman/i.test(skillTrade);
           // Match site by name
           const siteMatch = sites.find(s => s.name?.toLowerCase() === siteName.toLowerCase());
           
@@ -130,9 +150,11 @@ export default function Workers() {
             dailyWage,
             mobileNumber,
             skillTrade,
+            category: isStaff ? "Supervisor" : "Worker",
             fatherName,
             currentAddress: address,
             permanentAddress: address,
+            bankName,
             bankAccount,
             ifsc,
             pan,
@@ -163,35 +185,97 @@ export default function Workers() {
   };
 
   const downloadSampleTemplate = () => {
-    const defaultSiteName = sites.length > 0 ? sites[0].name : "Project Site A";
+    const defaultSiteName = sites.length > 0 ? sites[0].name : "HCCB Khurda";
     const sampleData = [
       {
-        "Worker ID": "WRK-001",
-        "Name": "Ramesh Kumar",
+        "Worker ID": "SNMR0001",
+        "Name": "ANIL SHARMA",
         "Site": defaultSiteName,
-        "Daily Wage": 650,
+        "Daily Wage": 1200,
         "Mobile": "9876543210",
-        "Trade": "Mason",
-        "Father Name": "Suresh Kumar",
-        "Address": "Sector 62, Noida",
-        "Bank Account": "123456789012",
-        "IFSC Code": "SBIN0001234",
-        "PAN": "ABCDE1234F",
-        "Aadhaar": "123456789012"
+        "Trade": "SITE INCHARGE",
+        "Father Name": "NA",
+        "Address": "NA",
+        "Bank Name": "State Bank of India",
+        "Bank Account": "37826459225",
+        "IFSC Code": "SBIN0006018",
+        "PAN": "NA",
+        "Aadhaar": "NA"
       },
       {
-        "Worker ID": "WRK-002",
-        "Name": "Suresh Yadav",
+        "Worker ID": "SNMR0002",
+        "Name": "RAJESH VERMA",
         "Site": defaultSiteName,
-        "Daily Wage": 550,
+        "Daily Wage": 1000,
         "Mobile": "9876543211",
-        "Trade": "Helper",
-        "Father Name": "Ram Yadav",
-        "Address": "Civil Lines, Delhi",
-        "Bank Account": "987654321098",
-        "IFSC Code": "HDFC0001234",
-        "PAN": "XYZPW5678G",
-        "Aadhaar": "987654321098"
+        "Trade": "SUPERVISOR",
+        "Father Name": "NA",
+        "Address": "NA",
+        "Bank Name": "Punjab National Bank",
+        "Bank Account": "123456789012",
+        "IFSC Code": "PUNB0295200",
+        "PAN": "NA",
+        "Aadhaar": "NA"
+      },
+      {
+        "Worker ID": "SNMR0003",
+        "Name": "UPENDRA KUMAR",
+        "Site": defaultSiteName,
+        "Daily Wage": 836.87,
+        "Mobile": "1234569870",
+        "Trade": "FITTER",
+        "Father Name": "NA",
+        "Address": "NA",
+        "Bank Name": "Canara Bank",
+        "Bank Account": "4588101004320",
+        "IFSC Code": "CNRB0004588",
+        "PAN": "NA",
+        "Aadhaar": "NA"
+      },
+      {
+        "Worker ID": "SNMR0004",
+        "Name": "SUBHASH KUMAR",
+        "Site": defaultSiteName,
+        "Daily Wage": 836.87,
+        "Mobile": "1234569870",
+        "Trade": "RIGGER",
+        "Father Name": "NA",
+        "Address": "NA",
+        "Bank Name": "Central Bank of India",
+        "Bank Account": "2176118485",
+        "IFSC Code": "CBIN0281086",
+        "PAN": "NA",
+        "Aadhaar": "NA"
+      },
+      {
+        "Worker ID": "SNMR0005",
+        "Name": "DUDH NATH ROY",
+        "Site": defaultSiteName,
+        "Daily Wage": 836.87,
+        "Mobile": "1234569870",
+        "Trade": "WELDER",
+        "Father Name": "NA",
+        "Address": "NA",
+        "Bank Name": "Union Bank of India",
+        "Bank Account": "35814047446",
+        "IFSC Code": "UBIN0576221",
+        "PAN": "NA",
+        "Aadhaar": "NA"
+      },
+      {
+        "Worker ID": "SNMR0006",
+        "Name": "RAJESH KUMAR",
+        "Site": defaultSiteName,
+        "Daily Wage": 836.87,
+        "Mobile": "1234569870",
+        "Trade": "HELPER",
+        "Father Name": "NA",
+        "Address": "NA",
+        "Bank Name": "Bank of Baroda",
+        "Bank Account": "6202265865",
+        "IFSC Code": "BARB0001234",
+        "PAN": "NA",
+        "Aadhaar": "NA"
       }
     ];
 
@@ -210,11 +294,42 @@ export default function Workers() {
     }
   }, [printWorker]);
 
-  const filteredWorkers = workers.filter(w => 
-    w.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    w.workerId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    w.skillTrade?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const isSupervisorOrIncharge = (w) => {
+    const trade = (w.skillTrade || "").toLowerCase();
+    const cat = (w.category || "").toLowerCase();
+    return (
+      trade.includes("supervisor") ||
+      trade.includes("incharge") ||
+      trade.includes("in-charge") ||
+      trade.includes("ssite incharge") ||
+      trade.includes("site incharge") ||
+      trade.includes("engineer") ||
+      trade.includes("foreman") ||
+      cat === "supervisor"
+    );
+  };
+
+  const supervisorCount = workers.filter(isSupervisorOrIncharge).length;
+  const tradesmanCount = workers.filter(w => !isSupervisorOrIncharge(w)).length;
+  const availableTrades = Array.from(new Set(workers.map(w => w.skillTrade?.trim()).filter(Boolean)));
+
+  const filteredWorkers = workers.filter(w => {
+    if (activeTab === "supervisors" && !isSupervisorOrIncharge(w)) return false;
+    if (activeTab === "workers" && isSupervisorOrIncharge(w)) return false;
+    if (tradeFilter !== "all" && (w.skillTrade || "").toLowerCase() !== tradeFilter.toLowerCase()) return false;
+    if (siteFilter !== "all" && w.siteId !== siteFilter) return false;
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const matchName = w.fullName?.toLowerCase().includes(q);
+      const matchId = w.workerId?.toLowerCase().includes(q);
+      const matchTrade = w.skillTrade?.toLowerCase().includes(q);
+      const matchBank = w.bankName?.toLowerCase().includes(q) || w.bankAccount?.includes(q);
+      const matchSite = w.site?.name?.toLowerCase().includes(q);
+      if (!matchName && !matchId && !matchTrade && !matchBank && !matchSite) return false;
+    }
+    return true;
+  });
 
   return (
     <MainLayout>
@@ -271,6 +386,126 @@ export default function Workers() {
           </div>
         </div>
 
+        {/* Navigation Tabs for Staff vs Labors */}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "12px",
+          marginBottom: "18px",
+          marginTop: "4px"
+        }}>
+          {/* Section Tabs */}
+          <div style={{ display: "flex", gap: "8px", background: "#f1f5f9", padding: "4px", borderRadius: "12px", flexWrap: "wrap" }}>
+            <button
+              onClick={() => setActiveTab("all")}
+              style={{
+                padding: "8px 16px",
+                borderRadius: "8px",
+                border: "none",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: "pointer",
+                background: activeTab === "all" ? "#fff" : "transparent",
+                color: activeTab === "all" ? "#0f172a" : "#64748b",
+                boxShadow: activeTab === "all" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px"
+              }}
+            >
+              <span>All Staff & Labours</span>
+              <span style={{ fontSize: "11px", background: activeTab === "all" ? "#e2e8f0" : "#cbd5e1", padding: "2px 6px", borderRadius: "10px" }}>{workers.length}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("supervisors")}
+              style={{
+                padding: "8px 16px",
+                borderRadius: "8px",
+                border: "none",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: "pointer",
+                background: activeTab === "supervisors" ? "#fff" : "transparent",
+                color: activeTab === "supervisors" ? "#7c3aed" : "#64748b",
+                boxShadow: activeTab === "supervisors" ? "0 2px 6px rgba(124, 58, 237, 0.12)" : "none",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px"
+              }}
+            >
+              <ShieldCheck size={15} color={activeTab === "supervisors" ? "#7c3aed" : "#64748b"} />
+              <span>Supervisor & Site Incharge</span>
+              <span style={{ fontSize: "11px", background: activeTab === "supervisors" ? "#ede9fe" : "#cbd5e1", color: activeTab === "supervisors" ? "#6d28d9" : "#475569", padding: "2px 6px", borderRadius: "10px" }}>{supervisorCount}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("workers")}
+              style={{
+                padding: "8px 16px",
+                borderRadius: "8px",
+                border: "none",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: "pointer",
+                background: activeTab === "workers" ? "#fff" : "transparent",
+                color: activeTab === "workers" ? "#0284c7" : "#64748b",
+                boxShadow: activeTab === "workers" ? "0 2px 6px rgba(2, 132, 199, 0.12)" : "none",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px"
+              }}
+            >
+              <HardHat size={15} color={activeTab === "workers" ? "#0284c7" : "#64748b"} />
+              <span>Tradesmen & Labors</span>
+              <span style={{ fontSize: "11px", background: activeTab === "workers" ? "#e0f2fe" : "#cbd5e1", color: activeTab === "workers" ? "#0369a1" : "#475569", padding: "2px 6px", borderRadius: "10px" }}>{tradesmanCount}</span>
+            </button>
+          </div>
+
+          {/* Quick Filters: Trade & Site */}
+          <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+            <select
+              value={tradeFilter}
+              onChange={e => setTradeFilter(e.target.value)}
+              style={{
+                padding: "8px 14px",
+                borderRadius: "10px",
+                border: "1px solid #cbd5e1",
+                background: "#fff",
+                fontSize: "13px",
+                color: "#334155",
+                fontWeight: 500,
+                cursor: "pointer"
+              }}
+            >
+              <option value="all">Filter by Trade / Role (All)</option>
+              {availableTrades.map(trade => (
+                <option key={trade} value={trade}>{trade}</option>
+              ))}
+            </select>
+
+            <select
+              value={siteFilter}
+              onChange={e => setSiteFilter(e.target.value)}
+              style={{
+                padding: "8px 14px",
+                borderRadius: "10px",
+                border: "1px solid #cbd5e1",
+                background: "#fff",
+                fontSize: "13px",
+                color: "#334155",
+                fontWeight: 500,
+                cursor: "pointer"
+              }}
+            >
+              <option value="all">Filter by Site (All)</option>
+              {sites.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         {/* Table Section */}
         <div style={styles.tableContainer}>
           {loading ? (
@@ -307,7 +542,8 @@ export default function Workers() {
                   <tr style={styles.tableHead}>
                     <th style={styles.th}>Worker ID</th>
                     <th style={styles.th}>Full Name</th>
-                    <th style={styles.th}>Trade / Role</th>
+                    <th style={styles.th}>Role / Trade</th>
+                    <th style={styles.th}>Bank Details</th>
                     <th style={styles.th}>Current Site</th>
                     <th style={styles.th}>Daily Wage</th>
                     <th style={styles.th}>Status</th>
@@ -320,13 +556,68 @@ export default function Workers() {
                       <td style={styles.tdId}>{w.workerId}</td>
                       <td style={styles.tdName}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                          <div style={styles.avatar}>
-                            {w.fullName.charAt(0).toUpperCase()}
+                          <div style={{
+                            ...styles.avatar,
+                            background: isSupervisorOrIncharge(w) ? "#ede9fe" : "#e0e7ff",
+                            color: isSupervisorOrIncharge(w) ? "#7c3aed" : "#4f46e5"
+                          }}>
+                            {w.fullName?.charAt(0)?.toUpperCase()}
                           </div>
-                          {w.fullName}
+                          <div>
+                            <div style={{ fontWeight: 600, color: "#0f172a" }}>{w.fullName}</div>
+                            {w.mobileNumber && <div style={{ fontSize: "12px", color: "#64748b" }}>{w.mobileNumber}</div>}
+                          </div>
                         </div>
                       </td>
-                      <td style={styles.td}>{w.skillTrade || "—"}</td>
+                      <td style={styles.td}>
+                        {isSupervisorOrIncharge(w) ? (
+                          <span style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            padding: "4px 10px",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            background: "#f5f3ff",
+                            color: "#6d28d9",
+                            border: "1px solid #ddd6fe"
+                          }}>
+                            <ShieldCheck size={13} color="#7c3aed" />
+                            {w.skillTrade?.toUpperCase() || "SUPERVISOR"}
+                          </span>
+                        ) : (
+                          <span style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            padding: "4px 8px",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            background: "#f1f5f9",
+                            color: "#475569"
+                          }}>
+                            <HardHat size={12} color="#64748b" />
+                            {w.skillTrade || "General Worker"}
+                          </span>
+                        )}
+                      </td>
+                      <td style={styles.td}>
+                        {w.bankName || w.bankAccount ? (
+                          <div>
+                            <div style={{ fontWeight: 600, color: "#0f172a", fontSize: "13px" }}>
+                              {w.bankName || "Bank N/A"}
+                            </div>
+                            <div style={{ fontSize: "12px", color: "#64748b" }}>
+                              A/C: {w.bankAccount || "—"}
+                              {w.ifsc ? ` | ${w.ifsc}` : ""}
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ color: "#94a3b8", fontSize: "13px" }}>Not Provided</span>
+                        )}
+                      </td>
                       <td style={styles.td}>
                         {w.site ? (
                           <span style={styles.siteChip}><MapPin size={12} /> {w.site.name}</span>
@@ -448,13 +739,28 @@ export default function Workers() {
                 
                 <div style={styles.formRow}>
                   <div style={styles.inputGroup}>
-                    <label style={styles.label}>Skill / Trade</label>
+                    <label style={styles.label}>Skill / Trade / Role</label>
                     <input 
+                      list="trade-datalist"
                       style={styles.input} 
-                      placeholder="e.g. Electrician, Mason" 
+                      placeholder="e.g. SITE INCHARGE, SUPERVISOR, FITTER" 
                       value={formData.skillTrade}
                       onChange={e => setFormData({...formData, skillTrade: e.target.value})}
                     />
+                    <datalist id="trade-datalist">
+                      <option value="SITE INCHARGE" />
+                      <option value="SUPERVISOR" />
+                      <option value="FITTER" />
+                      <option value="RIGGER" />
+                      <option value="WELDER" />
+                      <option value="HELPER" />
+                      <option value="MASON" />
+                      <option value="ELECTRICIAN" />
+                      <option value="CARPENTER" />
+                      <option value="SAFETY OFFICER" />
+                      <option value="ENGINEER" />
+                      <option value="FOREMAN" />
+                    </datalist>
                   </div>
                   <div style={styles.inputGroup}>
                     <label style={styles.label}>Daily Wage (₹)</label>
@@ -495,6 +801,15 @@ export default function Workers() {
                 </div>
 
                 <div style={styles.formRow}>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>Bank Name</label>
+                    <input 
+                      style={styles.input} 
+                      placeholder="e.g. State Bank of India, PNB" 
+                      value={formData.bankName}
+                      onChange={e => setFormData({...formData, bankName: e.target.value})}
+                    />
+                  </div>
                   <div style={styles.inputGroup}>
                     <label style={styles.label}>Bank Account No.</label>
                     <input 

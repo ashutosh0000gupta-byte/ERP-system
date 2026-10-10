@@ -2394,6 +2394,7 @@ model Worker {
   siteId           String?   @map("site_id") @db.Uuid
   employmentType   String?   @map("employment_type") @db.VarChar(50)
   bankAccount      String?   @map("bank_account") @db.Text
+  bankName         String?   @map("bank_name") @db.VarChar(100)
   ifsc             String?   @db.VarChar(50)
   pan              String?   @db.Text
   aadhaar          String?   @db.Text

@@ -58,6 +58,7 @@ export default function WorkerProfile() {
     setEditData({
       mobileNumber: worker.mobileNumber || "",
       currentAddress: worker.currentAddress || "",
+      bankName: worker.bankName || "",
       bankAccount: worker.bankAccount || "",
       ifsc: worker.ifsc || "",
       pan: worker.pan || "",
@@ -253,6 +254,10 @@ export default function WorkerProfile() {
           {/* Bank Details Grid */}
           <div style={styles.contactGrid}>
             <div style={styles.contactItem}>
+              <span style={{color: "#64748b", width: "100px"}}>Bank Name:</span>
+              <strong style={{color: "#0f172a"}}>{worker.bankName || "Not Provided"}</strong>
+            </div>
+            <div style={styles.contactItem}>
               <span style={{color: "#64748b", width: "100px"}}>Bank A/C:</span>
               <strong style={{color: "#0f172a"}}>{worker.bankAccount || "Not Provided"}</strong>
             </div>
@@ -370,7 +375,11 @@ export default function WorkerProfile() {
                     <input style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0" }} value={editData.currentAddress} onChange={e => setEditData({...editData, currentAddress: e.target.value})} />
                   </div>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
+                  <div>
+                    <label style={{ fontSize: "13px", color: "#64748b", display: "block", marginBottom: "6px" }}>Bank Name</label>
+                    <input style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0" }} placeholder="e.g. State Bank of India" value={editData.bankName} onChange={e => setEditData({...editData, bankName: e.target.value})} />
+                  </div>
                   <div>
                     <label style={{ fontSize: "13px", color: "#64748b", display: "block", marginBottom: "6px" }}>Bank A/C</label>
                     <input style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0" }} value={editData.bankAccount} onChange={e => setEditData({...editData, bankAccount: e.target.value})} />
