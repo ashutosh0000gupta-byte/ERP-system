@@ -230,3 +230,11 @@ export const notifyWorkerSalaries = async (req: Request, res: Response) => {
   }
 };
 
+export const importWorkers = async (req: Request, res: Response) => {
+  try {
+    const results = await snmrService.importWorkers(req.body.workers);
+    res.json(results);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};

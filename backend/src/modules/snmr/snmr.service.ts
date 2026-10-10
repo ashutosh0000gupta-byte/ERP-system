@@ -30,6 +30,25 @@ export const createWorker = async (data: any) => {
   return prisma.worker.create({ data });
 };
 
+export const importWorkers = async (workers: any[]) => {
+  const results = [];
+  for (const w of workers) {
+    if (!w.workerId || !w.fullName || !w.siteId) continue;
+    
+    // Check if worker exists
+    const existing = await prisma.worker.findUnique({ where: { workerId: w.workerId } });
+    if (existing) {
+      results.push(await prisma.worker.update({
+        where: { workerId: w.workerId },
+        data: w
+      }));
+    } else {
+      results.push(await prisma.worker.create({ data: w }));
+    }
+  }
+  return results;
+};
+
 export const getWorkerAttendance = async (siteId: string, date: string) => {
   if (!siteId || !date) return [];
   const startOfDay = new Date(date);

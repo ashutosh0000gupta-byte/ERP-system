@@ -23,7 +23,8 @@ import {
   getSystemUsers,
   createSystemUser,
   importWorkerSalaries,
-  notifyWorkerSalaries
+  notifyWorkerSalaries,
+  importWorkers
 } from "./snmr.controller";
 
 const router = Router();
@@ -40,6 +41,7 @@ router.post("/sites", createSite);
 // Workers
 router.get("/workers", getWorkers);
 router.post("/workers", createWorker);
+router.post("/workers/import", importWorkers);
 router.get("/workers/:id", getWorkerById);
 router.put("/workers/:id/status", updateWorkerStatus);
 router.delete("/workers/:id", deleteWorker);

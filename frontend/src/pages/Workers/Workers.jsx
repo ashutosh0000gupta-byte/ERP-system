@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import MainLayout from "../../components/layout/MainLayout";
 import api from "../../services/api";
-import { Users, Search, Plus, X, Briefcase, MapPin, IndianRupee, HardHat, Printer } from "lucide-react";
+import { Users, Search, Plus, X, Briefcase, MapPin, IndianRupee, HardHat, Printer, UploadCloud } from "lucide-react";
 import WorkerIdCard from "../../components/shared/WorkerIdCard";
 
 export default function Workers() {
@@ -12,6 +12,7 @@ export default function Workers() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [printWorker, setPrintWorker] = useState(null);
+  const fileInputRef = React.useRef(null);
   
   const [formData, setFormData] = useState({
     workerId: "",
@@ -73,6 +74,59 @@ export default function Workers() {
     }
   };
 
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target.result;
+        const lines = text.split("\n").map(l => l.trim()).filter(l => l);
+        const rows = lines.slice(1);
+        
+        const parsedWorkers = [];
+        for (const row of rows) {
+          const cols = row.split(",").map(c => c.replace(/^"|"$/g, ''));
+          if (cols.length < 6) continue;
+          
+          const workerId = cols[0];
+          const name = cols[1];
+          const siteName = cols[2];
+          const dailyWage = parseFloat(cols[5]) || 0;
+          
+          // Match site by name
+          const siteMatch = sites.find(s => s.name.toLowerCase() === siteName.toLowerCase());
+          
+          parsedWorkers.push({
+            workerId,
+            fullName: name,
+            siteId: siteMatch ? siteMatch.id : null,
+            dailyWage,
+            joiningDate: new Date().toISOString(),
+            status: "Active"
+          });
+        }
+        
+        if (parsedWorkers.length === 0) {
+          return alert("No valid worker rows found in CSV.");
+        }
+        
+        setLoading(true);
+        await api.post("/snmr/workers/import", { workers: parsedWorkers });
+        alert(`Successfully imported ${parsedWorkers.length} workers!`);
+        fetchWorkersAndSites();
+      } catch (error) {
+        console.error("Import error:", error);
+        alert("Failed to import workers.");
+      } finally {
+        setLoading(false);
+        e.target.value = null; // reset input
+      }
+    };
+    reader.readAsText(file);
+  };
+
   useEffect(() => {
     if (printWorker) {
       setTimeout(() => {
@@ -108,6 +162,17 @@ export default function Workers() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+            <input 
+              type="file" 
+              accept=".csv" 
+              style={{ display: "none" }} 
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+            />
+            <button style={{...styles.createButton, background: "#fff", color: "#334155", border: "1px solid #cbd5e1"}} onClick={() => fileInputRef.current?.click()}>
+              <UploadCloud size={18} />
+              <span>Import CSV</span>
+            </button>
             <button style={styles.createButton} onClick={() => setIsModalOpen(true)}>
               <Plus size={18} />
               <span>Add Worker</span>
