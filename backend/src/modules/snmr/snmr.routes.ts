@@ -4,6 +4,7 @@ import {
   getSites,
   createSite,
   deleteSite,
+  updateSite,
   getWorkers,
   createWorker,
   getWorkerAttendance,
@@ -41,6 +42,7 @@ router.get("/dashboard", getDashboardStats);
 router.get("/sites", getSites);
 router.post("/sites", createSite);
 router.delete("/sites/:id", deleteSite);
+router.put("/sites/:id", updateSite);
 
 // Workers
 router.get("/workers", getWorkers);

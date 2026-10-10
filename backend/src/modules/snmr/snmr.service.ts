@@ -482,3 +482,7 @@ export const updateWorker = async (id: string, data: any) => {
 export const deleteSite = async (id: string) => {
   return prisma.site.delete({ where: { id } });
 };
+
+export const updateSite = async (id: string, data: any) => {
+  return prisma.site.update({ where: { id }, data });
+};

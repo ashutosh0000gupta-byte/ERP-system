@@ -10,6 +10,7 @@ export default function WorkerProfile() {
   const [worker, setWorker] = useState(null);
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState([]);
+  const [sites, setSites] = useState([]);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const fileInputRef = React.useRef(null);
   const [docType, setDocType] = useState("Aadhaar");
@@ -26,6 +27,11 @@ export default function WorkerProfile() {
     
     // Fetch Documents
     api.get(`/snmr/documents?entityId=${id}&entityType=Worker`)
+      .then(res => setDocuments(res.data))
+      .catch(console.error);
+
+    api.get("/snmr/sites")
+      .then(res => setSites(res.data))
       .then(res => setDocuments(res.data))
       .catch(console.error);
   };
@@ -57,7 +63,8 @@ export default function WorkerProfile() {
       pan: worker.pan || "",
       aadhaar: worker.aadhaar || "",
       dailyWage: worker.dailyWage || 0,
-      fullName: worker.fullName || ""
+      fullName: worker.fullName || "",
+      siteId: worker.siteId || ""
     });
     setIsEditModalOpen(true);
   };
@@ -330,6 +337,19 @@ export default function WorkerProfile() {
                 <button onClick={() => setIsEditModalOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "20px" }}>&times;</button>
               </div>
               <form onSubmit={handleEditSave} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                  <div style={{ gridColumn: "span 2" }}>
+                    <label style={{ fontSize: "13px", color: "#64748b", display: "block", marginBottom: "6px" }}>Current Site (Move Worker)</label>
+                    <select 
+                      style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0" }} 
+                      value={editData.siteId} 
+                      onChange={e => setEditData({...editData, siteId: e.target.value})}
+                    >
+                      <option value="">No Site Assigned</option>
+                      {sites.map(s => <option key={s.id} value={s.id}>{s.name} ({s.location})</option>)}
+                    </select>
+                  </div>
+                </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div>
                     <label style={{ fontSize: "13px", color: "#64748b", display: "block", marginBottom: "6px" }}>Full Name</label>

@@ -265,3 +265,12 @@ export const deleteSite = async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const updateSite = async (req: Request, res: Response) => {
+  try {
+    const site = await snmrService.updateSite(req.params.id, req.body);
+    res.json(site);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};

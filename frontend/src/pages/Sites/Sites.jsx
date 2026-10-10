@@ -44,8 +44,22 @@ export default function Sites() {
     }
   };
 
+  const handleUpdateSiteStatus = async (id, status) => {
+    try {
+      await api.put(`/snmr/sites/${id}`, { status });
+      setSites(sites.map(s => s.id === id ? { ...s, status } : s));
+      if (viewSite && viewSite.id === id) {
+        setViewSite({ ...viewSite, status });
+      }
+    } catch (err) {
+      alert("Failed to update status");
+    }
+  };
+
   const handleDeleteSite = async (id) => {
     if (!window.confirm("Are you sure you want to delete this site? All related workers might be affected.")) return;
+    const pwd = window.prompt("Enter Admin Password to confirm deletion:");
+    if (!pwd) return;
     try {
       await api.delete(`/snmr/sites/${id}`);
       setSites(sites.filter(s => s.id !== id));
@@ -152,7 +166,18 @@ export default function Sites() {
                 <p><strong>Name:</strong> {viewSite.name}</p>
                 <p><strong>Location:</strong> {viewSite.location}</p>
                 <p><strong>Client:</strong> {viewSite.client || "Not Specified"}</p>
-                <p><strong>Status:</strong> {viewSite.status || "Active"}</p>
+                <p style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <strong>Status:</strong>
+                  <select 
+                    value={viewSite.status || "Active"} 
+                    onChange={e => handleUpdateSiteStatus(viewSite.id, e.target.value)}
+                    style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #cbd5e1" }}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                </p>
               </div>
             </div>
           </div>
