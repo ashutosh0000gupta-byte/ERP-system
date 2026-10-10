@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import MainLayout from "../../components/layout/MainLayout";
 import api from "../../services/api";
 import { Users, Search, Plus, X, Briefcase, MapPin, IndianRupee, HardHat, Printer, UploadCloud } from "lucide-react";
+import * as XLSX from 'xlsx';
 import WorkerIdCard from "../../components/shared/WorkerIdCard";
 
 export default function Workers() {
@@ -81,19 +82,26 @@ export default function Workers() {
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        const text = event.target.result;
-        const lines = text.split("\n").map(l => l.trim()).filter(l => l);
-        const rows = lines.slice(1);
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Convert sheet to JSON array (header is the first row)
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
         
         const parsedWorkers = [];
-        for (const row of rows) {
-          const cols = row.split(",").map(c => c.replace(/^"|"$/g, ''));
-          if (cols.length < 6) continue;
+        // Skip header row (i = 1)
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || row.length < 6) continue;
           
-          const workerId = cols[0];
-          const name = cols[1];
-          const siteName = cols[2];
-          const dailyWage = parseFloat(cols[5]) || 0;
+          const workerId = row[0]?.toString() || "";
+          const name = row[1]?.toString() || "";
+          const siteName = row[2]?.toString() || "";
+          const dailyWage = parseFloat(row[5]) || 0;
+          
+          if (!workerId || !name) continue;
           
           // Match site by name
           const siteMatch = sites.find(s => s.name.toLowerCase() === siteName.toLowerCase());
@@ -109,7 +117,7 @@ export default function Workers() {
         }
         
         if (parsedWorkers.length === 0) {
-          return alert("No valid worker rows found in CSV.");
+          return alert("No valid worker rows found in the uploaded file.");
         }
         
         setLoading(true);
@@ -118,13 +126,14 @@ export default function Workers() {
         fetchWorkersAndSites();
       } catch (error) {
         console.error("Import error:", error);
-        alert("Failed to import workers.");
+        alert("Failed to import workers. Please check the file format.");
       } finally {
         setLoading(false);
-        e.target.value = null; // reset input
+        if (fileInputRef.current) fileInputRef.current.value = ""; // reset input
       }
     };
-    reader.readAsText(file);
+    // Read file as ArrayBuffer for xlsx compatibility
+    reader.readAsArrayBuffer(file);
   };
 
   useEffect(() => {
@@ -164,14 +173,14 @@ export default function Workers() {
             </div>
             <input 
               type="file" 
-              accept=".csv" 
+              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
               style={{ display: "none" }} 
               ref={fileInputRef}
               onChange={handleFileUpload}
             />
             <button style={{...styles.createButton, background: "#fff", color: "#334155", border: "1px solid #cbd5e1"}} onClick={() => fileInputRef.current?.click()}>
               <UploadCloud size={18} />
-              <span>Import CSV</span>
+              <span>Import Excel/CSV</span>
             </button>
             <button style={styles.createButton} onClick={() => setIsModalOpen(true)}>
               <Plus size={18} />
