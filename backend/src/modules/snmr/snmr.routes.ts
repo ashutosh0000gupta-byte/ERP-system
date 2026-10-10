@@ -30,7 +30,8 @@ import {
   notifyWorkerSalaries,
   importWorkers,
   recordWorkerPayment,
-  getWorkerLedger
+  getWorkerLedger,
+  clearAllDemoData
 } from "./snmr.controller";
 
 const router = Router();
@@ -84,5 +85,8 @@ router.delete("/documents/:id", deleteDocument);
 // Users
 router.get("/users", getSystemUsers);
 router.post("/users", createSystemUser);
+
+// Database Cleanup / Reset
+router.post("/clear-demo-data", clearAllDemoData);
 
 export default router;

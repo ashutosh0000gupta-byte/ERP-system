@@ -14,25 +14,15 @@ const server = app.listen(port, () => {
 
 async function cleanDemoData() {
   try {
-    const demoWorkerIds = ["SNMR-001", "SNMR-002", "SNMR-003", "SNMR-004", "SNMR-005"];
-    const demoSiteIds = ["SITE-001", "SITE-002", "SITE-003"];
-
-    await prisma.workerAttendance.deleteMany({
-      where: { worker: { workerId: { in: demoWorkerIds } } }
-    });
-    await prisma.workerAdvance.deleteMany({
-      where: { worker: { workerId: { in: demoWorkerIds } } }
-    });
-    await prisma.workerSalary.deleteMany({
-      where: { worker: { workerId: { in: demoWorkerIds } } }
-    });
-    await prisma.worker.deleteMany({
-      where: { workerId: { in: demoWorkerIds } }
-    });
-    await prisma.site.deleteMany({
-      where: { siteId: { in: demoSiteIds } }
-    });
-    logger.info("Demo workers and sites successfully cleared from database.");
+    await prisma.snmrDocument.deleteMany({ where: { entityType: "Worker" } });
+    await prisma.workerPayment.deleteMany({});
+    await prisma.workerSalary.deleteMany({});
+    await prisma.workerAdvance.deleteMany({});
+    await prisma.workerAttendance.deleteMany({});
+    await prisma.worker.deleteMany({});
+    await prisma.siteExpense.deleteMany({});
+    await prisma.site.deleteMany({});
+    logger.info("✅ All demo workers, attendances, advances, salaries, expenses, and sites permanently cleared from database.");
   } catch (err) {
     logger.warn({ err }, "Could not clear demo data");
   }

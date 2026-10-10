@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import MainLayout from "../../components/layout/MainLayout";
 import api from "../../services/api";
-import { Users, Search, Plus, X, Briefcase, MapPin, IndianRupee, HardHat, Printer, UploadCloud, Download, ShieldCheck, FileSpreadsheet } from "lucide-react";
+import { Users, Search, Plus, X, Briefcase, MapPin, IndianRupee, HardHat, Printer, UploadCloud, Download, ShieldCheck, FileSpreadsheet, Trash2 } from "lucide-react";
 import * as XLSX from 'xlsx';
 import WorkerIdCard from "../../components/shared/WorkerIdCard";
 
@@ -306,6 +306,24 @@ export default function Workers() {
     }
   };
 
+  const handleClearDemoData = async () => {
+    if (!window.confirm("WARNING: This will permanently delete ALL demo/test workers, attendances, advances, salaries, and demo sites from the database.\n\nAre you sure you want to completely clear all demo data for company handover?")) {
+      return;
+    }
+    const pwd = window.prompt("Enter Admin Password to confirm data deletion:");
+    if (!pwd) return;
+    try {
+      setLoading(true);
+      const res = await api.post("/snmr/clear-demo-data", { password: pwd });
+      alert(res.data?.message || "All demo data has been completely and permanently deleted!");
+      fetchWorkersAndSites();
+    } catch (err) {
+      alert("Failed to delete demo data: " + (err.response?.data?.error || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const downloadSampleTemplate = () => {
     const defaultSiteName = sites.length > 0 ? sites[0].name : "HCCB Khurda";
     const sampleData = [
@@ -521,6 +539,22 @@ export default function Workers() {
             <button style={{...styles.createButton, background: "#fff", color: "#334155", border: "1px solid #cbd5e1"}} onClick={() => fileInputRef.current?.click()}>
               <UploadCloud size={18} />
               <span>Import Excel/CSV</span>
+            </button>
+            <button 
+              id="clear-demo-data-btn"
+              style={{
+                ...styles.createButton, 
+                background: "#fef2f2", 
+                color: "#b91c1c", 
+                border: "1.5px solid #fecaca",
+                display: "inline-flex",
+                alignItems: "center"
+              }} 
+              onClick={handleClearDemoData}
+              title="Permanently wipe all demo workers and test data"
+            >
+              <Trash2 size={16} color="#b91c1c" />
+              <span>Clear Demo Data</span>
             </button>
             <button style={styles.createButton} onClick={() => setIsModalOpen(true)}>
               <Plus size={18} />

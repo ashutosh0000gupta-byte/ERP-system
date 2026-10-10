@@ -970,3 +970,21 @@ export const deleteSite = async (id: string) => {
 export const updateSite = async (id: string, data: any) => {
   return prisma.site.update({ where: { id }, data });
 };
+
+export const clearAllDemoData = async () => {
+  await prisma.snmrDocument.deleteMany({ where: { entityType: "Worker" } });
+  await prisma.workerPayment.deleteMany({});
+  await prisma.workerSalary.deleteMany({});
+  await prisma.workerAdvance.deleteMany({});
+  await prisma.workerAttendance.deleteMany({});
+  const deletedWorkers = await prisma.worker.deleteMany({});
+  await prisma.siteExpense.deleteMany({});
+  const deletedSites = await prisma.site.deleteMany({});
+
+  return {
+    success: true,
+    message: "All demo worker records, attendance, advances, salaries, and sites have been permanently deleted.",
+    deletedWorkersCount: deletedWorkers.count,
+    deletedSitesCount: deletedSites.count
+  };
+};

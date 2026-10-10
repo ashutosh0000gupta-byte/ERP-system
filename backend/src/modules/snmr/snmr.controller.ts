@@ -297,3 +297,16 @@ export const updateSite = async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const clearAllDemoData = async (req: Request, res: Response) => {
+  try {
+    const password = req.body?.password || req.query?.password;
+    if (password !== 'Password@123') {
+      return res.status(403).json({ error: 'Incorrect admin password.' });
+    }
+    const result = await snmrService.clearAllDemoData();
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
