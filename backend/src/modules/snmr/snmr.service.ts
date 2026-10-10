@@ -31,7 +31,7 @@ export const createWorker = async (data: any) => {
 };
 
 export const importWorkers = async (workers: any[]) => {
-  const results = [];
+  const results: any[] = [];
   for (const w of workers) {
     if (!w.workerId || !w.fullName || !w.siteId) continue;
     
