@@ -826,212 +826,222 @@ export default function Workers() {
 
         {/* Create Modal */}
         {isModalOpen && (
-          <div style={styles.modalOverlay}>
+          <div style={styles.modalOverlay} onClick={(e) => { if (e.target === e.currentTarget) setIsModalOpen(false); }}>
             <div style={styles.modal}>
               <div style={styles.modalHeader}>
-                <h2 style={styles.modalTitle}>Add New Worker</h2>
-                <button style={styles.closeButton} onClick={() => setIsModalOpen(false)}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <HardHat size={20} color="#2563eb" />
+                  </div>
+                  <div>
+                    <h2 style={styles.modalTitle}>Add New Worker</h2>
+                    <p style={{ margin: 0, fontSize: "12px", color: "#64748b" }}>Enter worker details, wage structure, and bank account</p>
+                  </div>
+                </div>
+                <button style={styles.closeButton} onClick={() => setIsModalOpen(false)} title="Close">
                   <X size={20} />
                 </button>
               </div>
               
               <form onSubmit={handleCreateWorker} style={styles.form}>
-                <div style={styles.formRow}>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Worker ID *</label>
-                    <input 
-                      required 
-                      style={styles.input} 
-                      placeholder="e.g. EMP-1001" 
-                      value={formData.workerId}
-                      onChange={e => setFormData({...formData, workerId: e.target.value})}
-                    />
+                <div style={styles.modalBody}>
+                  <div style={styles.formRow}>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>Worker ID *</label>
+                      <input 
+                        required 
+                        style={styles.input} 
+                        placeholder="e.g. SNMR0001" 
+                        value={formData.workerId}
+                        onChange={e => setFormData({...formData, workerId: e.target.value})}
+                      />
+                    </div>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>Full Name *</label>
+                      <input 
+                        required 
+                        style={styles.input} 
+                        placeholder="e.g. Ramesh Kumar" 
+                        value={formData.fullName}
+                        onChange={e => setFormData({...formData, fullName: e.target.value})}
+                      />
+                    </div>
                   </div>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Full Name *</label>
-                    <input 
-                      required 
-                      style={styles.input} 
-                      placeholder="e.g. Ramesh Kumar" 
-                      value={formData.fullName}
-                      onChange={e => setFormData({...formData, fullName: e.target.value})}
-                    />
-                  </div>
-                </div>
 
-                <div style={styles.formRow}>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Phone Number</label>
-                    <input 
-                      style={styles.input} 
-                      placeholder="e.g. 9876543210" 
-                      value={formData.mobileNumber}
-                      onChange={e => setFormData({...formData, mobileNumber: e.target.value})}
-                    />
+                  <div style={styles.formRow}>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>Phone Number</label>
+                      <input 
+                        style={styles.input} 
+                        placeholder="e.g. 9876543210" 
+                        value={formData.mobileNumber}
+                        onChange={e => setFormData({...formData, mobileNumber: e.target.value})}
+                      />
+                    </div>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>Address</label>
+                      <input 
+                        style={styles.input} 
+                        placeholder="e.g. 123 Main St, City" 
+                        value={formData.currentAddress}
+                        onChange={e => setFormData({...formData, currentAddress: e.target.value})}
+                      />
+                    </div>
                   </div>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Address</label>
-                    <input 
-                      style={styles.input} 
-                      placeholder="e.g. 123 Main St, City" 
-                      value={formData.currentAddress}
-                      onChange={e => setFormData({...formData, currentAddress: e.target.value})}
-                    />
+                  
+                  <div style={styles.formRow}>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>Skill / Trade / Role</label>
+                      <input 
+                        list="trade-datalist"
+                        style={styles.input} 
+                        placeholder="e.g. SITE INCHARGE, SUPERVISOR, FITTER" 
+                        value={formData.skillTrade}
+                        onChange={e => setFormData({...formData, skillTrade: e.target.value})}
+                      />
+                      <datalist id="trade-datalist">
+                        <option value="SITE INCHARGE" />
+                        <option value="SUPERVISOR" />
+                        <option value="FITTER" />
+                        <option value="RIGGER" />
+                        <option value="WELDER" />
+                        <option value="HELPER" />
+                        <option value="MASON" />
+                        <option value="ELECTRICIAN" />
+                        <option value="CARPENTER" />
+                        <option value="SAFETY OFFICER" />
+                        <option value="ENGINEER" />
+                        <option value="FOREMAN" />
+                      </datalist>
+                    </div>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>Salary Type</label>
+                      <select 
+                        style={styles.input}
+                        value={formData.salaryType}
+                        onChange={e => setFormData({...formData, salaryType: e.target.value})}
+                      >
+                        <option value="Daily">Daily Wage (Per working day)</option>
+                        <option value="Weekly">Weekly Wage (Per week)</option>
+                        <option value="Monthly">Monthly Salary (Fixed monthly)</option>
+                        <option value="Hourly">Hourly Wage (Per hour)</option>
+                        <option value="Contract">Contract-Based Payment</option>
+                      </select>
+                    </div>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>Wage / Salary Rate (₹) *</label>
+                      <input 
+                        type="number"
+                        step="any"
+                        required
+                        style={styles.input} 
+                        placeholder="e.g. 700 or 18000" 
+                        value={formData.wageRate || formData.dailyWage}
+                        onChange={e => setFormData({...formData, wageRate: e.target.value, dailyWage: e.target.value})}
+                      />
+                    </div>
                   </div>
-                </div>
-                
-                <div style={styles.formRow}>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Skill / Trade / Role</label>
-                    <input 
-                      list="trade-datalist"
-                      style={styles.input} 
-                      placeholder="e.g. SITE INCHARGE, SUPERVISOR, FITTER" 
-                      value={formData.skillTrade}
-                      onChange={e => setFormData({...formData, skillTrade: e.target.value})}
-                    />
-                    <datalist id="trade-datalist">
-                      <option value="SITE INCHARGE" />
-                      <option value="SUPERVISOR" />
-                      <option value="FITTER" />
-                      <option value="RIGGER" />
-                      <option value="WELDER" />
-                      <option value="HELPER" />
-                      <option value="MASON" />
-                      <option value="ELECTRICIAN" />
-                      <option value="CARPENTER" />
-                      <option value="SAFETY OFFICER" />
-                      <option value="ENGINEER" />
-                      <option value="FOREMAN" />
-                    </datalist>
-                  </div>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Salary Type</label>
-                    <select 
-                      style={styles.input}
-                      value={formData.salaryType}
-                      onChange={e => setFormData({...formData, salaryType: e.target.value})}
-                    >
-                      <option value="Daily">Daily Wage (Per working day)</option>
-                      <option value="Weekly">Weekly Wage (Per week)</option>
-                      <option value="Monthly">Monthly Salary (Fixed monthly)</option>
-                      <option value="Hourly">Hourly Wage (Per hour)</option>
-                      <option value="Contract">Contract-Based Payment</option>
-                    </select>
-                  </div>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Wage / Salary Rate (₹) *</label>
-                    <input 
-                      type="number"
-                      step="any"
-                      required
-                      style={styles.input} 
-                      placeholder="e.g. 700 or 18000" 
-                      value={formData.wageRate || formData.dailyWage}
-                      onChange={e => setFormData({...formData, wageRate: e.target.value, dailyWage: e.target.value})}
-                    />
-                  </div>
-                </div>
 
-                <div style={styles.formRow}>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Payment Frequency</label>
-                    <select 
-                      style={styles.input}
-                      value={formData.paymentFrequency}
-                      onChange={e => setFormData({...formData, paymentFrequency: e.target.value})}
-                    >
-                      <option value="Daily">Daily</option>
-                      <option value="Weekly">Weekly (Every week)</option>
-                      <option value="Biweekly">Biweekly (Every 2 weeks)</option>
-                      <option value="Monthly">Monthly (Once a month)</option>
-                      <option value="Custom">Custom Period</option>
-                    </select>
+                  <div style={styles.formRow}>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>Payment Frequency</label>
+                      <select 
+                        style={styles.input}
+                        value={formData.paymentFrequency}
+                        onChange={e => setFormData({...formData, paymentFrequency: e.target.value})}
+                      >
+                        <option value="Daily">Daily</option>
+                        <option value="Weekly">Weekly (Every week)</option>
+                        <option value="Biweekly">Biweekly (Every 2 weeks)</option>
+                        <option value="Monthly">Monthly (Once a month)</option>
+                        <option value="Custom">Custom Period</option>
+                      </select>
+                    </div>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>Overtime Rate (₹/hr)</label>
+                      <input 
+                        type="number"
+                        step="any"
+                        style={styles.input} 
+                        placeholder="Auto if 0" 
+                        value={formData.otRatePerHour}
+                        onChange={e => setFormData({...formData, otRatePerHour: e.target.value})}
+                      />
+                    </div>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>Payment Mode</label>
+                      <select 
+                        style={styles.input}
+                        value={formData.paymentMethod}
+                        onChange={e => setFormData({...formData, paymentMethod: e.target.value})}
+                      >
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Cash">Cash</option>
+                        <option value="UPI">UPI</option>
+                      </select>
+                    </div>
                   </div>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Overtime Rate (₹/hr)</label>
-                    <input 
-                      type="number"
-                      step="any"
-                      style={styles.input} 
-                      placeholder="Auto if 0" 
-                      value={formData.otRatePerHour}
-                      onChange={e => setFormData({...formData, otRatePerHour: e.target.value})}
-                    />
-                  </div>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Payment Mode</label>
-                    <select 
-                      style={styles.input}
-                      value={formData.paymentMethod}
-                      onChange={e => setFormData({...formData, paymentMethod: e.target.value})}
-                    >
-                      <option value="Bank Transfer">Bank Transfer</option>
-                      <option value="Cash">Cash</option>
-                      <option value="UPI">UPI</option>
-                    </select>
-                  </div>
-                </div>
 
-                <div style={styles.formRow}>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Joining Date *</label>
-                    <input 
-                      type="date"
-                      required 
-                      style={styles.input} 
-                      value={formData.joiningDate}
-                      onChange={e => setFormData({...formData, joiningDate: e.target.value})}
-                    />
+                  <div style={styles.formRow}>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>Joining Date *</label>
+                      <input 
+                        type="date"
+                        required 
+                        style={styles.input} 
+                        value={formData.joiningDate}
+                        onChange={e => setFormData({...formData, joiningDate: e.target.value})}
+                      />
+                    </div>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>Assign to Site</label>
+                      <select 
+                        style={styles.input}
+                        value={formData.siteId}
+                        onChange={e => setFormData({...formData, siteId: e.target.value})}
+                      >
+                        <option value="">-- Unassigned --</option>
+                        {sites.map(site => (
+                          <option key={site.id} value={site.id}>{site.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Assign to Site</label>
-                    <select 
-                      style={styles.input}
-                      value={formData.siteId}
-                      onChange={e => setFormData({...formData, siteId: e.target.value})}
-                    >
-                      <option value="">-- Unassigned --</option>
-                      {sites.map(site => (
-                        <option key={site.id} value={site.id}>{site.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
 
-                <div style={styles.formRow}>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Bank Name</label>
-                    <input 
-                      style={styles.input} 
-                      placeholder="e.g. State Bank of India, PNB" 
-                      value={formData.bankName}
-                      onChange={e => setFormData({...formData, bankName: e.target.value})}
-                    />
+                  <div style={styles.formRow}>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>Bank Name</label>
+                      <input 
+                        style={styles.input} 
+                        placeholder="e.g. State Bank of India, PNB" 
+                        value={formData.bankName}
+                        onChange={e => setFormData({...formData, bankName: e.target.value})}
+                      />
+                    </div>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>Bank Account No.</label>
+                      <input 
+                        style={styles.input} 
+                        placeholder="e.g. 1234567890" 
+                        value={formData.bankAccount}
+                        onChange={e => setFormData({...formData, bankAccount: e.target.value})}
+                      />
+                    </div>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>IFSC Code</label>
+                      <input 
+                        style={styles.input} 
+                        placeholder="e.g. SBIN0001234" 
+                        value={formData.ifsc}
+                        onChange={e => setFormData({...formData, ifsc: e.target.value})}
+                      />
+                    </div>
                   </div>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Bank Account No.</label>
-                    <input 
-                      style={styles.input} 
-                      placeholder="e.g. 1234567890" 
-                      value={formData.bankAccount}
-                      onChange={e => setFormData({...formData, bankAccount: e.target.value})}
-                    />
-                  </div>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>IFSC Code</label>
-                    <input 
-                      style={styles.input} 
-                      placeholder="e.g. SBIN0001234" 
-                      value={formData.ifsc}
-                      onChange={e => setFormData({...formData, ifsc: e.target.value})}
-                    />
-                  </div>
-                </div>
 
-                <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px", fontSize: "13px", color: "#64748b", display: "flex", gap: "8px", alignItems: "center" }}>
-                  <UploadCloud size={16} color="#0f766e" />
-                  <span>To upload Aadhaar, PAN, and other documents, please save the worker first and go to their Profile.</span>
+                  <div style={{ padding: "12px 14px", background: "#f8fafc", borderRadius: "10px", border: "1px dashed #cbd5e1", fontSize: "13px", color: "#64748b", display: "flex", gap: "10px", alignItems: "center" }}>
+                    <UploadCloud size={18} color="#0f766e" />
+                    <span>To upload Aadhaar, PAN, and other documents, please save the worker first and go to their Profile.</span>
+                  </div>
                 </div>
 
                 <div style={styles.modalActions}>
@@ -1204,99 +1214,136 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    background: "rgba(15, 23, 42, 0.4)",
-    backdropFilter: "blur(4px)",
+    background: "rgba(15, 23, 42, 0.65)",
+    backdropFilter: "blur(6px)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 1000,
+    zIndex: 1100,
+    padding: "16px",
+    overflowY: "auto",
+    boxSizing: "border-box",
   },
   modal: {
     background: "#fff",
-    borderRadius: "24px",
-    padding: "32px",
+    borderRadius: "20px",
     width: "100%",
-    maxWidth: "600px",
-    boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
+    maxWidth: "760px",
+    maxHeight: "90vh",
+    display: "flex",
+    flexDirection: "column",
+    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)",
     animation: "slideUp 0.3s ease-out forwards",
+    overflow: "hidden",
+    boxSizing: "border-box",
+    margin: "auto",
   },
   modalHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "24px",
+    padding: "18px 24px",
+    borderBottom: "1px solid #e2e8f0",
+    background: "#ffffff",
+    flexShrink: 0,
   },
   modalTitle: {
     margin: 0,
-    fontSize: "22px",
+    fontSize: "20px",
     fontWeight: "700",
     color: "#0f172a",
   },
   closeButton: {
-    background: "none",
+    background: "#f1f5f9",
     border: "none",
-    color: "#94a3b8",
+    color: "#64748b",
     cursor: "pointer",
-    padding: "4px",
+    padding: "6px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: "50%",
-    transition: "background 0.2s ease",
+    borderRadius: "8px",
+    transition: "all 0.2s ease",
   },
   form: {
     display: "flex",
     flexDirection: "column",
-    gap: "20px",
+    flex: 1,
+    minHeight: 0,
+    overflow: "hidden",
+    margin: 0,
+  },
+  modalBody: {
+    flex: 1,
+    overflowY: "auto",
+    padding: "20px 24px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "16px",
   },
   formRow: {
-    display: "flex",
-    gap: "16px",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: "14px",
+    width: "100%",
   },
   inputGroup: {
     display: "flex",
     flexDirection: "column",
-    gap: "8px",
-    flex: 1,
+    gap: "6px",
+    minWidth: 0,
+    width: "100%",
+    boxSizing: "border-box",
   },
   label: {
-    fontSize: "14px",
+    fontSize: "13px",
     fontWeight: "600",
     color: "#334155",
   },
   input: {
-    padding: "14px 16px",
-    borderRadius: "12px",
-    border: "1px solid #e2e8f0",
-    fontSize: "15px",
+    padding: "10px 14px",
+    borderRadius: "10px",
+    border: "1.5px solid #cbd5e1",
+    fontSize: "14px",
     outline: "none",
-    transition: "border-color 0.2s ease",
+    transition: "border-color 0.2s ease, box-shadow 0.2s ease",
     background: "#f8fafc",
     width: "100%",
+    boxSizing: "border-box",
+    minHeight: "42px",
   },
   modalActions: {
     display: "flex",
     justifyContent: "flex-end",
+    alignItems: "center",
     gap: "12px",
-    marginTop: "12px",
+    padding: "16px 24px",
+    borderTop: "1px solid #e2e8f0",
+    background: "#f8fafc",
+    flexShrink: 0,
   },
   cancelButton: {
-    padding: "12px 20px",
-    background: "none",
-    border: "none",
-    color: "#64748b",
+    padding: "10px 20px",
+    background: "#fff",
+    border: "1px solid #cbd5e1",
+    borderRadius: "10px",
+    color: "#475569",
     fontWeight: "600",
+    fontSize: "14px",
     cursor: "pointer",
+    transition: "all 0.2s ease",
   },
   submitButton: {
-    padding: "12px 24px",
+    padding: "10px 24px",
     background: "#2563eb",
     border: "none",
-    borderRadius: "12px",
+    borderRadius: "10px",
     color: "#fff",
     fontWeight: "600",
+    fontSize: "14px",
     cursor: "pointer",
-    boxShadow: "0 4px 12px rgba(37, 99, 235, 0.2)",
+    boxShadow: "0 4px 12px rgba(37, 99, 235, 0.25)",
+    transition: "all 0.2s ease",
   },
   loadingContainer: {
     display: "flex",
