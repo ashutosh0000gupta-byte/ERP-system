@@ -61,7 +61,10 @@ export const importWorkers = async (workers: any[]) => {
       dailyWage: w.dailyWage,
       joiningDate: w.joiningDate,
       status: w.status || "Active",
-      siteId: siteId
+      siteId: siteId,
+      ...(w.bankAccount && { bankAccount: w.bankAccount }),
+      ...(w.ifsc && { ifsc: w.ifsc }),
+      ...(w.pan && { pan: w.pan })
     };
 
     // Check if worker exists

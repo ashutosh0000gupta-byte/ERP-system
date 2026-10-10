@@ -160,6 +160,26 @@ export default function WorkerProfile() {
               <span>Daily Wage: <strong style={{ color: "#0f172a" }}>₹{worker.dailyWage || 0}</strong></span>
             </div>
           </div>
+
+          {/* Bank Details Grid */}
+          <div style={styles.contactGrid}>
+            <div style={styles.contactItem}>
+              <span style={{color: "#64748b", width: "100px"}}>Bank A/C:</span>
+              <strong style={{color: "#0f172a"}}>{worker.bankAccount || "Not Provided"}</strong>
+            </div>
+            <div style={styles.contactItem}>
+              <span style={{color: "#64748b", width: "100px"}}>IFSC Code:</span>
+              <strong style={{color: "#0f172a"}}>{worker.ifsc || "Not Provided"}</strong>
+            </div>
+            <div style={styles.contactItem}>
+              <span style={{color: "#64748b", width: "100px"}}>PAN:</span>
+              <strong style={{color: "#0f172a"}}>{worker.pan || "Not Provided"}</strong>
+            </div>
+            <div style={styles.contactItem}>
+              <span style={{color: "#64748b", width: "100px"}}>Aadhaar:</span>
+              <strong style={{color: "#0f172a"}}>{worker.aadhaar || "Not Provided"}</strong>
+            </div>
+          </div>
         </div>
 
         {/* Quick Stats */}

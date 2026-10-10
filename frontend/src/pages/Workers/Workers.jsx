@@ -96,6 +96,9 @@ export default function Workers() {
           const name = (row["Name"] || row["Full Name"] || row["Worker Name"] || row["name"])?.toString() || "";
           const siteName = (row["Site"] || row["Site Name"] || row["Location"] || row["Project"])?.toString() || "Unassigned";
           const dailyWage = parseFloat(row["Daily Wage"] || row["Wage"] || row["Basic"] || row["Rate"]) || 0;
+          const bankAccount = (row["Bank Account"] || row["Account No"] || row["A/C"] || row["bankAccount"] || row["Account Number"])?.toString() || "";
+          const ifsc = (row["IFSC Code"] || row["IFSC"] || row["ifsc"])?.toString() || "";
+          const pan = (row["PAN"] || row["PAN No"] || row["pan"])?.toString() || "";
           
           if (!workerId || !name) continue;
           
@@ -106,8 +109,11 @@ export default function Workers() {
             workerId,
             fullName: name,
             siteId: siteMatch ? siteMatch.id : null,
-            siteName: siteName, // pass siteName to auto-create
+            siteName: siteName,
             dailyWage,
+            bankAccount,
+            ifsc,
+            pan,
             joiningDate: new Date().toISOString(),
             status: "Active"
           });
@@ -369,6 +375,27 @@ export default function Workers() {
                         <option key={site.id} value={site.id}>{site.name}</option>
                       ))}
                     </select>
+                  </div>
+                </div>
+
+                <div style={styles.formRow}>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>Bank Account No.</label>
+                    <input 
+                      style={styles.input} 
+                      placeholder="e.g. 1234567890" 
+                      value={formData.bankAccount}
+                      onChange={e => setFormData({...formData, bankAccount: e.target.value})}
+                    />
+                  </div>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>IFSC Code</label>
+                    <input 
+                      style={styles.input} 
+                      placeholder="e.g. SBIN0001234" 
+                      value={formData.ifsc}
+                      onChange={e => setFormData({...formData, ifsc: e.target.value})}
+                    />
                   </div>
                 </div>
 
