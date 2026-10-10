@@ -464,3 +464,7 @@ export const deleteWorker = async (id: string) => {
   });
 };
 
+
+export const deleteDocument = async (id: string) => {
+  return prisma.snmrDocument.delete({ where: { id } });
+};

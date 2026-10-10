@@ -179,6 +179,15 @@ export const getSystemUsers = async (req: Request, res: Response) => {
   }
 };
 
+export const deleteDocument = async (req: Request, res: Response) => {
+  try {
+    await snmrService.deleteDocument(req.params.id);
+    res.json({ message: "Document deleted" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 export const createSystemUser = async (req: Request, res: Response) => {
   try {
     const user = await snmrService.createSystemUser(req.body);

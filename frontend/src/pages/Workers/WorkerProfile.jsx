@@ -2,13 +2,17 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import MainLayout from "../../components/layout/MainLayout";
 import api from "../../services/api";
-import { User, Phone, MapPin, Calendar, Clock, CreditCard, ChevronLeft, Building2 } from "lucide-react";
+import { User, Phone, MapPin, Calendar, Clock, CreditCard, ChevronLeft, Building2, FileText, Upload, Trash2 } from "lucide-react";
 
 export default function WorkerProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [worker, setWorker] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [documents, setDocuments] = useState([]);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const fileInputRef = React.useRef(null);
+  const [docType, setDocType] = useState("Aadhaar");
 
   const fetchWorker = () => {
     setLoading(true);
@@ -16,6 +20,11 @@ export default function WorkerProfile() {
       .then(res => setWorker(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
+    
+    // Fetch Documents
+    api.get(`/snmr/documents?entityId=${id}&entityType=Worker`)
+      .then(res => setDocuments(res.data))
+      .catch(console.error);
   };
 
   useEffect(() => {
@@ -71,6 +80,45 @@ export default function WorkerProfile() {
       </MainLayout>
     );
   }
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingDoc(true);
+    // Usually this would go to S3/Cloudinary. Since we don't have it configured, 
+    // we'll just save the file name as a mock URL to demonstrate functionality.
+    try {
+      const payload = {
+        title: file.name,
+        type: docType,
+        url: URL.createObjectURL(file), // Mock URL for demo
+        entityType: "Worker",
+        entityId: id,
+        uploadedBy: "Admin"
+      };
+      
+      const res = await api.post("/snmr/documents", payload);
+      setDocuments([res.data, ...documents]);
+      alert("Document saved!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save document record");
+    } finally {
+      setUploadingDoc(false);
+      e.target.value = null;
+    }
+  };
+
+  const handleDeleteDoc = async (docId) => {
+    if (!window.confirm("Delete this document?")) return;
+    try {
+      await api.delete(`/snmr/documents/${docId}`);
+      setDocuments(documents.filter(d => d.id !== docId));
+    } catch (err) {
+      alert("Failed to delete document");
+    }
+  };
 
   // Aggregate some simple stats
   const totalAdvances = worker.advances.reduce((acc, curr) => acc + Number(curr.amount), 0);
@@ -200,6 +248,45 @@ export default function WorkerProfile() {
           </div>
         </div>
 
+        {/* Documents Section */}
+        <div style={styles.documentsCard}>
+          <div style={styles.docHeader}>
+            <h3 style={styles.listTitle}><FileText size={18} /> Documents & KYC</h3>
+            <div style={{ display: "flex", gap: "10px", paddingRight: "20px" }}>
+              <select style={styles.docSelect} value={docType} onChange={e => setDocType(e.target.value)}>
+                <option value="Aadhaar">Aadhaar Card</option>
+                <option value="PAN">PAN Card</option>
+                <option value="Photo">Passport Photo</option>
+                <option value="Bank Passbook">Bank Passbook</option>
+                <option value="Other">Other</option>
+              </select>
+              <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} />
+              <button style={styles.uploadBtn} onClick={() => fileInputRef.current?.click()} disabled={uploadingDoc}>
+                <Upload size={14} /> {uploadingDoc ? "Uploading..." : "Upload Document"}
+              </button>
+            </div>
+          </div>
+          
+          <div style={{ padding: "20px" }}>
+            {documents.length === 0 ? (
+              <p style={styles.empty}>No documents uploaded yet.</p>
+            ) : (
+              <div style={styles.docGrid}>
+                {documents.map(doc => (
+                  <div key={doc.id} style={styles.docItem}>
+                    <div style={styles.docIcon}><FileText size={24} color="#2563eb" /></div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: "14px", color: "#0f172a" }}>{doc.type}</div>
+                      <div style={{ fontSize: "12px", color: "#64748b" }}>{doc.title}</div>
+                    </div>
+                    <button style={styles.delBtn} onClick={() => handleDeleteDoc(doc.id)}><Trash2 size={16} /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Three Columns: Attendance, Advances, Salaries */}
         <div style={styles.threeColGrid}>
           
@@ -308,6 +395,15 @@ const styles = {
   listContent: { padding: "16px 20px", maxHeight: "400px", overflowY: "auto" },
   empty: { fontSize: "13px", color: "#94a3b8", textAlign: "center", padding: "20px 0" },
   
+  documentsCard: { background: "#fff", borderRadius: "16px", boxShadow: "0 4px 12px rgba(0,0,0,0.02)", border: "1px solid #f1f5f9", marginBottom: "24px" },
+  docHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f1f5f9", background: "#f8fafc", borderRadius: "16px 16px 0 0" },
+  docSelect: { padding: "6px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "13px", outline: "none" },
+  uploadBtn: { display: "flex", alignItems: "center", gap: "6px", background: "#2563eb", color: "#fff", border: "none", padding: "6px 14px", borderRadius: "6px", fontSize: "13px", fontWeight: 600, cursor: "pointer" },
+  docGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "16px" },
+  docItem: { display: "flex", alignItems: "center", gap: "12px", padding: "12px", border: "1px solid #e2e8f0", borderRadius: "8px", background: "#f8fafc" },
+  docIcon: { width: "40px", height: "40px", background: "#e0e7ff", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" },
+  delBtn: { background: "none", border: "none", color: "#ef4444", cursor: "pointer", padding: "4px" },
+
   timeline: { display: "flex", flexDirection: "column", gap: "12px" },
   timelineItem: { display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "12px", borderBottom: "1px dashed #e2e8f0" },
   timelineDate: { fontSize: "13px", fontWeight: 600, color: "#334155" },

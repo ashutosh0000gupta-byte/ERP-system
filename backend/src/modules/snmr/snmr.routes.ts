@@ -20,6 +20,7 @@ import {
   createSiteExpense,
   getDocuments,
   uploadDocument,
+  deleteDocument,
   getSystemUsers,
   createSystemUser,
   importWorkerSalaries,
@@ -68,6 +69,7 @@ router.post("/expenses", createSiteExpense);
 // Documents
 router.get("/documents", getDocuments);
 router.post("/documents", uploadDocument);
+router.delete("/documents/:id", deleteDocument);
 
 // Users
 router.get("/users", getSystemUsers);

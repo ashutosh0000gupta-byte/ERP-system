@@ -21,7 +21,9 @@ export default function Workers() {
     skillTrade: "",
     dailyWage: "",
     joiningDate: new Date().toISOString().split("T")[0],
-    siteId: ""
+    siteId: "",
+    bankAccount: "",
+    ifsc: ""
   });
 
   useEffect(() => {
@@ -52,8 +54,14 @@ export default function Workers() {
         ...formData,
         dailyWage: formData.dailyWage ? parseFloat(formData.dailyWage) : null,
       };
-      // Remove siteId if empty
+      // Format date for Prisma
+      if (payload.joiningDate) {
+        payload.joiningDate = new Date(payload.joiningDate).toISOString();
+      }
+      // Remove empty optional fields
       if (!payload.siteId) delete payload.siteId;
+      if (!payload.bankAccount) delete payload.bankAccount;
+      if (!payload.ifsc) delete payload.ifsc;
 
       const res = await api.post("/snmr/workers", payload);
       
@@ -397,6 +405,11 @@ export default function Workers() {
                       onChange={e => setFormData({...formData, ifsc: e.target.value})}
                     />
                   </div>
+                </div>
+
+                <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px", fontSize: "13px", color: "#64748b", display: "flex", gap: "8px", alignItems: "center" }}>
+                  <UploadCloud size={16} color="#0f766e" />
+                  <span>To upload Aadhaar, PAN, and other documents, please save the worker first and go to their Profile.</span>
                 </div>
 
                 <div style={styles.modalActions}>
