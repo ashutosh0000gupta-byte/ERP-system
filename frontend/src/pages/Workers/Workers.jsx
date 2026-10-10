@@ -110,6 +110,7 @@ export default function Workers() {
             workerId,
             fullName: name,
             siteId: siteMatch ? siteMatch.id : null,
+            siteName: siteName, // pass siteName to auto-create
             dailyWage,
             joiningDate: new Date().toISOString(),
             status: "Active"

@@ -33,17 +33,41 @@ export const createWorker = async (data: any) => {
 export const importWorkers = async (workers: any[]) => {
   const results: any[] = [];
   for (const w of workers) {
-    if (!w.workerId || !w.fullName || !w.siteId) continue;
+    if (!w.workerId || !w.fullName) continue;
+
+    let siteId = w.siteId;
+    if (!siteId && w.siteName) {
+      let site = await prisma.site.findFirst({
+        where: { name: { equals: w.siteName, mode: 'insensitive' } }
+      });
+      if (!site) {
+        site = await prisma.site.create({
+          data: { name: w.siteName, location: w.siteName, status: "Active" }
+        });
+      }
+      siteId = site.id;
+    }
     
+    if (!siteId) continue;
+    
+    const dataToSave = {
+      workerId: w.workerId,
+      fullName: w.fullName,
+      dailyWage: w.dailyWage,
+      joiningDate: w.joiningDate,
+      status: w.status || "Active",
+      siteId: siteId
+    };
+
     // Check if worker exists
     const existing = await prisma.worker.findUnique({ where: { workerId: w.workerId } });
     if (existing) {
       results.push(await prisma.worker.update({
         where: { workerId: w.workerId },
-        data: w
+        data: dataToSave
       }));
     } else {
-      results.push(await prisma.worker.create({ data: w }));
+      results.push(await prisma.worker.create({ data: dataToSave }));
     }
   }
   return results;
