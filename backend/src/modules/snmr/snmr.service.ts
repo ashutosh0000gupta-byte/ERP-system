@@ -64,7 +64,13 @@ export const importWorkers = async (workers: any[]) => {
       siteId: siteId,
       ...(w.bankAccount && { bankAccount: w.bankAccount }),
       ...(w.ifsc && { ifsc: w.ifsc }),
-      ...(w.pan && { pan: w.pan })
+      ...(w.pan && { pan: w.pan }),
+      ...(w.mobileNumber && { mobileNumber: w.mobileNumber }),
+      ...(w.aadhaar && { aadhaar: w.aadhaar }),
+      ...(w.skillTrade && { skillTrade: w.skillTrade }),
+      ...(w.fatherName && { fatherName: w.fatherName }),
+      ...(w.currentAddress && { currentAddress: w.currentAddress }),
+      ...(w.permanentAddress && { permanentAddress: w.permanentAddress })
     };
 
     // Check if worker exists

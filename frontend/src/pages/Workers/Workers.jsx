@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import MainLayout from "../../components/layout/MainLayout";
 import api from "../../services/api";
-import { Users, Search, Plus, X, Briefcase, MapPin, IndianRupee, HardHat, Printer, UploadCloud } from "lucide-react";
+import { Users, Search, Plus, X, Briefcase, MapPin, IndianRupee, HardHat, Printer, UploadCloud, Download } from "lucide-react";
 import * as XLSX from 'xlsx';
 import WorkerIdCard from "../../components/shared/WorkerIdCard";
 
@@ -104,18 +104,23 @@ export default function Workers() {
         
         const parsedWorkers = [];
         for (const row of rows) {
-          const workerId = (row["Worker ID"] || row["ID"] || row["WorkerID"] || row["Emp ID"] || row["id"])?.toString() || "";
-          const name = (row["Name"] || row["Full Name"] || row["Worker Name"] || row["name"])?.toString() || "";
-          const siteName = (row["Site"] || row["Site Name"] || row["Location"] || row["Project"])?.toString() || "Unassigned";
-          const dailyWage = parseFloat(row["Daily Wage"] || row["Wage"] || row["Basic"] || row["Rate"]) || 0;
-          const bankAccount = (row["Bank Account"] || row["Account No"] || row["A/C"] || row["bankAccount"] || row["Account Number"])?.toString() || "";
-          const ifsc = (row["IFSC Code"] || row["IFSC"] || row["ifsc"])?.toString() || "";
-          const pan = (row["PAN"] || row["PAN No"] || row["pan"])?.toString() || "";
+          const workerId = (row["Worker ID"] || row["ID"] || row["WorkerID"] || row["Emp ID"] || row["id"] || row["worker_id"])?.toString()?.trim() || "";
+          const name = (row["Name"] || row["Full Name"] || row["Worker Name"] || row["name"] || row["full_name"])?.toString()?.trim() || "";
+          const siteName = (row["Site"] || row["Site Name"] || row["Location"] || row["Project"] || row["site"])?.toString()?.trim() || "Unassigned";
+          const dailyWage = parseFloat(row["Daily Wage"] || row["Wage"] || row["Basic"] || row["Rate"] || row["daily_wage"] || row["DailyWage"]) || 0;
+          const mobileNumber = (row["Mobile"] || row["Phone"] || row["Mobile Number"] || row["Contact"] || row["Phone Number"] || row["mobile_number"])?.toString()?.trim() || "";
+          const skillTrade = (row["Trade"] || row["Skill"] || row["Skill Trade"] || row["Category"] || row["Role"] || row["skill_trade"])?.toString()?.trim() || "";
+          const fatherName = (row["Father Name"] || row["Father's Name"] || row["Father"] || row["father_name"])?.toString()?.trim() || "";
+          const address = (row["Address"] || row["Current Address"] || row["Permanent Address"] || row["current_address"])?.toString()?.trim() || "";
+          const bankAccount = (row["Bank Account"] || row["Account No"] || row["A/C"] || row["bankAccount"] || row["Account Number"] || row["bank_account"])?.toString()?.trim() || "";
+          const ifsc = (row["IFSC Code"] || row["IFSC"] || row["ifsc"])?.toString()?.trim() || "";
+          const pan = (row["PAN"] || row["PAN No"] || row["pan"] || row["PAN Number"])?.toString()?.trim() || "";
+          const aadhaar = (row["Aadhaar"] || row["Aadhar"] || row["Aadhaar No"] || row["Aadhar No"] || row["UID"] || row["aadhaar"])?.toString()?.trim() || "";
           
           if (!workerId || !name) continue;
           
           // Match site by name
-          const siteMatch = sites.find(s => s.name.toLowerCase() === siteName.toLowerCase());
+          const siteMatch = sites.find(s => s.name?.toLowerCase() === siteName.toLowerCase());
           
           parsedWorkers.push({
             workerId,
@@ -123,16 +128,22 @@ export default function Workers() {
             siteId: siteMatch ? siteMatch.id : null,
             siteName: siteName,
             dailyWage,
+            mobileNumber,
+            skillTrade,
+            fatherName,
+            currentAddress: address,
+            permanentAddress: address,
             bankAccount,
             ifsc,
             pan,
+            aadhaar,
             joiningDate: new Date().toISOString(),
             status: "Active"
           });
         }
         
         if (parsedWorkers.length === 0) {
-          return alert("No valid worker rows found in the uploaded file.");
+          return alert("No valid worker rows found in the uploaded file. Ensure 'Worker ID' and 'Name' columns are present.");
         }
         
         setLoading(true);
@@ -149,6 +160,45 @@ export default function Workers() {
     };
     // Read file as ArrayBuffer for xlsx compatibility
     reader.readAsArrayBuffer(file);
+  };
+
+  const downloadSampleTemplate = () => {
+    const defaultSiteName = sites.length > 0 ? sites[0].name : "Project Site A";
+    const sampleData = [
+      {
+        "Worker ID": "WRK-001",
+        "Name": "Ramesh Kumar",
+        "Site": defaultSiteName,
+        "Daily Wage": 650,
+        "Mobile": "9876543210",
+        "Trade": "Mason",
+        "Father Name": "Suresh Kumar",
+        "Address": "Sector 62, Noida",
+        "Bank Account": "123456789012",
+        "IFSC Code": "SBIN0001234",
+        "PAN": "ABCDE1234F",
+        "Aadhaar": "123456789012"
+      },
+      {
+        "Worker ID": "WRK-002",
+        "Name": "Suresh Yadav",
+        "Site": defaultSiteName,
+        "Daily Wage": 550,
+        "Mobile": "9876543211",
+        "Trade": "Helper",
+        "Father Name": "Ram Yadav",
+        "Address": "Civil Lines, Delhi",
+        "Bank Account": "987654321098",
+        "IFSC Code": "HDFC0001234",
+        "PAN": "XYZPW5678G",
+        "Aadhaar": "987654321098"
+      }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(sampleData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Workers");
+    XLSX.writeFile(wb, "Worker_Import_Sample_Template.xlsx");
   };
 
   useEffect(() => {
@@ -193,6 +243,23 @@ export default function Workers() {
               ref={fileInputRef}
               onChange={handleFileUpload}
             />
+            <button 
+              id="download-template-btn"
+              style={{
+                ...styles.createButton, 
+                background: "#f0fdf4", 
+                color: "#15803d", 
+                border: "1.5px solid #86efac",
+                boxShadow: "0 2px 8px rgba(34, 197, 94, 0.15)",
+                display: "inline-flex",
+                alignItems: "center"
+              }} 
+              onClick={downloadSampleTemplate}
+              title="Download pre-formatted Excel template"
+            >
+              <Download size={18} color="#15803d" />
+              <span>Download Template</span>
+            </button>
             <button style={{...styles.createButton, background: "#fff", color: "#334155", border: "1px solid #cbd5e1"}} onClick={() => fileInputRef.current?.click()}>
               <UploadCloud size={18} />
               <span>Import Excel/CSV</span>
@@ -215,7 +282,23 @@ export default function Workers() {
             <div style={styles.emptyState}>
               <HardHat size={48} color="#cbd5e1" />
               <h3 style={styles.emptyTitle}>No workers found</h3>
-              <p style={styles.emptyDesc}>Add workers to start tracking their attendance and wages.</p>
+              <p style={styles.emptyDesc}>Add workers or import them using Excel to start tracking attendance and wages.</p>
+              <div style={{ display: "flex", gap: "12px", marginTop: "16px", justifyContent: "center" }}>
+                <button 
+                  style={{ ...styles.createButton, background: "#f0fdf4", color: "#15803d", border: "1px solid #86efac" }}
+                  onClick={downloadSampleTemplate}
+                >
+                  <Download size={16} color="#15803d" />
+                  <span>Download Excel Template</span>
+                </button>
+                <button 
+                  style={{ ...styles.createButton, background: "#fff", color: "#334155", border: "1px solid #cbd5e1" }}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <UploadCloud size={16} />
+                  <span>Import Excel</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
@@ -485,8 +568,9 @@ const styles = {
   },
   headerActions: {
     display: "flex",
-    gap: "16px",
+    gap: "12px",
     alignItems: "center",
+    flexWrap: "wrap",
   },
   searchContainer: {
     position: "relative",
