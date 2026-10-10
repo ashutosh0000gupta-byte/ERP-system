@@ -54,6 +54,8 @@ export default function AdminDashboard() {
     totalWorkers: 0,
     activeSites: 0,
     totalAdvance: 0,
+    totalSalaries: 0,
+    totalExpenses: 0,
     presentToday: 0,
     chartData: []
   });
@@ -100,6 +102,20 @@ export default function AdminDashboard() {
             subtitle="Outstanding balance to deduct"
             icon={IndianRupee} 
             color="#ef4444" 
+          />
+          <KpiCard 
+            title="Total Salaries Paid" 
+            value={`₹${Number(stats.totalSalaries || 0).toLocaleString()}`} 
+            subtitle="Cleared wage payments"
+            icon={IndianRupee} 
+            color="#10b981" 
+          />
+          <KpiCard 
+            title="Total Site Expenses" 
+            value={`₹${Number(stats.totalExpenses || 0).toLocaleString()}`} 
+            subtitle="Material & operational costs"
+            icon={TrendingUp} 
+            color="#f59e0b" 
           />
         </div>
 

@@ -334,7 +334,7 @@ export const payWorkerSalary = async (id: string) => {
 };
 
 export const getDashboardStats = async () => {
-  const [totalWorkers, activeSites, pendingAdvances, presentToday, siteWorkers] = await Promise.all([
+  const [totalWorkers, activeSites, pendingAdvances, presentToday, siteWorkers, totalSalaries, totalExpenses] = await Promise.all([
     prisma.worker.count({ where: { status: "Active" } }),
     prisma.site.count({ where: { status: "Active" } }),
     prisma.workerAdvance.aggregate({
@@ -349,19 +349,28 @@ export const getDashboardStats = async () => {
     }),
     prisma.site.findMany({
       include: { _count: { select: { workers: true } } }
+    }),
+    prisma.workerSalary.aggregate({
+      where: { status: "Paid" },
+      _sum: { netAmount: true }
+    }),
+    prisma.siteExpense.aggregate({
+      _sum: { amount: true }
     })
   ]);
 
   const chartData = siteWorkers.map(s => ({
     name: s.name,
     workers: s._count.workers
-  }));
+  })).filter(s => s.workers > 0);
 
   return {
     totalWorkers,
     activeSites,
     totalAdvance: pendingAdvances._sum.amount || 0,
     presentToday,
+    totalSalaries: totalSalaries._sum.netAmount || 0,
+    totalExpenses: totalExpenses._sum.amount || 0,
     chartData
   };
 };
