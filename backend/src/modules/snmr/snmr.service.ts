@@ -115,7 +115,7 @@ export const getWorkerSalaries = async (month?: number, year?: number) => {
   return prisma.workerSalary.findMany({
     where,
     include: {
-      worker: { select: { workerId: true, fullName: true, site: { select: { name: true } } } }
+      worker: { select: { workerId: true, fullName: true, mobileNumber: true, bankAccount: true, ifsc: true, site: { select: { name: true } } } }
     },
     orderBy: [{ year: 'desc' }, { month: 'desc' }]
   });
@@ -231,7 +231,7 @@ export const generateWorkerSalaries = async (month: number, year: number) => {
 };
 
 export const importWorkerSalaries = async (month: number, year: number, updates: any[]) => {
-  const results = [];
+  const results: any[] = [];
   for (const update of updates) {
     if (!update.workerId) continue;
     const worker = await prisma.worker.findUnique({ where: { workerId: update.workerId } });
