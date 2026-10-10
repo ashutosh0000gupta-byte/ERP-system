@@ -59,6 +59,7 @@ import EmptyState from "../../components/shared/EmptyState";
 import { useAuth } from "../../context/AuthContext";
 import {
   getEmployee,
+  updateEmployee,
   uploadEmployeeAvatar,
   removeEmployeeAvatar,
   getEmployeeDocuments,
@@ -138,6 +139,9 @@ export default function EmployeeProfile() {
   const avatarInputRef = useRef(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editData, setEditData] = useState({});
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Document states & filters
   const [docCategoryFilter, setDocCategoryFilter] = useState("ALL");
@@ -260,6 +264,35 @@ export default function EmployeeProfile() {
   };
 
   // Handle Avatar Remove
+  
+  const openEditModal = () => {
+    setEditData({
+      firstName: employee.firstName || "",
+      lastName: employee.lastName || "",
+      phone: employee.personalMobile || "",
+      currentAddress: employee.address || "",
+      panNumber: employee.panNumber || "",
+      bankAccountNumber: employee.bankAccountNumber || "",
+      bankIfsc: employee.bankIfsc || "",
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setIsUpdating(true);
+    try {
+      const res = await updateEmployee(employee.id, editData);
+      setEmployee(res.data || res);
+      setIsEditModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update profile details");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleAvatarRemove = async () => {
     if (!window.confirm("Are you sure you want to remove the profile picture?")) return;
     setUploadingAvatar(true);
