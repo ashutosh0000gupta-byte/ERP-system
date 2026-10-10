@@ -28,7 +28,9 @@ import {
   createSystemUser,
   importWorkerSalaries,
   notifyWorkerSalaries,
-  importWorkers
+  importWorkers,
+  recordWorkerPayment,
+  getWorkerLedger
 } from "./snmr.controller";
 
 const router = Router();
@@ -49,6 +51,7 @@ router.get("/workers", getWorkers);
 router.post("/workers", createWorker);
 router.post("/workers/import", importWorkers);
 router.get("/workers/:id", getWorkerById);
+router.get("/workers/:id/ledger", getWorkerLedger);
 router.put("/workers/:id/status", updateWorkerStatus);
 router.put("/workers/:id", updateWorker);
 router.delete("/workers/:id", deleteWorker);
@@ -64,6 +67,7 @@ router.post("/advances", createWorkerAdvance);
 // Salary
 router.get("/salaries", getWorkerSalaries);
 router.post("/salaries/generate", generateWorkerSalaries);
+router.post("/salaries/payment", recordWorkerPayment);
 router.post("/salaries/:id/pay", payWorkerSalary);
 router.post("/salaries/import", importWorkerSalaries);
 router.post("/salaries/notify", notifyWorkerSalaries);

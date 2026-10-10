@@ -22,7 +22,13 @@ export default function Workers() {
     workerId: "",
     fullName: "",
     skillTrade: "",
+    salaryType: "Daily",
     dailyWage: "",
+    wageRate: "",
+    paymentFrequency: "Monthly",
+    otRatePerHour: "",
+    paymentMethod: "Bank Transfer",
+    paymentDay: "",
     joiningDate: new Date().toISOString().split("T")[0],
     siteId: "",
     bankName: "",
@@ -57,10 +63,17 @@ export default function Workers() {
     setIsSubmitting(true);
     try {
       const isStaff = /supervisor|incharge|in-charge|engineer|foreman/i.test(formData.skillTrade || "");
+      const rateVal = formData.wageRate ? parseFloat(formData.wageRate) : (formData.dailyWage ? parseFloat(formData.dailyWage) : 0);
       const payload = {
         ...formData,
         category: isStaff ? "Supervisor" : "Worker",
-        dailyWage: formData.dailyWage ? parseFloat(formData.dailyWage) : null,
+        dailyWage: rateVal,
+        wageRate: rateVal,
+        salaryType: formData.salaryType || "Daily",
+        paymentFrequency: formData.paymentFrequency || "Monthly",
+        paymentMethod: formData.paymentMethod || "Bank Transfer",
+        paymentDay: formData.paymentDay || null,
+        otRatePerHour: formData.otRatePerHour ? parseFloat(formData.otRatePerHour) : 0
       };
       // Format date for Prisma
       if (payload.joiningDate) {
@@ -88,7 +101,13 @@ export default function Workers() {
         workerId: "",
         fullName: "",
         skillTrade: "",
+        salaryType: "Daily",
         dailyWage: "",
+        wageRate: "",
+        paymentFrequency: "Monthly",
+        otRatePerHour: "",
+        paymentMethod: "Bank Transfer",
+        paymentDay: "",
         joiningDate: new Date().toISOString().split("T")[0],
         siteId: "",
         bankName: "",
@@ -136,6 +155,11 @@ export default function Workers() {
           const pan = (row["PAN"] || row["PAN No"] || row["pan"] || row["PAN Number"])?.toString()?.trim() || "";
           const aadhaar = (row["Aadhaar"] || row["Aadhar"] || row["Aadhaar No"] || row["Aadhar No"] || row["UID"] || row["aadhaar"])?.toString()?.trim() || "";
           
+          const salaryType = (row["Salary Type"] || row["SalaryType"] || row["Wage Type"] || "Daily").toString().trim();
+          const paymentFrequency = (row["Pay Frequency"] || row["Payment Frequency"] || row["Frequency"] || "Monthly").toString().trim();
+          const paymentMethod = (row["Payment Mode"] || row["Payment Method"] || "Bank Transfer").toString().trim();
+          const otRatePerHour = parseFloat(row["OT Rate"] || row["Overtime Rate"] || 0) || 0;
+          
           if (!workerId || !name) continue;
           
           const isStaff = /supervisor|incharge|in-charge|engineer|foreman/i.test(skillTrade);
@@ -148,6 +172,11 @@ export default function Workers() {
             siteId: siteMatch ? siteMatch.id : null,
             siteName: siteName,
             dailyWage,
+            wageRate: dailyWage,
+            salaryType,
+            paymentFrequency,
+            paymentMethod,
+            otRatePerHour,
             mobileNumber,
             skillTrade,
             category: isStaff ? "Supervisor" : "Worker",
@@ -192,6 +221,10 @@ export default function Workers() {
         "Name": "ANIL SHARMA",
         "Site": defaultSiteName,
         "Daily Wage": 1200,
+        "Salary Type": "Daily",
+        "Pay Frequency": "Weekly",
+        "Payment Mode": "Bank Transfer",
+        "OT Rate": 150,
         "Mobile": "9876543210",
         "Trade": "SITE INCHARGE",
         "Father Name": "NA",
@@ -763,14 +796,70 @@ export default function Workers() {
                     </datalist>
                   </div>
                   <div style={styles.inputGroup}>
-                    <label style={styles.label}>Daily Wage (₹)</label>
+                    <label style={styles.label}>Salary Type</label>
+                    <select 
+                      style={styles.input}
+                      value={formData.salaryType}
+                      onChange={e => setFormData({...formData, salaryType: e.target.value})}
+                    >
+                      <option value="Daily">Daily Wage (Per working day)</option>
+                      <option value="Weekly">Weekly Wage (Per week)</option>
+                      <option value="Monthly">Monthly Salary (Fixed monthly)</option>
+                      <option value="Hourly">Hourly Wage (Per hour)</option>
+                      <option value="Contract">Contract-Based Payment</option>
+                    </select>
+                  </div>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>Wage / Salary Rate (₹) *</label>
                     <input 
                       type="number"
+                      step="any"
+                      required
                       style={styles.input} 
-                      placeholder="e.g. 800" 
-                      value={formData.dailyWage}
-                      onChange={e => setFormData({...formData, dailyWage: e.target.value})}
+                      placeholder="e.g. 700 or 18000" 
+                      value={formData.wageRate || formData.dailyWage}
+                      onChange={e => setFormData({...formData, wageRate: e.target.value, dailyWage: e.target.value})}
                     />
+                  </div>
+                </div>
+
+                <div style={styles.formRow}>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>Payment Frequency</label>
+                    <select 
+                      style={styles.input}
+                      value={formData.paymentFrequency}
+                      onChange={e => setFormData({...formData, paymentFrequency: e.target.value})}
+                    >
+                      <option value="Daily">Daily</option>
+                      <option value="Weekly">Weekly (Every week)</option>
+                      <option value="Biweekly">Biweekly (Every 2 weeks)</option>
+                      <option value="Monthly">Monthly (Once a month)</option>
+                      <option value="Custom">Custom Period</option>
+                    </select>
+                  </div>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>Overtime Rate (₹/hr)</label>
+                    <input 
+                      type="number"
+                      step="any"
+                      style={styles.input} 
+                      placeholder="Auto if 0" 
+                      value={formData.otRatePerHour}
+                      onChange={e => setFormData({...formData, otRatePerHour: e.target.value})}
+                    />
+                  </div>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>Payment Mode</label>
+                    <select 
+                      style={styles.input}
+                      value={formData.paymentMethod}
+                      onChange={e => setFormData({...formData, paymentMethod: e.target.value})}
+                    >
+                      <option value="Bank Transfer">Bank Transfer</option>
+                      <option value="Cash">Cash</option>
+                      <option value="UPI">UPI</option>
+                    </select>
                   </div>
                 </div>
 

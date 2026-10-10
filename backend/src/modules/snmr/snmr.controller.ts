@@ -86,10 +86,7 @@ export const createWorkerAdvance = async (req: Request, res: Response) => {
 
 export const getWorkerSalaries = async (req: Request, res: Response) => {
   try {
-    const salaries = await snmrService.getWorkerSalaries(
-      req.query.month ? parseInt(req.query.month as string) : undefined,
-      req.query.year ? parseInt(req.query.year as string) : undefined
-    );
+    const salaries = await snmrService.getWorkerSalaries(req.query as any);
     res.json(salaries);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -98,8 +95,7 @@ export const getWorkerSalaries = async (req: Request, res: Response) => {
 
 export const generateWorkerSalaries = async (req: Request, res: Response) => {
   try {
-    const { month, year } = req.body;
-    const salaries = await snmrService.generateWorkerSalaries(month, year);
+    const salaries = await snmrService.generateWorkerSalaries(req.body);
     res.json(salaries);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -108,8 +104,31 @@ export const generateWorkerSalaries = async (req: Request, res: Response) => {
 
 export const payWorkerSalary = async (req: Request, res: Response) => {
   try {
-    const salary = await snmrService.payWorkerSalary(req.params.id);
+    const userEmail = (req as any).user?.email || "Admin";
+    const salary = await snmrService.payWorkerSalary(req.params.id, req.body.paymentMode, userEmail);
     res.json(salary);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const recordWorkerPayment = async (req: Request, res: Response) => {
+  try {
+    const userEmail = (req as any).user?.email || "Admin";
+    const payment = await snmrService.recordWorkerPayment({
+      ...req.body,
+      recordedBy: userEmail
+    });
+    res.status(201).json(payment);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getWorkerLedger = async (req: Request, res: Response) => {
+  try {
+    const ledger = await snmrService.getWorkerLedger(req.params.id);
+    res.json(ledger);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

@@ -2406,10 +2406,17 @@ model Worker {
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
+  salaryType       String    @default("Daily") @map("salary_type") @db.VarChar(30) // Daily, Weekly, Monthly, Hourly, Contract
+  wageRate         Decimal?  @default(0) @map("wage_rate") @db.Decimal(10, 2)
+  paymentFrequency String    @default("Monthly") @map("payment_frequency") @db.VarChar(30) // Daily, Weekly, Biweekly, Monthly, Custom
+  paymentMethod    String?   @default("Bank Transfer") @map("payment_method") @db.VarChar(50) // Cash, Bank Transfer, UPI
+  paymentDay       String?   @map("payment_day") @db.VarChar(50)
+
   site             Site?     @relation(fields: [siteId], references: [id], onDelete: SetNull)
   attendances      WorkerAttendance[]
   advances         WorkerAdvance[]
   salaries         WorkerSalary[]
+  payments         WorkerPayment[]
 
   @@index([status])
   @@index([siteId])
@@ -2459,31 +2466,61 @@ model WorkerAdvance {
 }
 
 model WorkerSalary {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workerId       String   @map("worker_id") @db.Uuid
-  month          Int
-  year           Int
-  totalDays      Int      @map("total_days")
-  presentDays    Decimal  @map("present_days") @db.Decimal(5, 2) // can be 20.5 for half days
-  dailyWage      Decimal  @map("daily_wage") @db.Decimal(10, 2)
-  grossAmount    Decimal  @map("gross_amount") @db.Decimal(10, 2)
-  advanceDeducted Decimal @default(0) @map("advance_deducted") @db.Decimal(10, 2)
-  otHours        Decimal  @default(0) @map("ot_hours") @db.Decimal(10, 2)
-  otAmount       Decimal  @default(0) @map("ot_amount") @db.Decimal(10, 2)
-  pfDeducted     Decimal  @default(0) @map("pf_deducted") @db.Decimal(10, 2)
-  esicDeducted   Decimal  @default(0) @map("esic_deducted") @db.Decimal(10, 2)
-  netAmount      Decimal  @map("net_amount") @db.Decimal(10, 2)
-  paymentMode    String?  @map("payment_mode") @db.VarChar(50)
-  status         String   @default("Pending") @db.VarChar(30) // Pending, Paid
-  paidAt         DateTime? @map("paid_at") @db.Timestamp(6)
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workerId        String    @map("worker_id") @db.Uuid
+  month           Int?
+  year            Int?
+  startDate       DateTime? @map("start_date") @db.Date
+  endDate         DateTime? @map("end_date") @db.Date
+  periodType      String    @default("Monthly") @map("period_type") @db.VarChar(30) // Daily, Weekly, Biweekly, Monthly, Custom
+  salaryType      String    @default("Daily") @map("salary_type") @db.VarChar(30)
+  totalDays       Int       @default(0) @map("total_days")
+  presentDays     Decimal   @default(0) @map("present_days") @db.Decimal(5, 2) // can be 20.5 for half days
+  dailyWage       Decimal   @default(0) @map("daily_wage") @db.Decimal(10, 2)
+  rateApplied     Decimal?  @map("rate_applied") @db.Decimal(10, 2)
+  grossAmount     Decimal   @default(0) @map("gross_amount") @db.Decimal(10, 2)
+  advanceDeducted Decimal   @default(0) @map("advance_deducted") @db.Decimal(10, 2)
+  otHours         Decimal   @default(0) @map("ot_hours") @db.Decimal(10, 2)
+  otAmount        Decimal   @default(0) @map("ot_amount") @db.Decimal(10, 2)
+  pfDeducted      Decimal   @default(0) @map("pf_deducted") @db.Decimal(10, 2)
+  esicDeducted    Decimal   @default(0) @map("esic_deducted") @db.Decimal(10, 2)
+  otherDeductions Decimal   @default(0) @map("other_deductions") @db.Decimal(10, 2)
+  netAmount       Decimal   @default(0) @map("net_amount") @db.Decimal(10, 2)
+  paidAmount      Decimal   @default(0) @map("paid_amount") @db.Decimal(10, 2)
+  balanceAmount   Decimal   @default(0) @map("balance_amount") @db.Decimal(10, 2)
+  paymentMode     String?   @map("payment_mode") @db.VarChar(50)
+  status          String    @default("Pending") @db.VarChar(30) // Pending, Partial, Paid
+  paidAt          DateTime? @map("paid_at") @db.Timestamp(6)
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  worker         Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  worker          Worker    @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  payments        WorkerPayment[]
 
-  @@unique([workerId, month, year])
   @@index([workerId])
+  @@index([status])
   @@map("worker_salaries")
+}
+
+model WorkerPayment {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salaryId    String?   @map("salary_id") @db.Uuid
+  workerId    String    @map("worker_id") @db.Uuid
+  amount      Decimal   @db.Decimal(10, 2)
+  paymentDate DateTime  @default(now()) @map("payment_date") @db.Date
+  paymentMode String    @default("Cash") @map("payment_mode") @db.VarChar(50) // Cash, Bank Transfer, UPI
+  referenceNo String?   @map("reference_no") @db.VarChar(100)
+  notes       String?   @db.Text
+  recordedBy  String?   @map("recorded_by") @db.VarChar(100)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  salary      WorkerSalary? @relation(fields: [salaryId], references: [id], onDelete: SetNull)
+  worker      Worker        @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@index([workerId])
+  @@index([salaryId])
+  @@map("worker_payments")
 }
 
 model SiteExpense {
