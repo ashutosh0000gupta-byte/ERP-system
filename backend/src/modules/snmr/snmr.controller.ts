@@ -256,3 +256,12 @@ export const updateWorker = async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const deleteSite = async (req: Request, res: Response) => {
+  try {
+    await snmrService.deleteSite(req.params.id);
+    res.json({ message: "Site deleted" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};

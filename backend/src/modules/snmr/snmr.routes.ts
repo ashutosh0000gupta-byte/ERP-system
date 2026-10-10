@@ -3,6 +3,7 @@ import { authenticate } from "../../middlewares/auth";
 import {
   getSites,
   createSite,
+  deleteSite,
   getWorkers,
   createWorker,
   getWorkerAttendance,
@@ -39,6 +40,7 @@ router.get("/dashboard", getDashboardStats);
 // Sites
 router.get("/sites", getSites);
 router.post("/sites", createSite);
+router.delete("/sites/:id", deleteSite);
 
 // Workers
 router.get("/workers", getWorkers);

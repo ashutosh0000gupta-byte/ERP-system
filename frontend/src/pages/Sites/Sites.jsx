@@ -10,6 +10,7 @@ export default function Sites() {
   const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({ name: "", location: "", client: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [viewSite, setViewSite] = useState(null);
 
   useEffect(() => {
     fetchSites();
@@ -40,6 +41,16 @@ export default function Sites() {
       alert("Failed to create site");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteSite = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this site? All related workers might be affected.")) return;
+    try {
+      await api.delete(`/snmr/sites/${id}`);
+      setSites(sites.filter(s => s.id !== id));
+    } catch (err) {
+      alert("Failed to delete site");
     }
   };
 
@@ -118,10 +129,32 @@ export default function Sites() {
                 </div>
 
                 <div style={styles.cardFooter}>
-                  <button style={styles.viewButton}>View Details</button>
+                  <button style={styles.viewButton} onClick={() => setViewSite(site)}>View Details</button>
+                  <button style={{...styles.viewButton, background: "#fee2e2", color: "#991b1b", marginLeft: "10px"}} onClick={() => handleDeleteSite(site.id)}>Delete</button>
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* View Modal */}
+        {viewSite && (
+          <div style={styles.modalOverlay}>
+            <div style={styles.modal}>
+              <div style={styles.modalHeader}>
+                <h2 style={styles.modalTitle}>Site Details</h2>
+                <button style={styles.closeButton} onClick={() => setViewSite(null)}>
+                  <X size={20} />
+                </button>
+              </div>
+              <div style={{ padding: "24px" }}>
+                <p><strong>Site ID:</strong> {viewSite.siteId}</p>
+                <p><strong>Name:</strong> {viewSite.name}</p>
+                <p><strong>Location:</strong> {viewSite.location}</p>
+                <p><strong>Client:</strong> {viewSite.client || "Not Specified"}</p>
+                <p><strong>Status:</strong> {viewSite.status || "Active"}</p>
+              </div>
+            </div>
           </div>
         )}
 
