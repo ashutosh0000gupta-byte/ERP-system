@@ -11,7 +11,9 @@ export default function Salary() {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isNotifying, setIsNotifying] = useState(false);
   const [printSalary, setPrintSalary] = useState(null);
+  const fileInputRef = React.useRef(null);
 
   useEffect(() => {
     fetchSalaries();
@@ -69,19 +71,33 @@ export default function Salary() {
     }
 
     // Prepare CSV header
-    const headers = ["Worker ID", "Name", "Site", "Present Days", "Total Days", "Daily Wage", "Gross Amount", "Advance Deducted", "Net Payable", "Status"];
+    const headers = [
+      "Worker ID", "Name", "Site", "Month", "Year", 
+      "Present Days", "Total Days", "Daily Wage", "OT Hours", "OT Amount",
+      "Gross Amount", "Advance Deducted", "PF Deducted", "ESIC Deducted", 
+      "Net Payable", "Bank Account", "IFSC", "Payment Mode", "Status"
+    ];
     
     // Prepare CSV rows
     const rows = salaries.map(s => [
       s.worker?.workerId || "N/A",
       `"${s.worker?.fullName || "Unknown"}"`,
       `"${s.worker?.site?.name || "Unassigned"}"`,
+      s.month,
+      s.year,
       s.presentDays,
       s.totalDays,
       s.dailyWage,
+      s.otHours || 0,
+      s.otAmount || 0,
       s.grossAmount,
       s.advanceDeducted,
+      s.pfDeducted || 0,
+      s.esicDeducted || 0,
       s.netAmount,
+      `"${s.worker?.bankAccount || "N/A"}"`,
+      `"${s.worker?.ifsc || "N/A"}"`,
+      s.paymentMode || "Bank Transfer",
       s.status
     ]);
 
@@ -95,6 +111,54 @@ export default function Salary() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleNotify = async () => {
+    if (!window.confirm(`Send WhatsApp/SMS notifications to all workers for ${month}/${year}?`)) return;
+    setIsNotifying(true);
+    try {
+      const res = await api.post("/snmr/salaries/notify", { month, year });
+      alert(res.data.message);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to send notifications.");
+    } finally {
+      setIsNotifying(false);
+    }
+  };
+
+  const handleImportCSV = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const text = evt.target.result;
+      const lines = text.split("\\n");
+      const updates = [];
+      // Assuming headers are on line 0, data starts from line 1
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const parts = line.split(","); // Simplified CSV parsing
+        const workerId = parts[0];
+        // Assuming status is the last column (index 18 based on our export)
+        const status = parts[18] ? parts[18].trim() : "Paid";
+        updates.push({ workerId, status });
+      }
+
+      try {
+        await api.post("/snmr/salaries/import", { month, year, updates });
+        alert("Salaries successfully updated from Excel/CSV.");
+        fetchSalaries();
+      } catch (err) {
+        console.error(err);
+        alert("Failed to import CSV.");
+      }
+      // Reset input
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    reader.readAsText(file);
   };
 
   return (
@@ -125,7 +189,14 @@ export default function Salary() {
               <Play size={16} /> {isGenerating ? "Generating..." : "Generate Payroll"}
             </button>
             <button style={styles.exportBtn} onClick={handleExportCSV} disabled={salaries.length === 0}>
-              <Download size={16} /> Export CSV
+              <Download size={16} /> Export Excel
+            </button>
+            <input type="file" accept=".csv" style={{ display: 'none' }} ref={fileInputRef} onChange={handleImportCSV} />
+            <button style={styles.exportBtn} onClick={() => fileInputRef.current.click()}>
+              Import Excel
+            </button>
+            <button style={{...styles.exportBtn, background: "#f0fdf4", color: "#166534", borderColor: "#bbf7d0"}} onClick={handleNotify} disabled={isNotifying || salaries.length === 0}>
+              {isNotifying ? "Sending..." : "Notify via SMS"}
             </button>
           </div>
         </div>
@@ -149,8 +220,9 @@ export default function Salary() {
                   <th style={styles.th}>Worker</th>
                   <th style={styles.th}>Days (Pr/Tot)</th>
                   <th style={styles.th}>Wage/Day</th>
+                  <th style={styles.th}>OT Pay</th>
                   <th style={styles.th}>Gross Amt</th>
-                  <th style={styles.th}>Adv. Deducted</th>
+                  <th style={styles.th}>Deductions (Adv+PF)</th>
                   <th style={styles.th}>Net Payable</th>
                   <th style={styles.th}>Status</th>
                   <th style={styles.th}>Action</th>
@@ -172,8 +244,13 @@ export default function Salary() {
                       <span style={{ fontWeight: 600 }}>{s.presentDays}</span> / {s.totalDays}
                     </td>
                     <td style={styles.td}>₹{s.dailyWage}</td>
+                    <td style={styles.td}>₹{s.otAmount || 0}</td>
                     <td style={styles.td}>₹{s.grossAmount}</td>
-                    <td style={styles.td}><span style={{ color: "#e11d48" }}>-₹{s.advanceDeducted}</span></td>
+                    <td style={styles.td}>
+                      <span style={{ color: "#e11d48" }}>
+                        -₹{Number(s.advanceDeducted) + Number(s.pfDeducted || 0) + Number(s.esicDeducted || 0)}
+                      </span>
+                    </td>
                     <td style={styles.td}>
                       <span style={{ fontWeight: 700, fontSize: "15px", color: "#0f766e" }}>₹{s.netAmount}</span>
                     </td>

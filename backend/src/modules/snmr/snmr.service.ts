@@ -136,7 +136,7 @@ export const generateWorkerSalaries = async (month: number, year: number) => {
   for (const worker of workers) {
     if (!worker.dailyWage) continue;
 
-    // 1. Calculate present days
+    // 1. Calculate present days and OT
     const attendances = await prisma.workerAttendance.findMany({
       where: {
         workerId: worker.id,
@@ -145,10 +145,15 @@ export const generateWorkerSalaries = async (month: number, year: number) => {
     });
 
     let presentDays = 0;
+    let otHoursTotal = 0;
     for (const a of attendances) {
       if (a.status === "Present") presentDays += 1;
       else if (a.status === "Half Day") presentDays += 0.5;
+      otHoursTotal += Number(a.otHours || 0);
     }
+
+    const otRate = Number(worker.otRatePerHour || 0);
+    const otAmount = otHoursTotal * otRate;
 
     // 2. Sum up undeducted advances for this worker
     const advances = await prisma.workerAdvance.findMany({
@@ -163,10 +168,13 @@ export const generateWorkerSalaries = async (month: number, year: number) => {
       advanceDeducted += Number(adv.amount);
     }
 
-    // 3. Calculate salary
-    const grossAmount = presentDays * Number(worker.dailyWage);
-    let netAmount = grossAmount - advanceDeducted;
-    if (netAmount < 0) netAmount = 0; // Prevent negative salary, though technically advance carried over
+    // 3. Calculate salary and deductions
+    const pfDeducted = 0; // Configurable statutory deduction
+    const esicDeducted = 0;
+
+    const grossAmount = (presentDays * Number(worker.dailyWage)) + otAmount;
+    let netAmount = grossAmount - advanceDeducted - pfDeducted - esicDeducted;
+    if (netAmount < 0) netAmount = 0; // Prevent negative salary
 
     // 4. Create or update Salary record
     const salary = await prisma.workerSalary.upsert({
@@ -181,9 +189,14 @@ export const generateWorkerSalaries = async (month: number, year: number) => {
         totalDays: attendances.length,
         presentDays,
         dailyWage: worker.dailyWage,
+        otHours: otHoursTotal,
+        otAmount,
         grossAmount,
         advanceDeducted,
-        netAmount
+        pfDeducted,
+        esicDeducted,
+        netAmount,
+        paymentMode: "Bank Transfer"
       },
       create: {
         workerId: worker.id,
@@ -192,9 +205,14 @@ export const generateWorkerSalaries = async (month: number, year: number) => {
         totalDays: attendances.length,
         presentDays,
         dailyWage: worker.dailyWage,
+        otHours: otHoursTotal,
+        otAmount,
         grossAmount,
         advanceDeducted,
-        netAmount
+        pfDeducted,
+        esicDeducted,
+        netAmount,
+        paymentMode: "Bank Transfer"
       }
     });
 
@@ -210,6 +228,44 @@ export const generateWorkerSalaries = async (month: number, year: number) => {
   }
 
   return salaries;
+};
+
+export const importWorkerSalaries = async (month: number, year: number, updates: any[]) => {
+  const results = [];
+  for (const update of updates) {
+    if (!update.workerId) continue;
+    const worker = await prisma.worker.findUnique({ where: { workerId: update.workerId } });
+    if (!worker) continue;
+
+    const salary = await prisma.workerSalary.update({
+      where: {
+        workerId_month_year: {
+          workerId: worker.id,
+          month,
+          year
+        }
+      },
+      data: {
+        status: update.status || "Paid",
+        paidAt: update.status === "Paid" ? new Date() : null,
+      }
+    });
+    results.push(salary);
+  }
+  return results;
+};
+
+export const notifyWorkerSalaries = async (month: number, year: number) => {
+  // Mock SMS/WhatsApp notification logic
+  const salaries = await getWorkerSalaries(month, year);
+  let notifiedCount = 0;
+  for (const s of salaries) {
+    if (s.worker?.mobileNumber) {
+      console.log(`[MOCK WHATSAPP] Sent to ${s.worker.mobileNumber}: Your salary for ${month}/${year} is Rs. ${s.netAmount}`);
+      notifiedCount++;
+    }
+  }
+  return { message: `Notified ${notifiedCount} workers via SMS/WhatsApp.` };
 };
 
 export const payWorkerSalary = async (id: string) => {

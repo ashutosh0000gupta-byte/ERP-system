@@ -210,3 +210,23 @@ export const deleteWorker = async (req: Request, res: Response) => {
   }
 };
 
+export const importWorkerSalaries = async (req: Request, res: Response) => {
+  try {
+    const { month, year, updates } = req.body;
+    const results = await snmrService.importWorkerSalaries(month, year, updates);
+    res.json(results);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const notifyWorkerSalaries = async (req: Request, res: Response) => {
+  try {
+    const { month, year } = req.body;
+    const result = await snmrService.notifyWorkerSalaries(month, year);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+

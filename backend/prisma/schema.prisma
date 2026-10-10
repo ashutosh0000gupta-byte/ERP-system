@@ -2466,7 +2466,12 @@ model WorkerSalary {
   dailyWage      Decimal  @map("daily_wage") @db.Decimal(10, 2)
   grossAmount    Decimal  @map("gross_amount") @db.Decimal(10, 2)
   advanceDeducted Decimal @default(0) @map("advance_deducted") @db.Decimal(10, 2)
+  otHours        Decimal  @default(0) @map("ot_hours") @db.Decimal(10, 2)
+  otAmount       Decimal  @default(0) @map("ot_amount") @db.Decimal(10, 2)
+  pfDeducted     Decimal  @default(0) @map("pf_deducted") @db.Decimal(10, 2)
+  esicDeducted   Decimal  @default(0) @map("esic_deducted") @db.Decimal(10, 2)
   netAmount      Decimal  @map("net_amount") @db.Decimal(10, 2)
+  paymentMode    String?  @map("payment_mode") @db.VarChar(50)
   status         String   @default("Pending") @db.VarChar(30) // Pending, Paid
   paidAt         DateTime? @map("paid_at") @db.Timestamp(6)
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
