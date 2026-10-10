@@ -490,67 +490,8 @@ async function main() {
     }
   }
 
-    // -- SNMR FAB: Site & Worker Seeding -------------------------------------
-  
-  const empPKByCode = empByCode;
-  
-  const site1 = await prisma.site.create({
-    data: {
-      siteId: "SITE-001",
-      name: "HCCB Khurda",
-      client: "HCCB",
-      location: "Khurda, Odisha",
-      status: "Active",
-      supervisorId: empPKByCode.get("EMP001") ?? null,
-    }
-  });
-
-  const site2 = await prisma.site.create({
-    data: {
-      siteId: "SITE-002",
-      name: "Jalpaiguri Workshop",
-      client: "Internal",
-      location: "Jalpaiguri, West Bengal",
-      status: "Active",
-      supervisorId: empPKByCode.get("EMP002") ?? null,
-    }
-  });
-
-  const site3 = await prisma.site.create({
-    data: {
-      siteId: "SITE-003",
-      name: "Siliguri Site",
-      client: "Siliguri Corp",
-      location: "Siliguri",
-      status: "Active"
-    }
-  });
-
-  const workers = [
-    { id: "SNMR-001", name: "Ramesh Kumar", skill: "Fitter", rate: 800, siteId: site1.id },
-    { id: "SNMR-002", name: "Suresh Yadav", skill: "Welder", rate: 850, siteId: site1.id },
-    { id: "SNMR-003", name: "Mohan Singh", skill: "Helper", rate: 650, siteId: site3.id },
-    { id: "SNMR-004", name: "Rajesh Das", skill: "Fabricator", rate: 800, siteId: site2.id },
-    { id: "SNMR-005", name: "Imran Ali", skill: "Helper", rate: 600, siteId: site1.id },
-  ];
-
-  for (const w of workers) {
-    await prisma.worker.create({
-      data: {
-        workerId: w.id,
-        fullName: w.name,
-        skillTrade: w.skill,
-        dailyWage: w.rate,
-        otRatePerHour: Math.round(w.rate / 8),
-        joiningDate: new Date("2024-01-01T00:00:00Z"),
-        siteId: w.siteId,
-        status: "Active",
-      }
-    });
-  }
-
-  console.log("? Seed completed for SNMR FAB INDIA PVT LTD.");
-  console.log("?? Login credentials (Password@123): sonu@snmrfab.in, bivek@snmrfab.in");
+  console.log("Seed completed for SNMR FAB INDIA PVT LTD.");
+  console.log("Login credentials (Password@123): sonu@snmrfab.in, bivek@snmrfab.in");
 }
 
 main()
