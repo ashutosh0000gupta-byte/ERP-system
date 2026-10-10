@@ -11,7 +11,29 @@ export const getSites = async () => {
 };
 
 export const createSite = async (data: any) => {
-  return prisma.site.create({ data });
+  let siteId = data.siteId;
+  if (!siteId) {
+    let count = await prisma.site.count();
+    let candidate = `SITE-${String(count + 1).padStart(3, '0')}`;
+    while (await prisma.site.findUnique({ where: { siteId: candidate } })) {
+      count++;
+      candidate = `SITE-${String(count + 1).padStart(3, '0')}`;
+    }
+    siteId = candidate;
+  }
+
+  return prisma.site.create({
+    data: {
+      siteId,
+      name: data.name,
+      location: data.location || null,
+      client: data.client || null,
+      status: data.status || "Active",
+      ...(data.poNumber && { poNumber: data.poNumber }),
+      ...(data.budget && { budget: data.budget }),
+      ...(data.supervisorId && { supervisorId: data.supervisorId })
+    }
+  });
 };
 
 export const getWorkers = async (siteId?: string) => {

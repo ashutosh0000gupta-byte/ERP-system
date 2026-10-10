@@ -38,7 +38,8 @@ export default function Sites() {
       setFormData({ name: "", location: "", client: "" });
     } catch (err) {
       console.error("Error creating site:", err);
-      alert("Failed to create site");
+      const msg = err.response?.data?.error || "Failed to create site. Please check all fields.";
+      alert(msg);
     } finally {
       setIsSubmitting(false);
     }
