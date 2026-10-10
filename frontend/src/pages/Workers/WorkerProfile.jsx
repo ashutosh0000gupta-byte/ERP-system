@@ -184,6 +184,9 @@ export default function WorkerProfile() {
               </div>
             </div>
             <div style={{ marginLeft: "auto", display: "flex", gap: "10px" }}>
+              <button style={{ background: "#2563eb", color: "#fff", border: "none", fontWeight: "600", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "13px" }} onClick={openEditModal}>
+                Edit Details
+              </button>
               <button 
                 style={{
                   background: worker.status === "Active" ? "#fee2e2" : "#dcfce7",
