@@ -19,6 +19,8 @@ import { getInboxNotifications, markAllRead as markAllNotificationsRead, markAsR
 
 /* ─── Constants ──────────────────────────────────────── */
 const TYPE_COLOR = {
+  Worker:          { color: "#2563eb", bg: "#eff6ff" },
+  Site:            { color: "#0284c7", bg: "#f0f9ff" },
   Employee:        { color: "#0f766e", bg: "#f0fdfa" },
   "Leave Request": { color: "#d97706", bg: "#fffbeb" },
   "Payroll Run":   { color: "#059669", bg: "#ecfdf5" },
@@ -162,7 +164,7 @@ export default function Navbar({ onToggleSidebar, sidebarOpen }) {
             ref={inputRef}
             type="text"
             value={query}
-            placeholder="Search employees, payroll, leave… (Ctrl+K)"
+            placeholder="Search workers, employees, sites, payroll… (Ctrl+K)"
             onChange={(e) => { setQuery(e.target.value); setIsOpen(true); }}
             onFocus={(e) => {
               setIsOpen(true);
