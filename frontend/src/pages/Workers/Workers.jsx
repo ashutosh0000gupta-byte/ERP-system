@@ -87,19 +87,15 @@ export default function Workers() {
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        // Convert sheet to JSON array (header is the first row)
-        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        // Convert sheet to JSON objects using header names
+        const rows = XLSX.utils.sheet_to_json(worksheet);
         
         const parsedWorkers = [];
-        // Skip header row (i = 1)
-        for (let i = 1; i < rows.length; i++) {
-          const row = rows[i];
-          if (!row || row.length < 6) continue;
-          
-          const workerId = row[0]?.toString() || "";
-          const name = row[1]?.toString() || "";
-          const siteName = row[2]?.toString() || "";
-          const dailyWage = parseFloat(row[5]) || 0;
+        for (const row of rows) {
+          const workerId = (row["Worker ID"] || row["ID"] || row["WorkerID"] || row["Emp ID"] || row["id"])?.toString() || "";
+          const name = (row["Name"] || row["Full Name"] || row["Worker Name"] || row["name"])?.toString() || "";
+          const siteName = (row["Site"] || row["Site Name"] || row["Location"] || row["Project"])?.toString() || "Unassigned";
+          const dailyWage = parseFloat(row["Daily Wage"] || row["Wage"] || row["Basic"] || row["Rate"]) || 0;
           
           if (!workerId || !name) continue;
           
