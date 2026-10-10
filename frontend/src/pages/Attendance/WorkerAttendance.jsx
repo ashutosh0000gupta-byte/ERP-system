@@ -12,6 +12,7 @@ export default function WorkerAttendance() {
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [markingId, setMarkingId] = useState(null);
+  const [otInputs, setOtInputs] = useState({});
 
   useEffect(() => {
     // Fetch sites on mount
@@ -50,12 +51,13 @@ export default function WorkerAttendance() {
   const handleMark = async (workerId, status) => {
     setMarkingId(workerId);
     try {
+      const ot = Number(otInputs[workerId]) || 0;
       const res = await api.post("/snmr/attendance", {
         workerId,
         siteId: selectedSite,
         date,
         status,
-        otHours: 0
+        otHours: ot
       });
       
       // Update local state
@@ -82,6 +84,7 @@ export default function WorkerAttendance() {
     return {
       ...w,
       attendanceStatus: record?.status || null,
+      recordOtHours: record?.otHours || 0,
       recordId: record?.id
     };
   });
@@ -179,6 +182,7 @@ export default function WorkerAttendance() {
                   <th style={styles.th}>Worker Details</th>
                   <th style={styles.th}>Trade</th>
                   <th style={styles.th}>Current Status</th>
+                  <th style={styles.th}>OT Hours</th>
                   <th style={styles.th}>Actions</th>
                 </tr>
               </thead>
@@ -209,6 +213,16 @@ export default function WorkerAttendance() {
                       ) : (
                         <span style={{ color: "#94a3b8", fontStyle: "italic", fontSize: "14px" }}>Not marked</span>
                       )}
+                    </td>
+                    <td style={styles.td}>
+                      <input 
+                        type="number" 
+                        min="0" max="12" step="0.5"
+                        placeholder="OT"
+                        style={{...styles.input, width: "60px", padding: "8px"}}
+                        value={otInputs[w.id] !== undefined ? otInputs[w.id] : w.recordOtHours}
+                        onChange={(e) => setOtInputs(prev => ({...prev, [w.id]: e.target.value}))}
+                      />
                     </td>
                     <td style={styles.td}>
                       <div style={{ display: "flex", gap: "8px" }}>
