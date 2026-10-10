@@ -152,8 +152,12 @@ export const generateWorkerSalaries = async (month: number, year: number) => {
       otHoursTotal += Number(a.otHours || 0);
     }
 
-    const otRate = Number(worker.otRatePerHour || 0);
-    const otAmount = otHoursTotal * otRate;
+    // Calculate OT rate dynamically from daily wage if not explicitly set (assuming 8 hrs/day)
+    let otRate = Number(worker.otRatePerHour || 0);
+    if (otRate === 0 && worker.dailyWage) {
+      otRate = Number(worker.dailyWage) / 8;
+    }
+    const otAmount = Math.round(otHoursTotal * otRate * 100) / 100;
 
     // 2. Sum up undeducted advances for this worker
     const advances = await prisma.workerAdvance.findMany({
