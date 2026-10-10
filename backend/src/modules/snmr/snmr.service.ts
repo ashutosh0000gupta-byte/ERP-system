@@ -42,7 +42,12 @@ export const importWorkers = async (workers: any[]) => {
       });
       if (!site) {
         site = await prisma.site.create({
-          data: { name: w.siteName, location: w.siteName, status: "Active" }
+          data: { 
+            siteId: `SITE-${Math.floor(1000 + Math.random() * 9000)}`,
+            name: w.siteName, 
+            location: w.siteName, 
+            status: "Active" 
+          }
         });
       }
       siteId = site.id;
