@@ -13,6 +13,7 @@ export default function WorkerAttendance() {
   const [loading, setLoading] = useState(false);
   const [markingId, setMarkingId] = useState(null);
   const [otInputs, setOtInputs] = useState({});
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     // Fetch sites on mount
@@ -89,6 +90,53 @@ export default function WorkerAttendance() {
     };
   });
 
+  const handleBulkSave = async () => {
+    // Save OT inputs for workers whose OT has changed
+    const updates = list.filter(w => {
+      const currentOt = Number(otInputs[w.id] !== undefined ? otInputs[w.id] : w.recordOtHours);
+      return currentOt !== Number(w.recordOtHours);
+    });
+
+    if (updates.length === 0) {
+      setIsEditMode(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await Promise.all(updates.map(w => 
+        api.post("/snmr/attendance", {
+          workerId: w.id,
+          siteId: selectedSite,
+          date,
+          status: w.attendanceStatus || "Present", // default to Present if they just added OT
+          otHours: Number(otInputs[w.id]) || 0
+        })
+      ));
+      alert("Changes saved successfully!");
+      setIsEditMode(false);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save some changes.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault(); // Prevent default browser save
+        if (isEditMode) {
+          handleBulkSave();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isEditMode, list, otInputs, selectedSite, date]);
+
   const handleExportCSV = () => {
     if (list.length === 0) {
       alert("No data to export");
@@ -153,6 +201,22 @@ export default function WorkerAttendance() {
               />
             </div>
           </div>
+          {isEditMode ? (
+            <button 
+              style={{...styles.exportBtn, background: "#0f766e", color: "#fff", borderColor: "#0f766e"}} 
+              onClick={handleBulkSave} 
+            >
+              <CheckSquare size={16} /> Save All (Ctrl+S)
+            </button>
+          ) : (
+            <button 
+              style={{...styles.exportBtn, background: "#f8fafc"}} 
+              onClick={() => setIsEditMode(true)} 
+              disabled={list.length === 0}
+            >
+              Edit Attendance
+            </button>
+          )}
           <button 
             style={styles.exportBtn} 
             onClick={handleExportCSV} 
@@ -215,35 +279,41 @@ export default function WorkerAttendance() {
                       )}
                     </td>
                     <td style={styles.td}>
-                      <input 
-                        type="number" 
-                        min="0" max="12" step="0.5"
-                        placeholder="OT"
-                        style={{...styles.input, width: "60px", padding: "8px"}}
-                        value={otInputs[w.id] !== undefined ? otInputs[w.id] : w.recordOtHours}
-                        onChange={(e) => setOtInputs(prev => ({...prev, [w.id]: e.target.value}))}
-                      />
+                      {isEditMode ? (
+                        <input 
+                          type="number" 
+                          min="0" max="12" step="0.5"
+                          placeholder="OT"
+                          style={{...styles.input, width: "60px", padding: "8px"}}
+                          value={otInputs[w.id] !== undefined ? otInputs[w.id] : w.recordOtHours}
+                          onChange={(e) => setOtInputs(prev => ({...prev, [w.id]: e.target.value}))}
+                        />
+                      ) : (
+                        <span style={{ fontWeight: 500, color: "#334155" }}>
+                          {w.recordOtHours ? `${w.recordOtHours} hrs` : "—"}
+                        </span>
+                      )}
                     </td>
                     <td style={styles.td}>
                       <div style={{ display: "flex", gap: "8px" }}>
                         <button 
-                          disabled={markingId === w.id}
+                          disabled={!isEditMode || markingId === w.id}
                           onClick={() => handleMark(w.id, "Present")}
-                          style={{ ...styles.actionBtn, ...styles.btnPresent, opacity: markingId === w.id ? 0.5 : 1 }}
+                          style={{ ...styles.actionBtn, ...styles.btnPresent, opacity: (!isEditMode || markingId === w.id) ? 0.5 : 1 }}
                         >
                           <Check size={14} /> Present
                         </button>
                         <button 
-                          disabled={markingId === w.id}
+                          disabled={!isEditMode || markingId === w.id}
                           onClick={() => handleMark(w.id, "Half Day")}
-                          style={{ ...styles.actionBtn, ...styles.btnHalf, opacity: markingId === w.id ? 0.5 : 1 }}
+                          style={{ ...styles.actionBtn, ...styles.btnHalf, opacity: (!isEditMode || markingId === w.id) ? 0.5 : 1 }}
                         >
                           <Clock size={14} /> Half
                         </button>
                         <button 
-                          disabled={markingId === w.id}
+                          disabled={!isEditMode || markingId === w.id}
                           onClick={() => handleMark(w.id, "Absent")}
-                          style={{ ...styles.actionBtn, ...styles.btnAbsent, opacity: markingId === w.id ? 0.5 : 1 }}
+                          style={{ ...styles.actionBtn, ...styles.btnAbsent, opacity: (!isEditMode || markingId === w.id) ? 0.5 : 1 }}
                         >
                           <X size={14} /> Absent
                         </button>
