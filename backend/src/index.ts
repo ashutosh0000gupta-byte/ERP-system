@@ -9,24 +9,7 @@ const port = env.PORT;
 
 const server = app.listen(port, () => {
   logger.info(`🚀 HRMS API listening on http://localhost:${port} (${env.NODE_ENV})`);
-  cleanDemoData();
 });
-
-async function cleanDemoData() {
-  try {
-    await prisma.snmrDocument.deleteMany({ where: { entityType: "Worker" } });
-    await prisma.workerPayment.deleteMany({});
-    await prisma.workerSalary.deleteMany({});
-    await prisma.workerAdvance.deleteMany({});
-    await prisma.workerAttendance.deleteMany({});
-    await prisma.worker.deleteMany({});
-    await prisma.siteExpense.deleteMany({});
-    await prisma.site.deleteMany({});
-    logger.info("✅ All demo workers, attendances, advances, salaries, expenses, and sites permanently cleared from database.");
-  } catch (err) {
-    logger.warn({ err }, "Could not clear demo data");
-  }
-}
 
 async function shutdown(signal: string) {
   logger.info(`${signal} received — shutting down gracefully`);

@@ -60,6 +60,45 @@ export default function Workers() {
     }
   };
 
+  const getNextWorkerId = () => {
+    let maxNum = 0;
+    workers.forEach(w => {
+      const match = (w.workerId || "").match(/^SNMR(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      }
+    });
+    const next = Math.max(maxNum + 1, workers.length + 1);
+    return `SNMR${String(next).padStart(4, '0')}`;
+  };
+
+  const handleOpenAddModal = () => {
+    const nextId = getNextWorkerId();
+    setFormData({
+      workerId: nextId,
+      fullName: "",
+      skillTrade: "",
+      salaryType: "Daily",
+      dailyWage: "",
+      wageRate: "",
+      paymentFrequency: "Monthly",
+      otRatePerHour: "",
+      paymentMethod: "Bank Transfer",
+      paymentDay: "",
+      joiningDate: new Date().toISOString().split("T")[0],
+      siteId: sites.length > 0 ? sites[0].id : "",
+      bankName: "",
+      bankAccount: "",
+      ifsc: "",
+      mobileNumber: "",
+      currentAddress: "",
+      uan: "",
+      esiNumber: ""
+    });
+    setIsModalOpen(true);
+  };
+
   const handleCreateWorker = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -195,13 +234,13 @@ export default function Workers() {
           const rawOtRate = getVal(row, ["OT Rate", "Overtime Rate", "OTRate"]);
           const otRatePerHour = parseFloat(rawOtRate.replace(/[^0-9.]/g, '') || "0") || 0;
           
-          if (!workerId || !name) continue;
+          if (!name) continue;
           
           const isStaff = /supervisor|incharge|in-charge|engineer|foreman/i.test(skillTrade);
           const siteMatch = sites.find(s => s.name?.toLowerCase().trim() === siteName.toLowerCase().trim());
           
           parsedWorkers.push({
-            workerId,
+            workerId: workerId || "",
             fullName: name,
             siteId: siteMatch ? siteMatch.id : null,
             siteName: siteName,
@@ -230,7 +269,7 @@ export default function Workers() {
         }
         
         if (parsedWorkers.length === 0) {
-          return alert("No valid worker rows found in the uploaded file. Ensure 'Worker ID' and 'Name' columns are present.");
+          return alert("No valid worker rows found in the uploaded file. Ensure the 'Name' column is present.");
         }
         
         setLoading(true);
@@ -574,7 +613,7 @@ export default function Workers() {
               <Trash2 size={16} color="#b91c1c" />
               <span>Clear Demo Data</span>
             </button>
-            <button style={styles.createButton} onClick={() => setIsModalOpen(true)}>
+            <button style={styles.createButton} onClick={handleOpenAddModal}>
               <Plus size={18} />
               <span>Add Worker</span>
             </button>
@@ -899,7 +938,7 @@ export default function Workers() {
                 <div style={styles.modalBody}>
                   <div style={styles.formRow}>
                     <div style={styles.inputGroup}>
-                      <label style={styles.label}>Worker ID *</label>
+                      <label style={styles.label}>Worker ID (Auto-generated) *</label>
                       <input 
                         required 
                         style={styles.input} 

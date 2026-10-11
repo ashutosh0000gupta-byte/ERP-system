@@ -40,6 +40,7 @@ export const getWorkers = async (siteId?: string) => {
   const where = siteId ? { siteId } : {};
   return prisma.worker.findMany({
     where,
+    orderBy: { createdAt: 'desc' },
     include: {
       site: {
         select: { name: true }
@@ -48,8 +49,65 @@ export const getWorkers = async (siteId?: string) => {
   });
 };
 
+export const getNextWorkerId = async (additionalExcludedIds?: Set<string>): Promise<string> => {
+  const existingWorkers = await prisma.worker.findMany({
+    select: { workerId: true }
+  });
+
+  const existingIdSet = new Set<string>();
+  let maxNum = 0;
+
+  for (const w of existingWorkers) {
+    if (w.workerId) {
+      const upper = w.workerId.trim().toUpperCase();
+      existingIdSet.add(upper);
+      const match = upper.match(/^SNMR(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+
+  if (additionalExcludedIds) {
+    for (const id of additionalExcludedIds) {
+      if (id) {
+        const upper = id.trim().toUpperCase();
+        existingIdSet.add(upper);
+        const match = upper.match(/^SNMR(\d+)$/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        }
+      }
+    }
+  }
+
+  let nextNum = maxNum + 1;
+  let candidate = `SNMR${String(nextNum).padStart(4, '0')}`;
+  while (existingIdSet.has(candidate.toUpperCase())) {
+    nextNum++;
+    candidate = `SNMR${String(nextNum).padStart(4, '0')}`;
+  }
+
+  return candidate;
+};
+
 export const createWorker = async (data: any) => {
-  return prisma.worker.create({ data });
+  let workerId = data.workerId ? String(data.workerId).trim() : '';
+  if (!workerId) {
+    workerId = await getNextWorkerId();
+  } else {
+    const existing = await prisma.worker.findUnique({ where: { workerId } });
+    if (existing) {
+      throw new Error(`Worker ID "${workerId}" already belongs to ${existing.fullName}. Please use a different Worker ID or leave blank to auto-generate.`);
+    }
+  }
+  return prisma.worker.create({ data: { ...data, workerId } });
 };
 
 export const importWorkers = async (workers: any[]) => {
@@ -59,6 +117,16 @@ export const importWorkers = async (workers: any[]) => {
 
   const results: any[] = [];
   const errors: any[] = [];
+  const usedBatchIds = new Set<string>();
+
+  // Collect all explicitly provided IDs in this import to prevent auto-gen collisions with subsequent rows
+  const incomingExplicitIds = new Set<string>();
+  for (const w of workers) {
+    if (w?.workerId) {
+      const s = String(w.workerId).trim().toUpperCase();
+      if (s) incomingExplicitIds.add(s);
+    }
+  }
 
   // Helper to clean and sanitize string fields
   const cleanStr = (val: any): string | null => {
@@ -85,9 +153,9 @@ export const importWorkers = async (workers: any[]) => {
     const w = workers[i];
     if (!w) continue;
 
-    const workerId = cleanStr(w.workerId);
+    const rawWorkerId = cleanStr(w.workerId);
     const fullName = cleanStr(w.fullName);
-    if (!workerId || !fullName) continue;
+    if (!fullName) continue;
 
     try {
       let siteId: string | null = w.siteId || null;
@@ -173,19 +241,59 @@ export const importWorkers = async (workers: any[]) => {
         permanentAddress: cleanStr(w.permanentAddress)
       };
 
-      const workerRecord = await prisma.worker.upsert({
-        where: { workerId },
-        update: dataToSave,
-        create: {
-          workerId,
+      let targetWorkerId = rawWorkerId;
+
+      if (!targetWorkerId) {
+        // No ID in row: generate unique ID
+        const excluded = new Set<string>([...usedBatchIds, ...incomingExplicitIds]);
+        targetWorkerId = await getNextWorkerId(excluded);
+      } else {
+        const upperId = targetWorkerId.toUpperCase();
+        if (usedBatchIds.has(upperId)) {
+          // Already used in this batch: generate unique ID
+          const excluded = new Set<string>([...usedBatchIds, ...incomingExplicitIds]);
+          targetWorkerId = await getNextWorkerId(excluded);
+        } else {
+          // Check if ID exists in database
+          const existingWorker = await prisma.worker.findUnique({
+            where: { workerId: targetWorkerId }
+          });
+
+          if (existingWorker) {
+            const existingName = (existingWorker.fullName || "").trim().toLowerCase();
+            const currentName = fullName.trim().toLowerCase();
+
+            if (existingName === currentName) {
+              // Same person: update existing worker details safely
+              const updated = await prisma.worker.update({
+                where: { id: existingWorker.id },
+                data: dataToSave
+              });
+              usedBatchIds.add(targetWorkerId.toUpperCase());
+              results.push(updated);
+              continue;
+            } else {
+              // DIFFERENT person with same workerId!
+              // NEVER overwrite previously created worker!
+              const excluded = new Set<string>([...usedBatchIds, ...incomingExplicitIds]);
+              targetWorkerId = await getNextWorkerId(excluded);
+            }
+          }
+        }
+      }
+
+      const created = await prisma.worker.create({
+        data: {
+          workerId: targetWorkerId,
           ...dataToSave
         }
       });
+      usedBatchIds.add(targetWorkerId.toUpperCase());
+      results.push(created);
 
-      results.push(workerRecord);
     } catch (err: any) {
-      console.error(`Error importing worker row ${i + 1} (${workerId}):`, err);
-      errors.push({ workerId, row: i + 1, error: err.message });
+      console.error(`Error importing worker row ${i + 1} (${rawWorkerId || fullName}):`, err);
+      errors.push({ workerId: rawWorkerId, row: i + 1, error: err.message });
     }
   }
 
