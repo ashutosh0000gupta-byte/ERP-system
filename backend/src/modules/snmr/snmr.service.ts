@@ -425,7 +425,7 @@ export const getWorkerSalaries = async (params?: {
           paymentMethod: true,
           paymentDay: true,
           site: { select: { id: true, name: true } }
-        }
+        } as any
       },
       payments: {
         orderBy: { paymentDate: 'desc' }
@@ -581,7 +581,7 @@ export const generateWorkerSalaries = async (options: {
     });
 
     // If existing salary is locked, preserve it and do not overwrite closed historical payroll
-    if (existingSalary && existingSalary.isLocked) {
+    if (existingSalary && (existingSalary as any).isLocked) {
       salaries.push(existingSalary);
       continue;
     }
@@ -593,9 +593,9 @@ export const generateWorkerSalaries = async (options: {
 
     // 5. Statutory Deductions
     // EPF: 12% on Basic Salary (capped at standard ₹15,000 monthly ceiling) if worker has UAN
-    const pfDeducted = worker.uan ? Math.round(Math.min(basicSalary, 15000) * 0.12 * 100) / 100 : 0;
+    const pfDeducted = (worker as any).uan ? Math.round(Math.min(basicSalary, 15000) * 0.12 * 100) / 100 : 0;
     // ESIC: 0.75% of Gross earnings if Gross <= ₹21,000 and worker has ESI number
-    const esicDeducted = (grossAmount <= 21000 && worker.esiNumber) ? Math.round(grossAmount * 0.0075 * 100) / 100 : 0;
+    const esicDeducted = (grossAmount <= 21000 && (worker as any).esiNumber) ? Math.round(grossAmount * 0.0075 * 100) / 100 : 0;
     // Professional Tax (P. Tax): standard slab ₹200 if monthly gross >= ₹15,000
     const professionalTax = grossAmount >= 15000 ? 200 : 0;
     const otherDeductions = 0;
@@ -637,7 +637,7 @@ export const generateWorkerSalaries = async (options: {
           balanceAmount,
           status,
           paymentMode: worker.paymentMethod || "Bank Transfer"
-        }
+        } as any
       });
     } else {
       salary = await prisma.workerSalary.create({
@@ -669,7 +669,7 @@ export const generateWorkerSalaries = async (options: {
           balanceAmount: netAmount,
           status: "Pending",
           paymentMode: worker.paymentMethod || "Bank Transfer"
-        }
+        } as any
       });
     }
 
@@ -928,7 +928,7 @@ export const importWorkerSalaries = async (month: number, year: number, updates:
 };
 
 export const notifyWorkerSalaries = async (month: number, year: number) => {
-  const salaries = await getWorkerSalaries({ month, year });
+  const salaries: any[] = await getWorkerSalaries({ month, year });
   let notifiedCount = 0;
   for (const s of salaries) {
     if (s.worker?.mobileNumber) {
@@ -1136,14 +1136,14 @@ export const clearAllDemoData = async () => {
 export const toggleSalaryLock = async (id: string, isLocked: boolean = true) => {
   return prisma.workerSalary.update({
     where: { id },
-    data: { isLocked }
+    data: { isLocked } as any
   });
 };
 
 export const lockMonthSalaries = async (month: number, year: number, isLocked: boolean = true) => {
   return prisma.workerSalary.updateMany({
     where: { month: Number(month), year: Number(year) },
-    data: { isLocked }
+    data: { isLocked } as any
   });
 };
 
