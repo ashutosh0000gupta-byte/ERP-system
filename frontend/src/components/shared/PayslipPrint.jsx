@@ -69,6 +69,12 @@ export default function PayslipPrint({ salary }) {
                 <td style={styles.label}>Bank A/C / IFSC:</td>
                 <td style={styles.value}>{worker.bankAccount ? `${worker.bankAccount} (${worker.ifsc || 'N/A'})` : "N/A"}</td>
               </tr>
+              <tr>
+                <td style={styles.label}>UAN Number (PF):</td>
+                <td style={styles.value}>{worker.uan || "N/A"}</td>
+                <td style={styles.label}>ESI Number (IP):</td>
+                <td style={styles.value}>{worker.esiNumber || "N/A"}</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -81,13 +87,33 @@ export default function PayslipPrint({ salary }) {
               <tbody>
                 <tr>
                   <td style={styles.calcLabel}>
-                    Base Attendance Pay
+                    Basic Salary (Earned)
                     <div style={{fontSize: "11px", color: "#64748b"}}>
-                      {salary.salaryType || "Daily"} ({Number(salary.presentDays)} days @ ₹{rateApplied})
+                      {Number(salary.presentDays)} days attendance wage base
                     </div>
                   </td>
-                  <td style={styles.calcAmount}>₹{(Number(salary.grossAmount) - Number(salary.otAmount || 0)).toLocaleString()}</td>
+                  <td style={styles.calcAmount}>
+                    ₹{Number(salary.basicSalary || Math.round((Number(salary.grossAmount) - Number(salary.otAmount || 0)) * 0.5)).toLocaleString()}
+                  </td>
                 </tr>
+                {Number(salary.conveyanceAllowance || 0) > 0 && (
+                  <tr>
+                    <td style={styles.calcLabel}>
+                      Conveyance Allowance
+                      <div style={{fontSize: "11px", color: "#64748b"}}>Site travel assistance</div>
+                    </td>
+                    <td style={styles.calcAmount}>₹{Number(salary.conveyanceAllowance).toLocaleString()}</td>
+                  </tr>
+                )}
+                {Number(salary.specialAllowance || 0) > 0 && (
+                  <tr>
+                    <td style={styles.calcLabel}>
+                      Special Allowance
+                      <div style={{fontSize: "11px", color: "#64748b"}}>Site skills & trade allowance</div>
+                    </td>
+                    <td style={styles.calcAmount}>₹{Number(salary.specialAllowance).toLocaleString()}</td>
+                  </tr>
+                )}
                 <tr>
                   <td style={styles.calcLabel}>
                     Overtime Pay
@@ -117,12 +143,33 @@ export default function PayslipPrint({ salary }) {
                   <td style={{ ...styles.calcAmount, color: "#e11d48" }}>-₹{Number(salary.advanceDeducted).toLocaleString()}</td>
                 </tr>
                 <tr>
-                  <td style={styles.calcLabel}>Statutory Deductions (PF / ESIC)</td>
-                  <td style={styles.calcAmount}>₹{(Number(salary.pfDeducted || 0) + Number(salary.esicDeducted || 0)).toLocaleString()}</td>
+                  <td style={styles.calcLabel}>
+                    Provident Fund (EPF - 12%)
+                    <div style={{fontSize: "11px", color: "#64748b"}}>Worker PF Contribution</div>
+                  </td>
+                  <td style={{ ...styles.calcAmount, color: "#e11d48" }}>-₹{Number(salary.pfDeducted || 0).toLocaleString()}</td>
                 </tr>
+                <tr>
+                  <td style={styles.calcLabel}>
+                    Employee State Insurance (ESIC - 0.75%)
+                    <div style={{fontSize: "11px", color: "#64748b"}}>Statutory ESI Contribution</div>
+                  </td>
+                  <td style={{ ...styles.calcAmount, color: "#e11d48" }}>-₹{Number(salary.esicDeducted || 0).toLocaleString()}</td>
+                </tr>
+                {Number(salary.professionalTax || 0) > 0 && (
+                  <tr>
+                    <td style={styles.calcLabel}>
+                      Professional Tax (P. Tax)
+                      <div style={{fontSize: "11px", color: "#64748b"}}>State statutory deduction</div>
+                    </td>
+                    <td style={{ ...styles.calcAmount, color: "#e11d48" }}>-₹{Number(salary.professionalTax).toLocaleString()}</td>
+                  </tr>
+                )}
                 <tr style={{ background: "#f8fafc", fontWeight: 700 }}>
                   <td style={styles.calcLabel}>Total Deductions</td>
-                  <td style={{ ...styles.calcAmount, color: "#e11d48" }}>-₹{(Number(salary.advanceDeducted) + Number(salary.pfDeducted || 0) + Number(salary.esicDeducted || 0)).toLocaleString()}</td>
+                  <td style={{ ...styles.calcAmount, color: "#e11d48" }}>
+                    -₹{(Number(salary.advanceDeducted) + Number(salary.pfDeducted || 0) + Number(salary.esicDeducted || 0) + Number(salary.professionalTax || 0) + Number(salary.otherDeductions || 0)).toLocaleString()}
+                  </td>
                 </tr>
               </tbody>
             </table>

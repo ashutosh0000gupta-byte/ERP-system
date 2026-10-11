@@ -310,3 +310,25 @@ export const clearAllDemoData = async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const toggleSalaryLock = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { isLocked } = req.body;
+    const salary = await snmrService.toggleSalaryLock(id, isLocked !== undefined ? isLocked : true);
+    res.json(salary);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const lockMonthSalaries = async (req: Request, res: Response) => {
+  try {
+    const { month, year, isLocked } = req.body;
+    const result = await snmrService.lockMonthSalaries(Number(month), Number(year), isLocked !== undefined ? isLocked : true);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+

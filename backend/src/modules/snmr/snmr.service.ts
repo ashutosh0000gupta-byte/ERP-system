@@ -163,6 +163,8 @@ export const importWorkers = async (workers: any[]) => {
         bankName: cleanStr(w.bankName),
         ifsc: cleanStr(w.ifsc),
         pan: cleanStr(w.pan),
+        uan: cleanStr(w.uan),
+        esiNumber: cleanStr(w.esiNumber || w.esi || w.esic),
         mobileNumber: cleanStr(w.mobileNumber),
         aadhaar: cleanStr(w.aadhaar),
         skillTrade: cleanStr(w.skillTrade),
@@ -306,6 +308,8 @@ export const getWorkerSalaries = async (params?: {
           bankAccount: true,
           bankName: true,
           ifsc: true,
+          uan: true,
+          esiNumber: true,
           salaryType: true,
           wageRate: true,
           dailyWage: true,
@@ -449,14 +453,6 @@ export const generateWorkerSalaries = async (options: {
       advanceDeducted += Number(adv.amount);
     }
 
-    // 4. Calculate Net Amount
-    const pfDeducted = 0;
-    const esicDeducted = 0;
-    const otherDeductions = 0;
-
-    let netAmount = grossAmount - advanceDeducted - pfDeducted - esicDeducted - otherDeductions;
-    if (netAmount < 0) netAmount = 0;
-
     // Check if an existing salary record already exists for this period
     const existingSalary = await prisma.workerSalary.findFirst({
       where: {
@@ -475,6 +471,29 @@ export const generateWorkerSalaries = async (options: {
       },
       include: { payments: true }
     });
+
+    // If existing salary is locked, preserve it and do not overwrite closed historical payroll
+    if (existingSalary && existingSalary.isLocked) {
+      salaries.push(existingSalary);
+      continue;
+    }
+
+    // 4. Breakdown Gross Attendance Pay into Basic, Conveyance, and Special Allowance
+    const basicSalary = Math.round(grossFromAttendance * 0.50 * 100) / 100;
+    const conveyanceAllowance = Math.round(grossFromAttendance * 0.20 * 100) / 100;
+    const specialAllowance = Math.round((grossFromAttendance - basicSalary - conveyanceAllowance) * 100) / 100;
+
+    // 5. Statutory Deductions
+    // EPF: 12% on Basic Salary (capped at standard ₹15,000 monthly ceiling) if worker has UAN
+    const pfDeducted = worker.uan ? Math.round(Math.min(basicSalary, 15000) * 0.12 * 100) / 100 : 0;
+    // ESIC: 0.75% of Gross earnings if Gross <= ₹21,000 and worker has ESI number
+    const esicDeducted = (grossAmount <= 21000 && worker.esiNumber) ? Math.round(grossAmount * 0.0075 * 100) / 100 : 0;
+    // Professional Tax (P. Tax): standard slab ₹200 if monthly gross >= ₹15,000
+    const professionalTax = grossAmount >= 15000 ? 200 : 0;
+    const otherDeductions = 0;
+
+    const totalDeductions = advanceDeducted + pfDeducted + esicDeducted + professionalTax + otherDeductions;
+    let netAmount = Math.max(0, Math.round((grossAmount - totalDeductions) * 100) / 100);
 
     let salary;
     if (existingSalary) {
@@ -496,10 +515,14 @@ export const generateWorkerSalaries = async (options: {
           endDate: end,
           otHours: otHoursTotal,
           otAmount,
+          basicSalary,
+          conveyanceAllowance,
+          specialAllowance,
           grossAmount,
           advanceDeducted,
           pfDeducted,
           esicDeducted,
+          professionalTax,
           otherDeductions,
           netAmount,
           paidAmount: currentPaid,
@@ -524,10 +547,14 @@ export const generateWorkerSalaries = async (options: {
           rateApplied,
           otHours: otHoursTotal,
           otAmount,
+          basicSalary,
+          conveyanceAllowance,
+          specialAllowance,
           grossAmount,
           advanceDeducted,
           pfDeducted,
           esicDeducted,
+          professionalTax,
           otherDeductions,
           netAmount,
           paidAmount: 0,
@@ -805,7 +832,7 @@ export const notifyWorkerSalaries = async (month: number, year: number) => {
 };
 
 export const getDashboardStats = async () => {
-  const [totalWorkers, activeSites, pendingAdvances, presentToday, siteWorkers, totalSalaries, totalExpenses] = await Promise.all([
+  const [totalWorkers, activeSites, pendingAdvances, presentToday, siteWorkers, totalSalaries, totalExpenses, totalOt, totalPendingSalaries] = await Promise.all([
     prisma.worker.count({ where: { status: "Active" } }),
     prisma.site.count({ where: { status: "Active" } }),
     prisma.workerAdvance.aggregate({
@@ -827,6 +854,13 @@ export const getDashboardStats = async () => {
     }),
     prisma.siteExpense.aggregate({
       _sum: { amount: true }
+    }),
+    prisma.workerAttendance.aggregate({
+      _sum: { otHours: true }
+    }),
+    prisma.workerSalary.aggregate({
+      where: { status: { in: ["Pending", "Partial"] } },
+      _sum: { balanceAmount: true }
     })
   ]);
 
@@ -842,6 +876,8 @@ export const getDashboardStats = async () => {
     presentToday,
     totalSalaries: totalSalaries._sum.netAmount || 0,
     totalExpenses: totalExpenses._sum.amount || 0,
+    totalOtHours: Number(totalOt._sum.otHours || 0),
+    totalSalariesPending: totalPendingSalaries._sum.balanceAmount || 0,
     chartData
   };
 };
@@ -988,3 +1024,18 @@ export const clearAllDemoData = async () => {
     deletedSitesCount: deletedSites.count
   };
 };
+
+export const toggleSalaryLock = async (id: string, isLocked: boolean = true) => {
+  return prisma.workerSalary.update({
+    where: { id },
+    data: { isLocked }
+  });
+};
+
+export const lockMonthSalaries = async (month: number, year: number, isLocked: boolean = true) => {
+  return prisma.workerSalary.updateMany({
+    where: { month: Number(month), year: Number(year) },
+    data: { isLocked }
+  });
+};
+

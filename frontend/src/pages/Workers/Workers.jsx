@@ -35,7 +35,9 @@ export default function Workers() {
     bankAccount: "",
     ifsc: "",
     mobileNumber: "",
-    currentAddress: ""
+    currentAddress: "",
+    uan: "",
+    esiNumber: ""
   });
 
   useEffect(() => {
@@ -73,7 +75,9 @@ export default function Workers() {
         paymentFrequency: formData.paymentFrequency || "Monthly",
         paymentMethod: formData.paymentMethod || "Bank Transfer",
         paymentDay: formData.paymentDay || null,
-        otRatePerHour: formData.otRatePerHour ? parseFloat(formData.otRatePerHour) : 0
+        otRatePerHour: formData.otRatePerHour ? parseFloat(formData.otRatePerHour) : 0,
+        uan: formData.uan || null,
+        esiNumber: formData.esiNumber || null
       };
       // Format date for Prisma
       if (payload.joiningDate) {
@@ -87,6 +91,8 @@ export default function Workers() {
       if (!payload.mobileNumber) delete payload.mobileNumber;
       if (!payload.currentAddress) delete payload.currentAddress;
       if (!payload.skillTrade) delete payload.skillTrade;
+      if (!payload.uan) delete payload.uan;
+      if (!payload.esiNumber) delete payload.esiNumber;
 
       const res = await api.post("/snmr/workers", payload);
       
@@ -114,7 +120,9 @@ export default function Workers() {
         bankAccount: "",
         ifsc: "",
         mobileNumber: "",
-        currentAddress: ""
+        currentAddress: "",
+        uan: "",
+        esiNumber: ""
       });
     } catch (err) {
       console.error("Error creating worker:", err);
@@ -178,6 +186,8 @@ export default function Workers() {
           const ifsc = getVal(row, ["IFSC Code", "IFSC", "ifsc"]);
           const pan = getVal(row, ["PAN", "PAN No", "pan", "PAN Number"]);
           const aadhaar = getVal(row, ["Aadhaar", "Aadhar", "Aadhaar No", "Aadhar No", "UID", "aadhaar"]);
+          const uan = getVal(row, ["UAN", "UAN Number", "UAN No", "uan"]);
+          const esiNumber = getVal(row, ["ESI", "ESI Number", "ESIC", "ESI No", "esi", "esic", "esiNumber"]);
           
           const salaryType = getVal(row, ["Salary Type", "SalaryType", "Wage Type"]) || "Daily";
           const paymentFrequency = getVal(row, ["Pay Frequency", "Payment Frequency", "Frequency"]) || "Weekly";
@@ -212,6 +222,8 @@ export default function Workers() {
             ifsc: ifsc || null,
             pan: pan || null,
             aadhaar: aadhaar || null,
+            uan: uan || null,
+            esiNumber: esiNumber || null,
             joiningDate: new Date().toISOString(),
             status: "Active"
           });
@@ -267,6 +279,8 @@ export default function Workers() {
         "IFSC Code": w.ifsc || "",
         "PAN": w.pan || "",
         "Aadhaar": w.aadhaar || "",
+        "UAN": w.uan || "",
+        "ESI Number": w.esiNumber || "",
         "Status": w.status || "Active"
       }));
 
@@ -291,6 +305,8 @@ export default function Workers() {
         { wch: 14 }, // IFSC Code
         { wch: 14 }, // PAN
         { wch: 16 }, // Aadhaar
+        { wch: 16 }, // UAN
+        { wch: 18 }, // ESI Number
         { wch: 10 }  // Status
       ];
       worksheet['!cols'] = colWidths;
@@ -344,7 +360,9 @@ export default function Workers() {
         "Bank Account": "37826459225",
         "IFSC Code": "SBIN0006018",
         "PAN": "NA",
-        "Aadhaar": "NA"
+        "Aadhaar": "NA",
+        "UAN": "101234567890",
+        "ESI Number": "31000123450000001"
       },
       {
         "Worker ID": "SNMR0002",
@@ -1068,6 +1086,27 @@ export default function Workers() {
                         placeholder="e.g. SBIN0001234" 
                         value={formData.ifsc}
                         onChange={e => setFormData({...formData, ifsc: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={styles.formRow}>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>UAN Number (PF)</label>
+                      <input 
+                        style={styles.input} 
+                        placeholder="e.g. 101234567890" 
+                        value={formData.uan}
+                        onChange={e => setFormData({...formData, uan: e.target.value})}
+                      />
+                    </div>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>ESI Number (IP No.)</label>
+                      <input 
+                        style={styles.input} 
+                        placeholder="e.g. 31000123450000001" 
+                        value={formData.esiNumber}
+                        onChange={e => setFormData({...formData, esiNumber: e.target.value})}
                       />
                     </div>
                   </div>

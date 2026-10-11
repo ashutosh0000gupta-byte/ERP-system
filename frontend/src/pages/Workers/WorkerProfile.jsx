@@ -95,7 +95,9 @@ export default function WorkerProfile() {
       bankAccount: worker.bankAccount || "",
       ifsc: worker.ifsc || "",
       pan: worker.pan || "",
-      aadhaar: worker.aadhaar || ""
+      aadhaar: worker.aadhaar || "",
+      uan: worker.uan || "",
+      esiNumber: worker.esiNumber || ""
     });
     setIsEditModalOpen(true);
   };
@@ -351,6 +353,14 @@ export default function WorkerProfile() {
               <span style={{color: "#64748b", width: "100px"}}>Aadhaar:</span>
               <strong style={{color: "#0f172a"}}>{worker.aadhaar || "Not Provided"}</strong>
             </div>
+            <div style={styles.contactItem}>
+              <span style={{color: "#64748b", width: "100px"}}>UAN (PF):</span>
+              <strong style={{color: "#0f172a"}}>{worker.uan || "Not Provided"}</strong>
+            </div>
+            <div style={styles.contactItem}>
+              <span style={{color: "#64748b", width: "100px"}}>ESI Number:</span>
+              <strong style={{color: "#0f172a"}}>{worker.esiNumber || "Not Provided"}</strong>
+            </div>
           </div>
         </div>
 
@@ -567,6 +577,17 @@ export default function WorkerProfile() {
                   <div>
                     <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>Aadhaar Number</label>
                     <input style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1" }} value={editData.aadhaar} onChange={e => setEditData({...editData, aadhaar: e.target.value})} />
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>UAN Number (PF)</label>
+                    <input style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1" }} placeholder="e.g. 101234567890" value={editData.uan || ""} onChange={e => setEditData({...editData, uan: e.target.value})} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>ESI Number (IP No.)</label>
+                    <input style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1" }} placeholder="e.g. 31000123450000001" value={editData.esiNumber || ""} onChange={e => setEditData({...editData, esiNumber: e.target.value})} />
                   </div>
                 </div>
 

@@ -31,6 +31,8 @@ import {
   importWorkers,
   recordWorkerPayment,
   getWorkerLedger,
+  toggleSalaryLock,
+  lockMonthSalaries,
   clearAllDemoData
 } from "./snmr.controller";
 
@@ -69,6 +71,8 @@ router.post("/advances", createWorkerAdvance);
 router.get("/salaries", getWorkerSalaries);
 router.post("/salaries/generate", generateWorkerSalaries);
 router.post("/salaries/payment", recordWorkerPayment);
+router.post("/salaries/lock-month", lockMonthSalaries);
+router.put("/salaries/:id/lock", toggleSalaryLock);
 router.post("/salaries/:id/pay", payWorkerSalary);
 router.post("/salaries/import", importWorkerSalaries);
 router.post("/salaries/notify", notifyWorkerSalaries);

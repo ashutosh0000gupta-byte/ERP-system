@@ -4,7 +4,8 @@ import api from "../../services/api";
 import { 
   Wallet, Search, Play, Check, X, Calendar, AlertCircle, 
   Download, Printer, Filter, CreditCard, BookOpen, Clock, 
-  ArrowUpRight, ArrowDownLeft, ChevronRight, RefreshCw, FileText
+  ArrowUpRight, ArrowDownLeft, ChevronRight, RefreshCw, FileText,
+  Lock, Unlock
 } from "lucide-react";
 import PayslipPrint from "../../components/shared/PayslipPrint";
 
@@ -184,6 +185,33 @@ export default function Salary() {
     }
   };
 
+  const isMonthLocked = salaries.length > 0 && salaries.every(s => s.isLocked);
+
+  const handleToggleMonthLock = async () => {
+    try {
+      const newLockState = !isMonthLocked;
+      const confirmMsg = newLockState
+        ? `Are you sure you want to LOCK all payroll records for this period? Once locked, historical records are protected against modifications.`
+        : `Are you sure you want to UNLOCK payroll records for this period?`;
+      if (!window.confirm(confirmMsg)) return;
+
+      await api.post("/snmr/salaries/lock-month", { month, year, isLocked: newLockState });
+      alert(`Payroll records have been ${newLockState ? "LOCKED" : "UNLOCKED"} successfully.`);
+      fetchSalaries();
+    } catch (err) {
+      alert("Failed to update lock status: " + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleToggleSingleLock = async (salaryId, currentStatus) => {
+    try {
+      await api.put(`/snmr/salaries/${salaryId}/lock`, { isLocked: !currentStatus });
+      fetchSalaries();
+    } catch (err) {
+      alert("Failed to toggle record lock: " + (err.response?.data?.error || err.message));
+    }
+  };
+
   const handleExportCSV = () => {
     if (salaries.length === 0) {
       alert("No data to export");
@@ -284,6 +312,20 @@ export default function Salary() {
             </button>
             <button style={styles.exportBtn} onClick={handleExportCSV} disabled={salaries.length === 0}>
               <Download size={16} /> Export Excel
+            </button>
+            <button 
+              style={{
+                ...styles.exportBtn, 
+                background: isMonthLocked ? "#fef2f2" : "#f8fafc", 
+                color: isMonthLocked ? "#b91c1c" : "#334155", 
+                borderColor: isMonthLocked ? "#fca5a5" : "#cbd5e1"
+              }} 
+              onClick={handleToggleMonthLock}
+              disabled={salaries.length === 0}
+              title={isMonthLocked ? "Unlock payroll records" : "Lock month payroll against any modifications"}
+            >
+              {isMonthLocked ? <Lock size={16} color="#b91c1c" /> : <Unlock size={16} color="#64748b" />}
+              <span>{isMonthLocked ? "Locked Month" : "Lock Month"}</span>
             </button>
             <button 
               style={{...styles.exportBtn, background: "#f0fdf4", color: "#166534", borderColor: "#bbf7d0"}} 
@@ -534,13 +576,20 @@ export default function Salary() {
                           </span>
                         </td>
                         <td style={styles.td}>
-                          {isPaid ? (
-                            <span style={styles.statusPaid}>Paid</span>
-                          ) : isPartial ? (
-                            <span style={styles.statusPartial}>Partial</span>
-                          ) : (
-                            <span style={styles.statusPending}>Pending</span>
-                          )}
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            {isPaid ? (
+                              <span style={styles.statusPaid}>Paid</span>
+                            ) : isPartial ? (
+                              <span style={styles.statusPartial}>Partial</span>
+                            ) : (
+                              <span style={styles.statusPending}>Pending</span>
+                            )}
+                            {s.isLocked && (
+                              <span title="Locked / Protected record" style={{ display: "inline-flex", alignItems: "center", color: "#b91c1c" }}>
+                                <Lock size={12} />
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td style={{ ...styles.td, textAlign: "right" }}>
                           <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
@@ -548,11 +597,12 @@ export default function Salary() {
                               onClick={() => handleOpenPaymentModal(s)} 
                               style={{
                                 ...styles.payBtn,
-                                background: balance <= 0 ? "#f1f5f9" : "#0f766e",
-                                color: balance <= 0 ? "#64748b" : "#fff",
-                                cursor: balance <= 0 ? "default" : "pointer"
+                                background: balance <= 0 || s.isLocked ? "#f1f5f9" : "#0f766e",
+                                color: balance <= 0 || s.isLocked ? "#64748b" : "#fff",
+                                cursor: balance <= 0 || s.isLocked ? "default" : "pointer"
                               }}
-                              title="Record full or partial payout"
+                              disabled={s.isLocked && balance <= 0}
+                              title={s.isLocked ? "Record is locked" : "Record full or partial payout"}
                             >
                               <CreditCard size={13} /> {balance <= 0 ? "Paid" : "Pay"}
                             </button>
@@ -569,6 +619,17 @@ export default function Salary() {
                               title="View Hisab-Kitab / Ledger"
                             >
                               <BookOpen size={13} /> Ledger
+                            </button>
+                            <button 
+                              onClick={() => handleToggleSingleLock(s.id, s.isLocked)} 
+                              style={{
+                                ...styles.ledgerBtn,
+                                color: s.isLocked ? "#b91c1c" : "#64748b",
+                                background: s.isLocked ? "#fee2e2" : "#f1f5f9"
+                              }}
+                              title={s.isLocked ? "Unlock this record" : "Lock this record against edits"}
+                            >
+                              {s.isLocked ? <Lock size={13} /> : <Unlock size={13} />}
                             </button>
                           </div>
                         </td>

@@ -57,6 +57,8 @@ export default function AdminDashboard() {
     totalSalaries: 0,
     totalExpenses: 0,
     presentToday: 0,
+    totalOtHours: 0,
+    totalSalariesPending: 0,
     chartData: []
   });
 
@@ -97,6 +99,13 @@ export default function AdminDashboard() {
             color="#8b5cf6" 
           />
           <KpiCard 
+            title="Total Overtime" 
+            value={`${Number(stats.totalOtHours || 0).toLocaleString()} Hrs`} 
+            subtitle="Cumulative logged overtime"
+            icon={Clock} 
+            color="#0284c7" 
+          />
+          <KpiCard 
             title="Total Advance" 
             value={`₹${Number(stats.totalAdvance).toLocaleString()}`} 
             subtitle="Outstanding balance to deduct"
@@ -109,6 +118,13 @@ export default function AdminDashboard() {
             subtitle="Cleared wage payments"
             icon={IndianRupee} 
             color="#10b981" 
+          />
+          <KpiCard 
+            title="Salaries Due / Pending" 
+            value={`₹${Number(stats.totalSalariesPending || 0).toLocaleString()}`} 
+            subtitle="Outstanding worker payouts"
+            icon={IndianRupee} 
+            color="#d97706" 
           />
           <KpiCard 
             title="Total Site Expenses" 
