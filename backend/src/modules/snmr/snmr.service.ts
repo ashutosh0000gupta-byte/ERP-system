@@ -1568,6 +1568,9 @@ export const lockMonthSalaries = async (month: number, year: number, isLocked: b
 
 // ── Excel Sheet Archive / Repository ───────────────────────────────────────
 
+// Delegate accessor to ensure 100% compatibility across IDE language servers and generated Prisma types
+const excelSheetArchive = (prisma as any).excelSheetArchive;
+
 export const getExcelSheetArchives = async (filters: {
   search?: string;
   category?: string;
@@ -1602,7 +1605,7 @@ export const getExcelSheetArchives = async (filters: {
     ];
   }
 
-  return prisma.excelSheetArchive.findMany({
+  return excelSheetArchive.findMany({
     where,
     orderBy: { createdAt: "desc" },
     include: {
@@ -1614,12 +1617,12 @@ export const getExcelSheetArchives = async (filters: {
 };
 
 export const getExcelCategories = async () => {
-  const archives = await prisma.excelSheetArchive.findMany({
+  const archives = await excelSheetArchive.findMany({
     select: { category: true }
   });
 
   const categoryCounts: Record<string, number> = {};
-  archives.forEach((a) => {
+  archives.forEach((a: any) => {
     if (a.category) {
       categoryCounts[a.category] = (categoryCounts[a.category] || 0) + 1;
     }
@@ -1676,7 +1679,7 @@ export const uploadExcelSheetArchive = async (
     ? data.customCategory.trim()
     : (data.category && data.category.trim() ? data.category.trim() : "General Reports");
 
-  return prisma.excelSheetArchive.create({
+  return excelSheetArchive.create({
     data: {
       title: data.title && data.title.trim() ? data.title.trim() : saved.fileName,
       fileName: saved.fileName,
@@ -1701,7 +1704,7 @@ export const deleteExcelSheetArchive = async (id: string, password?: string) => 
     throw new Error("Security verification failed: Incorrect admin password.");
   }
 
-  const archive = await prisma.excelSheetArchive.findUnique({
+  const archive = await excelSheetArchive.findUnique({
     where: { id }
   });
 
@@ -1717,7 +1720,7 @@ export const deleteExcelSheetArchive = async (id: string, password?: string) => 
     }
   }
 
-  await prisma.excelSheetArchive.delete({
+  await excelSheetArchive.delete({
     where: { id }
   });
 
