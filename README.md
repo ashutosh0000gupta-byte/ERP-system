@@ -94,3 +94,4 @@ npm run dev                 # http://localhost:5173
 | [docs/API.md](docs/API.md) | API endpoints and service layer |
 | [docs/DATABASE.md](docs/DATABASE.md) | Database schema and ER diagram |
 | [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md) | Auth flow and security |
+| [docs/WORKER_PAYROLL_USER_MANUAL.md](docs/WORKER_PAYROLL_USER_MANUAL.md) | Worker Payroll, Monthly Excel & Salary Calculation Manual |
