@@ -1085,7 +1085,11 @@ export const importMonthlyExcelSalaries = async (payload: {
           break;
       }
 
-      const basicSalary = Math.round(grossAttendance * 100) / 100;
+      const explicitBasic = (row as any).basicSalary || (row as any).basic;
+      const basicSalary = explicitBasic !== undefined && explicitBasic !== null && String(explicitBasic).trim() !== "" && Number(explicitBasic) > 0
+        ? Math.round(Number(explicitBasic) * 100) / 100
+        : Math.round(grossAttendance * 100) / 100;
+
       let specialAllowance = 0;
       if (row.specialAllowance !== undefined && row.specialAllowance !== null && String(row.specialAllowance).trim() !== "") {
         specialAllowance = Math.max(0, Number(row.specialAllowance));
@@ -1104,7 +1108,10 @@ export const importMonthlyExcelSalaries = async (payload: {
         : Math.round(otHours * otRate * 100) / 100;
 
       // Gross Salary = Basic Salary + Special Allowance + Conveyance Allowance + Overtime Pay
-      const grossAmount = Math.round((basicSalary + specialAllowance + conveyanceAllowance + otAmount) * 100) / 100;
+      const explicitGross = (row as any).grossAmount || (row as any).grossSalary || (row as any).gross;
+      const grossAmount = explicitGross !== undefined && explicitGross !== null && String(explicitGross).trim() !== "" && Number(explicitGross) > 0
+        ? Math.round(Number(explicitGross) * 100) / 100
+        : Math.round((basicSalary + specialAllowance + conveyanceAllowance + otAmount) * 100) / 100;
 
       // Statutory deductions: EPF (12% of basic) + ESIC (0.75% of gross)
       let pfDeducted = 0;
@@ -1135,11 +1142,22 @@ export const importMonthlyExcelSalaries = async (payload: {
       }
 
       // Net Pay = Gross Salary - (EPF + ESIC)
-      const totalStatutory = pfDeducted + esicDeducted + professionalTax + otherDeductions;
-      const netAmount = Math.max(0, Math.round((grossAmount - totalStatutory) * 100) / 100);
+      const explicitTotalDed = (row as any).totalDeductions;
+      const totalStatutory = explicitTotalDed !== undefined && explicitTotalDed !== null && String(explicitTotalDed).trim() !== "" && Number(explicitTotalDed) > 0
+        ? Math.round(Number(explicitTotalDed) * 100) / 100
+        : pfDeducted + esicDeducted + professionalTax + otherDeductions;
+
+      const explicitNet = (row as any).netAmount || (row as any).netPay;
+      const netAmount = explicitNet !== undefined && explicitNet !== null && String(explicitNet).trim() !== "" && Number(explicitNet) > 0
+        ? Math.round(Number(explicitNet) * 100) / 100
+        : Math.max(0, Math.round((grossAmount - totalStatutory) * 100) / 100);
 
       // Net Pay After Advance = Net Pay - Total Advance
-      const netPayAfterAdvance = Math.max(0, Math.round((netAmount - advanceDeducted) * 100) / 100);
+      const explicitNetAfterAdv = (row as any).netPayAfterAdvance || (row as any).netAfterAdvance || (row as any).inHand;
+      const netPayAfterAdvance = explicitNetAfterAdv !== undefined && explicitNetAfterAdv !== null && String(explicitNetAfterAdv).trim() !== "" && Number(explicitNetAfterAdv) > 0
+        ? Math.round(Number(explicitNetAfterAdv) * 100) / 100
+        : Math.max(0, Math.round((netAmount - advanceDeducted) * 100) / 100);
+
       const paidAmount = Math.max(0, Math.min(netPayAfterAdvance, Number(row.paidAmount || 0)));
       const balanceAmount = Math.max(0, Math.round((netPayAfterAdvance - paidAmount) * 100) / 100);
       const status = balanceAmount === 0 && netPayAfterAdvance > 0 ? "Paid" : (paidAmount > 0 ? "Partial" : "Pending");

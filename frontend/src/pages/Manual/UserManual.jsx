@@ -48,16 +48,16 @@ export default function UserManual() {
           desc: "Navigate to the Salary & Payment module. Use the top filter controls to select your target payroll month (e.g., October 2026), year, and optional site filter."
         },
         {
-          title: "Step 2: Click 'Generate Wages & Payroll'",
-          desc: "Click the green 'Generate Wages & Payroll' button. The system automatically scans attendance muster records, aggregating Present Days, Half Days, and Overtime Hours to calculate gross earnings."
+          title: "Step 2: Monthly Excel Upload & Automated Calculation (Or Click 'Generate')",
+          desc: "You can either click 'Generate Wages & Payroll' from daily system muster attendance OR click 'Import Monthly Excel'. Download the standard bilingual template pre-filled with your workforce. The sheet contains 21 clear columns in Hindi & English, plus an 'Instructions_मार्गदर्शिका' guide sheet for zero confusion."
         },
         {
-          title: "Step 3: Automated Advance Reconciliation",
-          desc: "If any worker took mid-month cash advances, the system automatically deducts them in the 'Advance Ded.' column, ensuring zero risk of double payment."
+          title: "Step 3: Worker-Wise Allowances & Individual EPF / ESIC",
+          desc: "Each worker can have distinct Special Allowance, Conveyance Allowance, Overtime Pay, EPF (12%), and ESIC (0.75%). You can enter them in the Excel sheet OR edit them directly inside the interactive live preview table before saving."
         },
         {
-          title: "Step 4: Adjust Bonuses or Custom Deductions (Optional)",
-          desc: "You can click on any worker record to add special performance incentives/bonuses or adjust manual deductions such as mess, uniform, or penalty charges."
+          title: "Step 4: Automated Advance Reconciliation (Debit Evidence)",
+          desc: "Mid-month cash advances taken by workers are automatically subtracted in the 'Total Advance' column, calculating the final in-hand net wage without any risk of double payment."
         },
         {
           title: "Step 5: Record Payment Disbursal ('Mark Paid')",
@@ -73,12 +73,12 @@ export default function UserManual() {
         }
       ],
       formula: {
-        title: "Salary Calculation Formula",
-        formulaText: "Net Payable = (Present Days × Daily Wage) + (Half Days × Half Wage) + (OT Hours × OT Rate) + Bonus - Unpaid Advances - Other Deductions",
-        example: "Example: Worker Ramesh Kumar (Daily Wage: ₹700, OT Rate: ₹150/hr). With 24 Present Days (₹16,800) and 10 OT Hours (₹1,500), Gross Pay is ₹18,300. He took a mid-month Advance of ₹2,000. Net Payable = ₹18,300 - ₹2,000 = ₹16,300."
+        title: "Standard Monthly Payroll & Statutory Calculation Formula",
+        formulaText: "1. Basic Salary = Worker Worked Days × Per Day Salary\n2. Gross Salary = Basic Salary + Special Allowance + Conveyance Allowance + Overtime Pay\n3. Total Deductions = EPF (12% of Basic) + ESIC (0.75% of Gross)\n4. Net Pay = Gross Salary - Total Deductions\n5. Net Pay After Advance (In-Hand) = Net Pay - Total Advance",
+        example: "Example: Worker worked for 21 days @ ₹400/day. Basic = ₹8,400. Special Allowance = ₹7,350, Conveyance Allowance = ₹1,050, Overtime (64 hrs) = ₹3,200. Gross Salary = ₹20,000. EPF (12%) = ₹1,008, ESIC (0.75%) = ₹150 -> Total Deductions = ₹1,158. Net Pay = ₹18,842. Total Advance = ₹8,000. Net Pay After Advance (In-Hand) = ₹10,842."
       },
       salaryTypes: [
-        { type: "Daily Wage", desc: "Calculated per working day based on daily attendance logs." },
+        { type: "Daily Wage", desc: "Calculated per working day based on daily attendance logs or days worked." },
         { type: "Weekly Wage", desc: "Fixed rate computed on a weekly basis." },
         { type: "Monthly Salary", desc: "Fixed monthly salary for supervisors, engineers, and site staff." },
         { type: "Hourly Wage", desc: "Calculated strictly by recorded working hours." },

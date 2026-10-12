@@ -408,6 +408,9 @@ export default function Salary() {
       row.basicSalary = Math.round(basicSalary * 100) / 100;
       row.otAmount = Math.round(otAmt * 100) / 100;
       row.grossAmount = gross;
+      row.pfDeducted = pf;
+      row.esicDeducted = esic;
+      row.totalDeductions = totalStatutory;
       row.netAmount = net;
       row.netPayAfterAdvance = netAfterAdvance;
       row.balanceAmount = bal;
@@ -418,24 +421,29 @@ export default function Salary() {
   };
 
   const handleDownloadTemplate = () => {
+    // 21 Clean bilingual headings for zero confusion when filling the sheet
     const headers = [
-      "Worker ID",
-      "Worker Name",
-      "Site Name",
-      "Salary Type",
-      "Wage Rate",
-      "Present Days",
-      "Special Allowance",
-      "Conveyance Allowance",
-      "OT Hours",
-      "OT Pay",
-      "EPF (PF)",
-      "ESIC",
-      "Advance Kharcha",
-      "Other Deductions",
-      "Paid Amount",
-      "Payment Mode",
-      "Notes"
+      "Worker ID (वर्कर कोड)",
+      "Worker Name (वर्कर का नाम)",
+      "Site Name (साइट का नाम)",
+      "Salary Type (दैनिक / मासिक)",
+      "Worker Worked Days (काम किए गए दिन)",
+      "Per Day Salary (प्रति दिन वेतन / दर)",
+      "Basic Salary (मूल वेतन = दिन × दर)",
+      "Special Allowance (विशेष भत्ता)",
+      "Conveyance Allowance (कन्वेयंस भत्ता)",
+      "Overtime Hours (OT घंटे)",
+      "Overtime Pay (OT कमाई)",
+      "Gross Salary (कुल ग्रॉस वेतन)",
+      "EPF (12% of Basic)",
+      "ESIC (0.75% of Gross)",
+      "Total Deductions (कुल कटौतियां = EPF + ESIC)",
+      "Net Pay (शुद्ध वेतन = Gross - Deductions)",
+      "Total Advance (खर्चा / डेबिट एविडेंस)",
+      "Net Pay After Advance (अंतिम इन-हैंड भुगतान)",
+      "Paid Amount (पहले से दिया गया)",
+      "Payment Mode (Bank / Cash / UPI)",
+      "Notes (टिप्पणी / विवरण)"
     ];
 
     let sampleData = [];
@@ -447,75 +455,203 @@ export default function Salary() {
           // EPF: 1008, ESIC: 150 -> Net: 18842, Advance: 8000 -> Net after advance: 10842
           return [
             w.workerId || "WRK-001",
-            w.fullName || "Demo Worker",
+            w.fullName || "Demo Worker (उदाहरण)",
             w.site?.name || "Main Site",
             "Daily",
-            400,
-            21,
-            7350,
-            1050,
-            64,
-            3200,
-            1008,
-            150,
-            8000,
-            0,
-            0,
+            21,       // Worker Worked Days
+            400,      // Per Day Salary
+            8400,     // Basic Salary
+            7350,     // Special Allowance
+            1050,     // Conveyance Allowance
+            64,       // Overtime Hours
+            3200,     // Overtime Pay
+            20000,    // Gross Salary
+            1008,     // EPF (12%)
+            150,      // ESIC (0.75%)
+            1158,     // Total Deductions
+            18842,    // Net Pay
+            8000,     // Total Advance
+            10842,    // Net Pay After Advance
+            0,        // Paid Amount
             w.paymentMethod || "Bank Transfer",
-            "Calculation Demo: Gross 20000, Net 18842, In-Hand 10842"
+            "Demo Calculation Row (21 days @ 400 | In-Hand ₹10,842)"
           ];
         }
+        const rate = Number(w.wageRate || w.dailyWage || 400);
+        const days = 21;
+        const basic = days * rate;
+        const epf = Math.round(Math.min(basic, 15000) * 0.12);
+        const esic = basic <= 21000 ? Math.round(basic * 0.0075) : 0;
+        const ded = epf + esic;
+        const net = Math.max(0, basic - ded);
         return [
           w.workerId || "",
           w.fullName || "",
           w.site?.name || "",
           w.salaryType || "Daily",
-          Number(w.wageRate || w.dailyWage || 400),
-          21,
-          0, // Special Allowance
-          0, // Conveyance Allowance
-          0, // OT Hours
-          0, // OT Pay
-          0, // EPF
-          0, // ESIC
-          0, // Advance
-          0, // Other Deductions
-          0, // Paid Amount
+          days,           // Worker Worked Days
+          rate,           // Per Day Salary
+          basic,          // Basic Salary
+          0,              // Special Allowance
+          0,              // Conveyance Allowance
+          0,              // Overtime Hours
+          0,              // Overtime Pay
+          basic,          // Gross Salary
+          epf,            // EPF
+          esic,           // ESIC
+          ded,            // Total Deductions
+          net,            // Net Pay
+          0,              // Total Advance
+          net,            // Net Pay After Advance
+          0,              // Paid Amount
           w.paymentMethod || "Bank Transfer",
-          "Monthly Attendance"
+          "Pre-filled Worker"
         ];
       });
     } else {
       sampleData = [
-        ["WRK-001", "Ramesh Kumar", "Site Alpha", "Daily", 400, 21, 7350, 1050, 64, 3200, 1008, 150, 8000, 0, 0, "Bank Transfer", "Worked 21 days @ 400 (Gross: 20000, Net: 18842, Balance: 10842)"],
-        ["WRK-002", "Suresh Yadav", "Site Alpha", "Daily", 500, 24, 5000, 800, 20, 1250, 1440, 143, 4000, 0, 0, "Cash", "Standard payroll row"],
-        ["WRK-003", "Mahesh Verma", "Site Beta", "Daily", 600, 26, 6000, 1200, 16, 1200, 1800, 180, 5000, 0, 0, "UPI", "Standard payroll row"]
+        [
+          "WRK-001",
+          "Ramesh Kumar (Demo)",
+          "Site Alpha",
+          "Daily",
+          21,
+          400,
+          8400,
+          7350,
+          1050,
+          64,
+          3200,
+          20000,
+          1008,
+          150,
+          1158,
+          18842,
+          8000,
+          10842,
+          0,
+          "Bank Transfer",
+          "Demo: Worked 21 days @ 400 | Gross ₹20,000 | In-Hand ₹10,842"
+        ],
+        [
+          "WRK-002",
+          "Suresh Yadav",
+          "Site Alpha",
+          "Daily",
+          24,
+          500,
+          12000,
+          5000,
+          800,
+          20,
+          1250,
+          19050,
+          1440,
+          143,
+          1583,
+          17467,
+          4000,
+          13467,
+          0,
+          "Cash",
+          "Worked 24 days @ 500 | In-Hand ₹13,467"
+        ],
+        [
+          "WRK-003",
+          "Mahesh Verma",
+          "Site Beta",
+          "Daily",
+          26,
+          600,
+          15600,
+          6000,
+          1200,
+          16,
+          1200,
+          24000,
+          1800,
+          0,
+          1800,
+          22200,
+          5000,
+          17200,
+          0,
+          "UPI",
+          "Worked 26 days @ 600 | In-Hand ₹17,200"
+        ]
       ];
     }
 
+    // Sheet 1: Main Monthly Payroll Template
     const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
     ws["!cols"] = [
-      { wch: 14 },
-      { wch: 22 },
-      { wch: 18 },
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 18 }, // Special Allowance
-      { wch: 22 }, // Conveyance Allowance
-      { wch: 12 }, // OT Hours
-      { wch: 14 }, // OT Pay
-      { wch: 14 }, // EPF
-      { wch: 14 }, // ESIC
-      { wch: 18 }, // Advance Kharcha
-      { wch: 18 }, // Other Deductions
-      { wch: 14 }, // Paid Amount
-      { wch: 16 }, // Payment Mode
-      { wch: 30 }  // Notes
+      { wch: 18 }, // Worker ID (वर्कर कोड)
+      { wch: 26 }, // Worker Name (वर्कर का नाम)
+      { wch: 20 }, // Site Name (साइट का नाम)
+      { wch: 20 }, // Salary Type (दैनिक / मासिक)
+      { wch: 25 }, // Worker Worked Days (काम किए गए दिन)
+      { wch: 25 }, // Per Day Salary (प्रति दिन वेतन / दर)
+      { wch: 26 }, // Basic Salary (मूल वेतन = दिन × दर)
+      { wch: 22 }, // Special Allowance (विशेष भत्ता)
+      { wch: 25 }, // Conveyance Allowance (कन्वेयंस भत्ता)
+      { wch: 18 }, // Overtime Hours (OT घंटे)
+      { wch: 18 }, // Overtime Pay (OT कमाई)
+      { wch: 22 }, // Gross Salary (कुल ग्रॉस वेतन)
+      { wch: 20 }, // EPF (12% of Basic)
+      { wch: 22 }, // ESIC (0.75% of Gross)
+      { wch: 30 }, // Total Deductions (कुल कटौतियां = EPF + ESIC)
+      { wch: 30 }, // Net Pay (शुद्ध वेतन = Gross - Deductions)
+      { wch: 26 }, // Total Advance (खर्चा / डेबिट एविडेंस)
+      { wch: 32 }, // Net Pay After Advance (अंतिम इन-हैंड भुगतान)
+      { wch: 22 }, // Paid Amount (पहले से दिया गया)
+      { wch: 24 }, // Payment Mode (Bank / Cash / UPI)
+      { wch: 36 }  // Notes (टिप्पणी / विवरण)
+    ];
+
+    // Sheet 2: Complete User Instructions & Formula Guide in Hindi + English
+    const instructionsData = [
+      ["SNMR ERP - मासिक वेतन एक्सेल शीट भरने के नियम (Monthly Payroll Guide)"],
+      [""],
+      ["कॉलम का नाम (Heading)", "क्या भरना है (What to Enter)", "कैलकुलेशन नियम (Formula & Rules)", "उदाहरण (Example)"],
+      ["Worker ID (वर्कर कोड)", "श्रमिक / कर्मचारी का कोड", "सिस्टम से मैच करने हेतु (e.g. WRK-001)", "WRK-001"],
+      ["Worker Name (वर्कर का नाम)", "श्रमिक का पूरा नाम", "पहचान के लिए", "Ramesh Kumar"],
+      ["Site Name (साइट का नाम)", "प्रोजेक्ट या कार्यस्थल", "साइट का नाम", "Site Alpha"],
+      ["Salary Type (दैनिक / मासिक)", "वेतन का प्रकार", "Daily या Monthly दर्ज करें", "Daily"],
+      ["Worker Worked Days (काम किए गए दिन)", "महीने में किए गए कुल काम के दिन", "1 से 31 के बीच दिन", "21"],
+      ["Per Day Salary (प्रति दिन वेतन / दर)", "एक दिन का वेतन / दैनिक दर", "तय दर (₹)", "400"],
+      ["Basic Salary (मूल वेतन = दिन × दर)", "मूल वेतन", "दिन × दर (खाली छोड़ें तो ऑटो-कैलकुलेट होगा)", "8400"],
+      ["Special Allowance (विशेष भत्ता)", "मासिक विशेष भत्ता", "सीधे जुड़ेगा (₹)", "7350"],
+      ["Conveyance Allowance (कन्वेयंस भत्ता)", "यात्रा / पेट्रोल भत्ता", "सीधे जुड़ेगा (₹)", "1050"],
+      ["Overtime Hours (OT घंटे)", "महीने में किए गए कुल OT घंटे", "घंटे दर्ज करें", "64"],
+      ["Overtime Pay (OT कमाई)", "ओवरटाइम की राशि", "(दर / 8) × OT घंटे (खाली छोड़ें तो ऑटो-कैलकुलेट होगा)", "3200"],
+      ["Gross Salary (कुल ग्रॉस वेतन)", "कुल ग्रॉस वेतन", "Basic + Special + Conveyance + OT (ऑटो-कैलकुलेट)", "20000"],
+      ["EPF (12% of Basic)", "भविष्य निधि (PF)", "12% of Basic (अधिकतम 15,000 बेसिक पर)", "1008"],
+      ["ESIC (0.75% of Gross)", "कर्मचारी राज्य बीमा", "0.75% of Gross (21,000 ग्रॉस तक)", "150"],
+      ["Total Deductions (कुल कटौतियां = EPF + ESIC)", "कुल कानूनी कटौतियां", "EPF + ESIC (ऑटो-कैलकुलेट)", "1158"],
+      ["Net Pay (शुद्ध वेतन = Gross - Deductions)", "शुद्ध देय वेतन", "Gross - Total Deductions (ऑटो-कैलकुलेट)", "18842"],
+      ["Total Advance (खर्चा / डेबिट एविडेंस)", "महीने में लिया गया कुल खर्चा / पेशगी", "डेबिट एविडेंस से कटौती (₹)", "8000"],
+      ["Net Pay After Advance (अंतिम इन-हैंड भुगतान)", "एडवांस काटने के बाद इन-हैंड वेतन", "Net Pay - Total Advance (ऑटो-कैलकुलेट)", "10842"],
+      ["Paid Amount (पहले से दिया गया)", "यदि इस महीने पहले से कुछ भुगतान हो चुका हो", "बाकी बकाया निकालने के लिए", "0"],
+      ["Payment Mode (Bank / Cash / UPI)", "भुगतान का माध्यम", "Bank Transfer, Cash, या UPI", "Bank Transfer"],
+      ["Notes (टिप्पणी / विवरण)", "कोई विशेष विवरण", "वैकल्पिक टिप्पणी", "Worked 21 days @ 400 | In-Hand ₹10,842"],
+      [""],
+      ["विशेष सुविधाएं व महत्वपूर्ण निर्देश (Important Features):"],
+      ["1. ऑटो-कैलकुलेशन (Zero Headache): यदि आप Basic, Gross, EPF, ESIC, Net Pay, या In-Hand खाली छोड़ते हैं, तो सिस्टम खुद सही फॉर्मूले से गणना कर लेगा।"],
+      ["2. अलग-अलग EPF / ESIC सपोर्ट: यदि किसी कर्मचारी का PF या ESIC अलग है, तो आप इस कॉलम में सीधे वैल्यू डाल सकते हैं। सिस्टम आपकी वैल्यू को मानेगा।"],
+      ["3. लाइव प्रीव्यू व एडिट: एक्सेल अपलोड करने के बाद स्क्रीन पर प्रीव्यू टेबल खुलती है जहाँ आप अपलोड से पहले भी किसी भी वर्कर के दिन, भत्ते, PF, ESIC, या एडवांस को एडिट कर सकते हैं।"]
+    ];
+
+    const wsHelp = XLSX.utils.aoa_to_sheet(instructionsData);
+    wsHelp["!cols"] = [
+      { wch: 34 },
+      { wch: 38 },
+      { wch: 48 },
+      { wch: 25 }
     ];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Monthly_Payroll");
+    XLSX.utils.book_append_sheet(wb, wsHelp, "Instructions_मार्गदर्शिका");
     XLSX.writeFile(wb, `SNMR_Monthly_Payroll_Template_${importMonth}_${importYear}.xlsx`);
   };
 
@@ -548,9 +684,33 @@ export default function Salary() {
         for (let rIndex = 0; rIndex < rawRows.length; rIndex++) {
           const row = rawRows[rIndex];
           const keys = Object.keys(row);
+
+          // Enhanced matcher supporting exact match, startsWith, and substring
           const getVal = (possibleKeys) => {
+            // 1. Exact match against normalized keys
             for (const pk of possibleKeys) {
-              const matchedKey = keys.find(k => normalizeKey(k) === normalizeKey(pk));
+              const normPk = normalizeKey(pk);
+              const matchedKey = keys.find(k => normalizeKey(k) === normPk);
+              if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== "") {
+                return row[matchedKey];
+              }
+            }
+            // 2. Starts-with match
+            for (const pk of possibleKeys) {
+              const normPk = normalizeKey(pk);
+              const matchedKey = keys.find(k => {
+                const normK = normalizeKey(k);
+                return normK.startsWith(normPk);
+              });
+              if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== "") {
+                return row[matchedKey];
+              }
+            }
+            // 3. Substring match (if search key is at least 4 characters to avoid false matches)
+            for (const pk of possibleKeys) {
+              const normPk = normalizeKey(pk);
+              if (normPk.length < 4) continue;
+              const matchedKey = keys.find(k => normalizeKey(k).includes(normPk));
               if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== "") {
                 return row[matchedKey];
               }
@@ -562,12 +722,12 @@ export default function Salary() {
           const fullName = String(getVal(["fullName", "name", "workerName", "worker_name", "labourName", "naam"]) || "").trim();
           const siteName = String(getVal(["siteName", "site", "sitename", "location"]) || "").trim();
           const salaryType = String(getVal(["salaryType", "type"]) || "Daily").trim();
-          const wageRate = Number(getVal(["wageRate", "dailyWage", "rate", "wage", "rozanarate"]) || 0);
+          const wageRate = Number(getVal(["perDaySalary", "wageRate", "dailyWage", "rate", "wage", "rozanarate", "perday"]) || 0);
 
           let presentDays = 0;
           let otHours = 0;
 
-          const explicitDays = getVal(["presentDays", "days", "totalDays", "attendedDays", "haziri", "attendance", "pdays"]);
+          const explicitDays = getVal(["workerWorkedDays", "presentDays", "days", "totalDays", "attendedDays", "haziri", "attendance", "pdays"]);
           if (explicitDays !== null && explicitDays !== "") {
             presentDays = Number(explicitDays) || 0;
           } else {
@@ -582,10 +742,12 @@ export default function Salary() {
             }
           }
 
-          const explicitOt = getVal(["otHours", "ot", "overtime", "overtimehours", "othr"]);
+          const explicitOt = getVal(["overtimeHours", "otHours", "ot", "overtime", "othr", "othours"]);
           otHours = Number(explicitOt || 0);
 
-          const explicitOtAmount = getVal(["otAmount", "otPay", "overtimeamount", "ot_amount", "overtimepay"]);
+          const explicitOtAmount = getVal(["overtimePay", "otAmount", "otPay", "overtimeamount", "ot_amount", "overtimepay"]);
+
+          const explicitBasicSalary = getVal(["basicSalary", "basic", "moolvetan", "basicsalarymoolvetan", "basicwage"]);
 
           const specialAllowance = Number(getVal([
             "specialAllowance",
@@ -626,38 +788,56 @@ export default function Salary() {
             ? Number(explicitOtAmount)
             : Math.round(otHours * otRate * 100) / 100;
 
-          // 1. Basic Salary = Days Worked × Rate
-          const basicSalary = Math.round(grossFromDays * 100) / 100;
+          // 1. Basic Salary = Days Worked × Rate (or explicit if present in Excel)
+          const basicSalary = explicitBasicSalary !== null && explicitBasicSalary !== "" && Number(explicitBasicSalary) > 0
+            ? Number(explicitBasicSalary)
+            : Math.round(grossFromDays * 100) / 100;
 
           // 2. Gross Salary = Basic Salary + Special Allowance + Conveyance Allowance + Overtime Pay
-          const gross = Math.round((basicSalary + specialAllowance + conveyanceAllowance + otAmount) * 100) / 100;
+          const explicitGross = getVal(["grossSalary", "grossAmount", "gross", "kulvetan", "totalgross", "grosswage", "grosspay"]);
+          const gross = explicitGross !== null && explicitGross !== "" && Number(explicitGross) > 0
+            ? Number(explicitGross)
+            : Math.round((basicSalary + specialAllowance + conveyanceAllowance + otAmount) * 100) / 100;
 
           // 3. Statutory Deductions
           // EPF: 12% on Basic Salary
-          const rawPf = getVal(["pfDeducted", "epfDeducted", "pf", "epf", "epfpf", "providentfund"]);
+          const rawPf = getVal(["epf12ofbasic", "pfDeducted", "epfDeducted", "pf", "epf", "epfpf", "providentfund"]);
           const pfDeducted = rawPf !== null && rawPf !== ""
             ? Number(rawPf)
             : Math.round(Math.min(basicSalary, 15000) * 0.12 * 100) / 100;
 
           // ESIC: 0.75% of Gross earnings
-          const rawEsic = getVal(["esicDeducted", "esiDeducted", "esic", "esi", "stateinsurance"]);
+          const rawEsic = getVal(["esic075ofgross", "esicDeducted", "esiDeducted", "esic", "esi", "stateinsurance"]);
           const esicDeducted = rawEsic !== null && rawEsic !== ""
             ? Number(rawEsic)
             : (gross <= 21000 ? Math.round(gross * 0.0075 * 100) / 100 : 0);
 
           const otherDeductions = Number(getVal(["otherDeductions", "deductions", "deduction", "room", "mess"]) || 0);
-          const advanceDeducted = Number(getVal(["advanceDeducted", "advance", "kharcha", "adv", "advancetaken", "totaladvance"]) || 0);
+
+          // Total Deductions = EPF + ESIC + Other
+          const explicitTotalDeductions = getVal(["totalDeductions", "totaldeductionsepfesic", "totaldeduction", "statutorydeductions", "totalkatouti"]);
+          const totalStatutory = explicitTotalDeductions !== null && explicitTotalDeductions !== "" && Number(explicitTotalDeductions) > 0
+            ? Number(explicitTotalDeductions)
+            : (pfDeducted + esicDeducted + otherDeductions);
+
+          const advanceDeducted = Number(getVal(["totalAdvance", "advanceDeducted", "advance", "kharcha", "adv", "advancetaken", "debitevidence"]) || 0);
           const paidAmount = Number(getVal(["paidAmount", "paid", "amountpaid"]) || 0);
           const paymentMode = String(getVal(["paymentMode", "paymentMethod", "mode"]) || "Bank Transfer").trim();
           const notes = String(getVal(["notes", "remarks"]) || "").trim();
 
           // Calculation Method:
-          // Total Statutory Deductions = EPF + ESIC + Other
-          const totalStatutory = pfDeducted + esicDeducted + otherDeductions;
-          // Net Pay = Gross Salary - (EPF + ESIC)
-          const net = Math.max(0, Math.round((gross - totalStatutory) * 100) / 100);
+          // Net Pay = Gross Salary - Total Deductions
+          const explicitNet = getVal(["netPay", "netpaygrossdeductions", "netAmount", "net", "shuddhvetan"]);
+          const net = explicitNet !== null && explicitNet !== "" && Number(explicitNet) > 0
+            ? Number(explicitNet)
+            : Math.max(0, Math.round((gross - totalStatutory) * 100) / 100);
+
           // Net Pay After Advance = Net Pay - Total Advance
-          const netPayAfterAdvance = Math.max(0, Math.round((net - advanceDeducted) * 100) / 100);
+          const explicitNetAfterAdvance = getVal(["netPayAfterAdvance", "afterAdvance", "netafteradvance", "inHand", "inhandpay", "finalpay"]);
+          const netPayAfterAdvance = explicitNetAfterAdvance !== null && explicitNetAfterAdvance !== "" && Number(explicitNetAfterAdvance) > 0
+            ? Number(explicitNetAfterAdvance)
+            : Math.max(0, Math.round((net - advanceDeducted) * 100) / 100);
+
           const balance = Math.max(0, Math.round((netPayAfterAdvance - paidAmount) * 100) / 100);
 
           parsed.push({
@@ -677,6 +857,7 @@ export default function Salary() {
             esicDeducted,
             advanceDeducted,
             otherDeductions,
+            totalDeductions: totalStatutory,
             netAmount: net,
             netPayAfterAdvance,
             paidAmount,
