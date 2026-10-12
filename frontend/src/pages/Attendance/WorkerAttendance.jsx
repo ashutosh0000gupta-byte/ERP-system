@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import MainLayout from "../../components/layout/MainLayout";
 import api from "../../services/api";
-import { CheckSquare, Calendar, Building2, HardHat, Check, X, Clock, Loader2, Download } from "lucide-react";
+import { CheckSquare, Calendar, Building2, HardHat, Check, X, Clock, Loader2, Download, FileSpreadsheet } from "lucide-react";
 
 export default function WorkerAttendance() {
   const [sites, setSites] = useState([]);
@@ -175,6 +176,26 @@ export default function WorkerAttendance() {
             <h1 style={styles.title}>Worker Attendance</h1>
             <p style={styles.subtitle}>Mark daily attendance for site staff and laborers.</p>
           </div>
+          <Link 
+            to="/salary" 
+            style={{ 
+              display: "flex", 
+              alignItems: "center", 
+              gap: "8px", 
+              background: "linear-gradient(135deg, #15803d 0%, #16a34a 100%)", 
+              color: "#fff", 
+              textDecoration: "none", 
+              border: "none", 
+              padding: "10px 18px", 
+              borderRadius: "10px", 
+              fontWeight: "600", 
+              fontSize: "13px",
+              boxShadow: "0 2px 8px rgba(22, 163, 74, 0.25)"
+            }}
+            title="Upload whole month Excel sheet for automatic attendance and wage calculation"
+          >
+            <FileSpreadsheet size={16} /> Upload Monthly Excel (मासिक एक्सेल अपलोड)
+          </Link>
         </div>
 
         {/* Controls */}

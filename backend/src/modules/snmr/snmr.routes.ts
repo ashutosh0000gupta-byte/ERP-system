@@ -27,6 +27,7 @@ import {
   getSystemUsers,
   createSystemUser,
   importWorkerSalaries,
+  importMonthlyExcelSalaries,
   notifyWorkerSalaries,
   importWorkers,
   recordWorkerPayment,
@@ -75,6 +76,7 @@ router.post("/salaries/lock-month", lockMonthSalaries);
 router.put("/salaries/:id/lock", toggleSalaryLock);
 router.post("/salaries/:id/pay", payWorkerSalary);
 router.post("/salaries/import", importWorkerSalaries);
+router.post("/salaries/import-monthly", importMonthlyExcelSalaries);
 router.post("/salaries/notify", notifyWorkerSalaries);
 
 // Expenses

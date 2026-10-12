@@ -927,6 +927,352 @@ export const importWorkerSalaries = async (month: number, year: number, updates:
   return results;
 };
 
+export const importMonthlyExcelSalaries = async (payload: {
+  month: number;
+  year: number;
+  siteId?: string | null;
+  records: Array<{
+    workerId?: string;
+    fullName: string;
+    siteName?: string;
+    salaryType?: string;
+    wageRate?: number;
+    presentDays: number;
+    totalDays?: number;
+    otHours?: number;
+    advanceDeducted?: number;
+    otherDeductions?: number;
+    allowances?: number;
+    paidAmount?: number;
+    paymentMode?: string;
+    notes?: string;
+  }>;
+}) => {
+  const { month, year, siteId, records } = payload;
+  const start = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+  const daysInMonth = new Date(year, month, 0).getDate();
+
+  // Preload sites into memory map
+  const allSites = await prisma.site.findMany();
+  const siteMapByName = new Map<string, string>();
+  for (const s of allSites) {
+    siteMapByName.set(s.name.trim().toLowerCase(), s.id);
+  }
+
+  // Preload workers
+  const allWorkers = await prisma.worker.findMany();
+  const workerMapById = new Map<string, any>();
+  const workerMapByName = new Map<string, any>();
+  for (const w of allWorkers) {
+    if (w.workerId) workerMapById.set(w.workerId.trim().toUpperCase(), w);
+    if (w.fullName) workerMapByName.set(w.fullName.trim().toLowerCase(), w);
+  }
+
+  const results: any[] = [];
+  const errors: any[] = [];
+  let totalGross = 0;
+  let totalNet = 0;
+  let totalAdvances = 0;
+
+  for (let idx = 0; idx < records.length; idx++) {
+    const row = records[idx];
+    const rawName = row.fullName ? String(row.fullName).trim() : "";
+    const rawId = row.workerId ? String(row.workerId).trim().toUpperCase() : "";
+
+    if (!rawName && !rawId) {
+      continue;
+    }
+
+    try {
+      // 1. Find or create worker
+      let worker: any = null;
+      if (rawId && workerMapById.has(rawId)) {
+        worker = workerMapById.get(rawId);
+      } else if (rawName && workerMapByName.has(rawName.toLowerCase())) {
+        worker = workerMapByName.get(rawName.toLowerCase());
+      }
+
+      // Determine Site
+      let targetSiteId: string | null = siteId && siteId !== "all" ? siteId : null;
+      if (!targetSiteId && row.siteName) {
+        const lowerSite = String(row.siteName).trim().toLowerCase();
+        if (siteMapByName.has(lowerSite)) {
+          targetSiteId = siteMapByName.get(lowerSite)!;
+        } else {
+          const siteCount = await prisma.site.count();
+          let siteCandidate = `SITE-${String(siteCount + 1).padStart(3, '0')}`;
+          while (await prisma.site.findUnique({ where: { siteId: siteCandidate } })) {
+            siteCandidate = `SITE-${Math.floor(100 + Math.random() * 900)}`;
+          }
+          const createdSite = await prisma.site.create({
+            data: {
+              siteId: siteCandidate,
+              name: String(row.siteName).trim(),
+              status: "Active"
+            }
+          });
+          siteMapByName.set(lowerSite, createdSite.id);
+          targetSiteId = createdSite.id;
+        }
+      }
+
+      if (!worker) {
+        const autoWorkerId = await getNextWorkerId();
+        const initialWage = Number(row.wageRate || 500);
+        worker = await prisma.worker.create({
+          data: {
+            workerId: rawId || autoWorkerId,
+            fullName: rawName || `Worker ${autoWorkerId}`,
+            siteId: targetSiteId,
+            wageRate: initialWage,
+            dailyWage: initialWage,
+            salaryType: row.salaryType || "Daily",
+            status: "Active",
+            joiningDate: start
+          }
+        });
+        workerMapById.set(worker.workerId.trim().toUpperCase(), worker);
+        workerMapByName.set(worker.fullName.trim().toLowerCase(), worker);
+      }
+
+      // 2. Calculations
+      const salaryType = worker.salaryType || row.salaryType || "Daily";
+      const baseWageRate = Number(row.wageRate && row.wageRate > 0 ? row.wageRate : (worker.wageRate || worker.dailyWage || worker.monthlyWage || 500));
+      const presentDays = Math.max(0, Math.min(daysInMonth, Number(row.presentDays || 0)));
+      const otHours = Math.max(0, Number(row.otHours || 0));
+
+      let rateApplied = baseWageRate;
+      let grossAttendance = 0;
+      let otRate = Number(worker.otRatePerHour || 0);
+
+      switch (salaryType) {
+        case "Daily":
+          rateApplied = baseWageRate;
+          grossAttendance = Math.round(presentDays * rateApplied * 100) / 100;
+          if (otRate === 0 && rateApplied > 0) otRate = rateApplied / 8;
+          break;
+        case "Weekly":
+          rateApplied = baseWageRate;
+          grossAttendance = Math.round((rateApplied / 6) * presentDays * 100) / 100;
+          if (otRate === 0 && rateApplied > 0) otRate = rateApplied / 48;
+          break;
+        case "Monthly":
+          rateApplied = baseWageRate;
+          const standardDays = daysInMonth >= 28 ? daysInMonth : 26;
+          grossAttendance = Math.round((rateApplied / standardDays) * presentDays * 100) / 100;
+          if (otRate === 0 && rateApplied > 0) otRate = rateApplied / 208;
+          break;
+        case "Hourly":
+          rateApplied = baseWageRate;
+          grossAttendance = Math.round(presentDays * 8 * rateApplied * 100) / 100;
+          if (otRate === 0) otRate = rateApplied * 1.5;
+          break;
+        default:
+          rateApplied = baseWageRate;
+          grossAttendance = Math.round(presentDays * rateApplied * 100) / 100;
+          if (otRate === 0 && rateApplied > 0) otRate = rateApplied / 8;
+          break;
+      }
+
+      const otAmount = Math.round(otHours * otRate * 100) / 100;
+      const allowances = Math.max(0, Number(row.allowances || 0));
+      const grossAmount = Math.round((grossAttendance + otAmount + allowances) * 100) / 100;
+
+      // Statutory deductions
+      const basicSalary = Math.round(grossAttendance * 0.50 * 100) / 100;
+      const conveyanceAllowance = Math.round(grossAttendance * 0.20 * 100) / 100;
+      const specialAllowance = Math.round((grossAttendance - basicSalary - conveyanceAllowance) * 100) / 100;
+
+      const pfDeducted = (worker as any).uan ? Math.round(Math.min(basicSalary, 15000) * 0.12 * 100) / 100 : 0;
+      const esicDeducted = (grossAmount <= 21000 && (worker as any).esiNumber) ? Math.round(grossAmount * 0.0075 * 100) / 100 : 0;
+      const professionalTax = grossAmount >= 15000 ? 200 : 0;
+      const otherDeductions = Math.max(0, Number(row.otherDeductions || 0));
+
+      // Advance
+      let advanceDeducted = 0;
+      if (row.advanceDeducted !== undefined && row.advanceDeducted !== null) {
+        advanceDeducted = Math.max(0, Number(row.advanceDeducted));
+      } else {
+        const pendingAdvances = await prisma.workerAdvance.findMany({
+          where: { workerId: worker.id, isDeducted: false, date: { lte: end } }
+        });
+        advanceDeducted = pendingAdvances.reduce((acc, a) => acc + Number(a.amount), 0);
+      }
+
+      const totalDeductions = pfDeducted + esicDeducted + professionalTax + otherDeductions + advanceDeducted;
+      const netAmount = Math.max(0, Math.round((grossAmount - totalDeductions) * 100) / 100);
+      const paidAmount = Math.max(0, Math.min(netAmount, Number(row.paidAmount || 0)));
+      const balanceAmount = Math.max(0, Math.round((netAmount - paidAmount) * 100) / 100);
+      const status = balanceAmount === 0 && netAmount > 0 ? "Paid" : (paidAmount > 0 ? "Partial" : "Pending");
+      const paymentMode = row.paymentMode || worker.paymentMethod || "Bank Transfer";
+
+      // 3. Upsert WorkerSalary
+      const existingSalary = await prisma.workerSalary.findFirst({
+        where: {
+          workerId: worker.id,
+          month,
+          year,
+          periodType: "Monthly"
+        }
+      });
+
+      let salaryRecord;
+      if (existingSalary) {
+        if ((existingSalary as any).isLocked) {
+          results.push({ ...existingSalary, skipped: true, reason: "Locked" });
+          continue;
+        }
+        salaryRecord = await prisma.workerSalary.update({
+          where: { id: existingSalary.id },
+          data: {
+            startDate: start,
+            endDate: end,
+            totalDays: daysInMonth,
+            presentDays,
+            dailyWage: baseWageRate,
+            rateApplied,
+            basicSalary,
+            conveyanceAllowance,
+            specialAllowance,
+            grossAmount,
+            otHours,
+            otAmount,
+            pfDeducted,
+            esicDeducted,
+            professionalTax,
+            otherDeductions,
+            advanceDeducted,
+            netAmount,
+            paidAmount,
+            balanceAmount,
+            paymentMode,
+            status,
+            paidAt: status === "Paid" ? new Date() : (paidAmount > 0 ? new Date() : null),
+            notes: row.notes || "Imported & Calculated from Monthly Excel"
+          },
+          include: { worker: { include: { site: true } } }
+        });
+      } else {
+        salaryRecord = await prisma.workerSalary.create({
+          data: {
+            workerId: worker.id,
+            month,
+            year,
+            periodType: "Monthly",
+            salaryType,
+            startDate: start,
+            endDate: end,
+            totalDays: daysInMonth,
+            presentDays,
+            dailyWage: baseWageRate,
+            rateApplied,
+            basicSalary,
+            conveyanceAllowance,
+            specialAllowance,
+            grossAmount,
+            otHours,
+            otAmount,
+            pfDeducted,
+            esicDeducted,
+            professionalTax,
+            otherDeductions,
+            advanceDeducted,
+            netAmount,
+            paidAmount,
+            balanceAmount,
+            paymentMode,
+            status,
+            paidAt: status === "Paid" ? new Date() : (paidAmount > 0 ? new Date() : null),
+            notes: row.notes || "Imported & Calculated from Monthly Excel"
+          },
+          include: { worker: { include: { site: true } } }
+        });
+      }
+
+      // 4. Update or Record Advance
+      if (advanceDeducted > 0) {
+        const undeducted = await prisma.workerAdvance.findMany({
+          where: { workerId: worker.id, isDeducted: false, date: { lte: end } }
+        });
+        if (undeducted.length > 0) {
+          await prisma.workerAdvance.updateMany({
+            where: { id: { in: undeducted.map(u => u.id) } },
+            data: { isDeducted: true, deductedAt: new Date() }
+          });
+        } else {
+          await prisma.workerAdvance.create({
+            data: {
+              workerId: worker.id,
+              siteId: worker.siteId,
+              date: end,
+              amount: advanceDeducted,
+              reason: `Advance/Kharcha deducted in ${month}/${year} payroll`,
+              isDeducted: true,
+              deductedAt: new Date()
+            }
+          });
+        }
+      }
+
+      // 5. Sync WorkerAttendance for the month so Attendance Screen also reflects present days
+      if (presentDays > 0) {
+        let remainingPresent = presentDays;
+        const siteForAttendance = worker.siteId || targetSiteId;
+        if (siteForAttendance) {
+          for (let d = 1; d <= daysInMonth && remainingPresent > 0; d++) {
+            const attDate = new Date(Date.UTC(year, month - 1, d, 0, 0, 0, 0));
+            const dayOfWeek = attDate.getUTCDay(); // 0 is Sunday
+            if (dayOfWeek === 0) continue;
+
+            const dayStatus = remainingPresent >= 1 ? "Present" : "Half Day";
+            remainingPresent -= remainingPresent >= 1 ? 1 : 0.5;
+
+            await prisma.workerAttendance.upsert({
+              where: {
+                workerId_date: {
+                  workerId: worker.id,
+                  date: attDate
+                }
+              },
+              create: {
+                workerId: worker.id,
+                siteId: siteForAttendance,
+                date: attDate,
+                status: dayStatus,
+                otHours: 0
+              },
+              update: {
+                status: dayStatus
+              }
+            }).catch(() => {});
+          }
+        }
+      }
+
+      totalGross += grossAmount;
+      totalNet += netAmount;
+      totalAdvances += advanceDeducted;
+      results.push(salaryRecord);
+    } catch (err: any) {
+      console.error(`Row ${idx} processing error:`, err);
+      errors.push({ row: idx + 1, error: err.message, name: rawName, id: rawId });
+    }
+  }
+
+  return {
+    success: true,
+    month,
+    year,
+    totalProcessed: results.length,
+    totalGross,
+    totalAdvances,
+    totalNet,
+    errors,
+    salaries: results
+  };
+};
+
 export const notifyWorkerSalaries = async (month: number, year: number) => {
   const salaries: any[] = await getWorkerSalaries({ month, year });
   let notifiedCount = 0;

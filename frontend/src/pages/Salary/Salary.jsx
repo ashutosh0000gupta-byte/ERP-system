@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import MainLayout from "../../components/layout/MainLayout";
 import api from "../../services/api";
+import * as XLSX from "xlsx";
 import { 
   Wallet, Search, Play, Check, X, Calendar, AlertCircle, 
   Download, Printer, Filter, CreditCard, BookOpen, Clock, 
   ArrowUpRight, ArrowDownLeft, ChevronRight, RefreshCw, FileText,
-  Lock, Unlock
+  Lock, Unlock, Upload, FileSpreadsheet, Sparkles, CheckCircle2, HelpCircle
 } from "lucide-react";
 import PayslipPrint from "../../components/shared/PayslipPrint";
 
@@ -53,9 +54,31 @@ export default function Salary() {
   const [ledgerData, setLedgerData] = useState(null);
   const [loadingLedger, setLoadingLedger] = useState(false);
 
+  // Monthly Excel Import Modal & State
+  const [allWorkers, setAllWorkers] = useState([]);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importMonth, setImportMonth] = useState(new Date().getMonth() + 1);
+  const [importYear, setImportYear] = useState(new Date().getFullYear());
+  const [importSiteId, setImportSiteId] = useState("all");
+  const [importFileName, setImportFileName] = useState("");
+  const [parsedRows, setParsedRows] = useState([]);
+  const [isParsingExcel, setIsParsingExcel] = useState(false);
+  const [isSubmittingImport, setIsSubmittingImport] = useState(false);
+  const [importError, setImportError] = useState("");
+
   useEffect(() => {
     fetchSites();
+    fetchWorkers();
   }, []);
+
+  const fetchWorkers = async () => {
+    try {
+      const res = await api.get("/snmr/workers");
+      setAllWorkers(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     fetchSalaries();
@@ -276,6 +299,234 @@ export default function Salary() {
     }
   };
 
+  const handleDownloadTemplate = () => {
+    const headers = [
+      "Worker ID",
+      "Worker Name",
+      "Site Name",
+      "Salary Type",
+      "Wage Rate",
+      "Present Days",
+      "OT Hours",
+      "Advance Kharcha",
+      "Other Allowances",
+      "Other Deductions",
+      "Paid Amount",
+      "Payment Mode",
+      "Notes"
+    ];
+
+    let sampleData = [];
+    if (allWorkers.length > 0) {
+      sampleData = allWorkers.map(w => [
+        w.workerId || "",
+        w.fullName || "",
+        w.site?.name || "",
+        w.salaryType || "Daily",
+        Number(w.wageRate || w.dailyWage || 500),
+        26,
+        0,
+        0,
+        0,
+        0,
+        0,
+        w.paymentMethod || "Bank Transfer",
+        "Monthly Attendance"
+      ]);
+    } else {
+      sampleData = [
+        ["WRK-001", "Ramesh Kumar", "Site Alpha", "Daily", 600, 26, 8, 1500, 0, 0, 0, "Bank Transfer", "Sample worker"],
+        ["WRK-002", "Suresh Yadav", "Site Alpha", "Daily", 550, 24.5, 4, 1000, 0, 0, 0, "Cash", "Sample worker"],
+        ["WRK-003", "Mahesh Verma", "Site Beta", "Daily", 700, 27, 12, 2000, 500, 0, 0, "UPI", "Sample worker"]
+      ];
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
+    ws["!cols"] = [
+      { wch: 14 },
+      { wch: 22 },
+      { wch: 18 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 25 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Monthly_Payroll");
+    XLSX.writeFile(wb, `SNMR_Monthly_Payroll_Template_${importMonth}_${importYear}.xlsx`);
+  };
+
+  const handleExcelFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportFileName(file.name);
+    setIsParsingExcel(true);
+    setImportError("");
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+        if (!rawRows || rawRows.length === 0) {
+          setImportError("The uploaded Excel sheet is empty. Please enter worker data and try again.");
+          setIsParsingExcel(false);
+          return;
+        }
+
+        const normalizeKey = (k) => String(k || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const parsed = [];
+
+        for (let rIndex = 0; rIndex < rawRows.length; rIndex++) {
+          const row = rawRows[rIndex];
+          const keys = Object.keys(row);
+          const getVal = (possibleKeys) => {
+            for (const pk of possibleKeys) {
+              const matchedKey = keys.find(k => normalizeKey(k) === normalizeKey(pk));
+              if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== "") {
+                return row[matchedKey];
+              }
+            }
+            return null;
+          };
+
+          const workerId = String(getVal(["workerId", "worker_id", "id", "code", "empid", "wrkid"]) || "").trim();
+          const fullName = String(getVal(["fullName", "name", "workerName", "worker_name", "labourName", "naam"]) || "").trim();
+          const siteName = String(getVal(["siteName", "site", "sitename", "location"]) || "").trim();
+          const salaryType = String(getVal(["salaryType", "type"]) || "Daily").trim();
+          const wageRate = Number(getVal(["wageRate", "dailyWage", "rate", "wage", "rozanarate"]) || 0);
+
+          let presentDays = 0;
+          let otHours = 0;
+
+          const explicitDays = getVal(["presentDays", "days", "totalDays", "attendedDays", "haziri", "attendance", "pdays"]);
+          if (explicitDays !== null && explicitDays !== "") {
+            presentDays = Number(explicitDays) || 0;
+          } else {
+            let countedPresent = 0;
+            for (let d = 1; d <= 31; d++) {
+              const dVal = String(row[d] !== undefined ? row[d] : (row[`D${d}`] || row[`Day${d}`] || "")).trim().toUpperCase();
+              if (dVal === "P" || dVal === "PRESENT" || dVal === "1") countedPresent += 1;
+              else if (dVal === "HD" || dVal === "HALF" || dVal === "0.5") countedPresent += 0.5;
+            }
+            if (countedPresent > 0) {
+              presentDays = countedPresent;
+            }
+          }
+
+          const explicitOt = getVal(["otHours", "ot", "overtime", "overtimehours", "othr"]);
+          otHours = Number(explicitOt || 0);
+
+          const advanceDeducted = Number(getVal(["advanceDeducted", "advance", "kharcha", "adv", "advancetaken"]) || 0);
+          const allowances = Number(getVal(["otherAllowances", "allowances", "allowance", "bonus", "extra"]) || 0);
+          const otherDeductions = Number(getVal(["otherDeductions", "deductions", "deduction", "room", "mess", "pf"]) || 0);
+          const paidAmount = Number(getVal(["paidAmount", "paid", "amountpaid"]) || 0);
+          const paymentMode = String(getVal(["paymentMode", "paymentMethod", "mode"]) || "Bank Transfer").trim();
+          const notes = String(getVal(["notes", "remarks"]) || "").trim();
+
+          if (!fullName && !workerId) continue;
+
+          const rate = wageRate > 0 ? wageRate : 500;
+          let grossFromDays = 0;
+          if (salaryType === "Daily") grossFromDays = presentDays * rate;
+          else if (salaryType === "Monthly") grossFromDays = (rate / 26) * presentDays;
+          else if (salaryType === "Weekly") grossFromDays = (rate / 6) * presentDays;
+          else if (salaryType === "Hourly") grossFromDays = presentDays * 8 * rate;
+          else grossFromDays = presentDays * rate;
+
+          const otRate = rate / 8;
+          const otAmount = otHours * otRate;
+          const gross = Math.round((grossFromDays + otAmount + allowances) * 100) / 100;
+          const net = Math.max(0, Math.round((gross - advanceDeducted - otherDeductions) * 100) / 100);
+          const balance = Math.max(0, Math.round((net - paidAmount) * 100) / 100);
+
+          parsed.push({
+            workerId: workerId || "Auto-assign",
+            fullName: fullName || (workerId ? `Worker ${workerId}` : `Worker ${rIndex + 1}`),
+            siteName: siteName || (importSiteId !== "all" ? sites.find(s => s.id === importSiteId)?.name : "Default Site"),
+            salaryType,
+            wageRate: rate,
+            presentDays,
+            otHours,
+            otAmount,
+            advanceDeducted,
+            allowances,
+            otherDeductions,
+            grossAmount: gross,
+            netAmount: net,
+            paidAmount,
+            balanceAmount: balance,
+            paymentMode,
+            notes
+          });
+        }
+
+        if (parsed.length === 0) {
+          setImportError("No valid worker records found in the sheet. Please check headers (Worker ID, Name, Present Days).");
+        } else {
+          setParsedRows(parsed);
+        }
+      } catch (err) {
+        console.error("Excel parse failed", err);
+        setImportError("Failed to parse Excel file: " + err.message);
+      } finally {
+        setIsParsingExcel(false);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleExecuteImport = async () => {
+    if (parsedRows.length === 0) {
+      alert("No records to import.");
+      return;
+    }
+
+    setIsSubmittingImport(true);
+    try {
+      const payload = {
+        month: Number(importMonth),
+        year: Number(importYear),
+        siteId: importSiteId !== "all" ? importSiteId : null,
+        records: parsedRows
+      };
+
+      const res = await api.post("/snmr/salaries/import-monthly", payload);
+      const data = res.data;
+
+      alert(
+        `✅ Monthly Excel Imported & Calculated Successfully!\n\n` +
+        `• Workers Processed: ${data.totalProcessed}\n` +
+        `• Total Gross Wages: ₹${Number(data.totalGross).toLocaleString('en-IN')}\n` +
+        `• Total Advances Deducted: ₹${Number(data.totalAdvances).toLocaleString('en-IN')}\n` +
+        `• Total Net Payable: ₹${Number(data.totalNet).toLocaleString('en-IN')}`
+      );
+
+      setIsImportModalOpen(false);
+      setParsedRows([]);
+      setImportFileName("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      fetchSalaries();
+    } catch (err) {
+      console.error("Import failed", err);
+      alert(err.response?.data?.error || "Failed to import and calculate monthly salaries.");
+    } finally {
+      setIsSubmittingImport(false);
+    }
+  };
+
   // Filter salaries by search query
   const filteredSalaries = salaries.filter(s => {
     if (!searchQuery) return true;
@@ -307,6 +558,9 @@ export default function Salary() {
           </div>
           
           <div style={styles.headerActions}>
+            <button style={styles.importExcelBtn} onClick={() => setIsImportModalOpen(true)}>
+              <FileSpreadsheet size={16} /> Upload Monthly Excel
+            </button>
             <button style={styles.generateBtn} onClick={handleOpenGenerateModal}>
               <Play size={16} /> Generate Payroll
             </button>
@@ -970,6 +1224,247 @@ export default function Salary() {
           </div>
         )}
 
+        {/* Monthly Excel Upload & Auto-Calculation Modal */}
+        {isImportModalOpen && (
+          <div style={styles.modalOverlay}>
+            <div style={{ ...styles.modalContent, maxWidth: "1050px" }}>
+              <div style={styles.modalHeader}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <h2 style={styles.modalTitle}>Upload Monthly Excel & Auto-Calculate</h2>
+                    <span style={{ background: "#dcfce7", color: "#166534", fontSize: "11px", fontWeight: "700", padding: "3px 10px", borderRadius: "12px", border: "1px solid #86efac" }}>
+                      Auto-Calculation Active
+                    </span>
+                  </div>
+                  <p style={styles.modalSub}>
+                    Daily haziri manually dalne ki zaroorat nahi hai. Mahine ki sheet upload karein — sabhi din, overtime, kharcha aur salary apne aap calculate ho jayegi.
+                  </p>
+                </div>
+                <button 
+                  onClick={() => { setIsImportModalOpen(false); setParsedRows([]); setImportFileName(""); setImportError(""); }} 
+                  style={styles.closeBtn}
+                >
+                  &times;
+                </button>
+              </div>
+
+              {/* Step 1: Period Selection & Download Template */}
+              <div style={{ background: "#f8fafc", padding: "16px 20px", borderRadius: "14px", border: "1px solid #e2e8f0", marginBottom: "20px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "16px" }}>
+                  <div style={{ display: "flex", gap: "14px", alignItems: "flex-end", flexWrap: "wrap" }}>
+                    <div>
+                      <label style={styles.inputLabel}>Payroll Month</label>
+                      <select 
+                        style={{ ...styles.modalInput, width: "140px", background: "#fff" }} 
+                        value={importMonth} 
+                        onChange={e => setImportMonth(Number(e.target.value))}
+                      >
+                        {Array.from({ length: 12 }, (_, i) => (
+                          <option key={i + 1} value={i + 1}>
+                            {new Date(0, i).toLocaleString('en', { month: 'long' })}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={styles.inputLabel}>Year</label>
+                      <input 
+                        type="number" 
+                        style={{ ...styles.modalInput, width: "100px", background: "#fff" }} 
+                        value={importYear} 
+                        onChange={e => setImportYear(Number(e.target.value))}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={styles.inputLabel}>Target Site (Optional)</label>
+                      <select 
+                        style={{ ...styles.modalInput, width: "200px", background: "#fff" }} 
+                        value={importSiteId} 
+                        onChange={e => setImportSiteId(e.target.value)}
+                      >
+                        <option value="all">Use Site from Excel (or All)</option>
+                        {sites.map(s => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <button 
+                      type="button" 
+                      onClick={handleDownloadTemplate} 
+                      style={{
+                        display: "flex", alignItems: "center", gap: "6px",
+                        background: "#fff", color: "#0f766e", border: "1.5px solid #0f766e",
+                        padding: "9px 16px", borderRadius: "8px", fontSize: "13px", fontWeight: "700",
+                        cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.03)"
+                      }}
+                      title="Download template pre-filled with your current workers"
+                    >
+                      <Download size={15} /> Download Sample Template (.xlsx)
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2: Upload Drop Area */}
+              <div 
+                style={{
+                  border: "2px dashed " + (importFileName ? "#86efac" : "#cbd5e1"),
+                  borderRadius: "14px",
+                  padding: "24px",
+                  textAlign: "center",
+                  background: importFileName ? "#f0fdf4" : "#f8fafc",
+                  marginBottom: "20px",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease"
+                }}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  accept=".xlsx, .xls, .csv" 
+                  style={{ display: "none" }} 
+                  onChange={handleExcelFileChange} 
+                />
+                <FileSpreadsheet size={40} color={importFileName ? "#16a34a" : "#64748b"} style={{ margin: "0 auto 8px" }} />
+                {importFileName ? (
+                  <div>
+                    <div style={{ fontWeight: 800, color: "#166534", fontSize: "15px" }}>Selected File: {importFileName}</div>
+                    <div style={{ fontSize: "12px", color: "#15803d", marginTop: "4px" }}>Click to choose a different Excel file</div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "15px" }}>
+                      Click to upload your Monthly Excel sheet (.xlsx, .xls, .csv)
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px" }}>
+                      Supports summary sheets (Present Days, OT, Advance) or muster roll sheets (Day 1–31 columns).
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {isParsingExcel && (
+                <div style={{ padding: "20px", textAlign: "center", color: "#64748b" }}>
+                  <div style={styles.spinner}></div>
+                  <span>Parsing Excel & calculating wages...</span>
+                </div>
+              )}
+
+              {importError && (
+                <div style={{ background: "#fef2f2", color: "#b91c1c", padding: "12px 16px", borderRadius: "8px", border: "1px solid #fecaca", marginBottom: "16px", fontSize: "13px" }}>
+                  <strong>Error:</strong> {importError}
+                </div>
+              )}
+
+              {/* Step 3: Calculated Preview & Summaries */}
+              {parsedRows.length > 0 && (
+                <div>
+                  {/* Summary Cards */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "12px", marginBottom: "16px" }}>
+                    <div style={styles.miniCard}>
+                      <div style={styles.miniLabel}>Total Workers</div>
+                      <div style={styles.miniValue}>{parsedRows.length}</div>
+                    </div>
+                    <div style={styles.miniCard}>
+                      <div style={styles.miniLabel}>Total Present Days</div>
+                      <div style={{ ...styles.miniValue, color: "#0369a1" }}>
+                        {parsedRows.reduce((acc, r) => acc + Number(r.presentDays || 0), 0)}
+                      </div>
+                    </div>
+                    <div style={styles.miniCard}>
+                      <div style={styles.miniLabel}>Total Gross Wages</div>
+                      <div style={{ ...styles.miniValue, color: "#0f172a" }}>
+                        ₹{parsedRows.reduce((acc, r) => acc + Number(r.grossAmount || 0), 0).toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                    <div style={styles.miniCard}>
+                      <div style={styles.miniLabel}>Advances Deducted</div>
+                      <div style={{ ...styles.miniValue, color: "#e11d48" }}>
+                        ₹{parsedRows.reduce((acc, r) => acc + Number(r.advanceDeducted || 0), 0).toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                    <div style={{ ...styles.miniCard, background: "#f0fdf4", borderColor: "#bbf7d0" }}>
+                      <div style={{ ...styles.miniLabel, color: "#166534" }}>Total Net Payable</div>
+                      <div style={{ ...styles.miniValue, color: "#15803d" }}>
+                        ₹{parsedRows.reduce((acc, r) => acc + Number(r.netAmount || 0), 0).toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Scrollable Preview Table */}
+                  <div style={{ maxHeight: "360px", overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: "10px", marginBottom: "20px" }}>
+                    <table style={styles.table}>
+                      <thead>
+                        <tr style={styles.tableHead}>
+                          <th style={styles.th}>Worker</th>
+                          <th style={styles.th}>Site</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>Days</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>Daily Rate</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>OT (Hrs)</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>Gross Wages</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>Advance Deducted</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>Net Payable</th>
+                          <th style={styles.th}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {parsedRows.map((row, idx) => (
+                          <tr key={idx} style={styles.tr}>
+                            <td style={styles.td}>
+                              <div style={{ fontWeight: 600, color: "#0f172a" }}>{row.fullName}</div>
+                              <div style={{ fontSize: "11px", color: "#64748b" }}>{row.workerId}</div>
+                            </td>
+                            <td style={styles.td}>{row.siteName || "Unassigned"}</td>
+                            <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>{row.presentDays}</td>
+                            <td style={{ ...styles.td, textAlign: "right" }}>₹{row.wageRate}</td>
+                            <td style={{ ...styles.td, textAlign: "right" }}>{row.otHours > 0 ? `${row.otHours}h (+₹${row.otAmount})` : "-"}</td>
+                            <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>₹{row.grossAmount.toLocaleString('en-IN')}</td>
+                            <td style={{ ...styles.td, textAlign: "right", color: row.advanceDeducted > 0 ? "#e11d48" : "#94a3b8" }}>
+                              {row.advanceDeducted > 0 ? `-₹${row.advanceDeducted.toLocaleString('en-IN')}` : "-"}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "right", fontWeight: 800, color: "#16a34a" }}>
+                              ₹{row.netAmount.toLocaleString('en-IN')}
+                            </td>
+                            <td style={styles.td}>
+                              <span style={row.balanceAmount === 0 && row.netAmount > 0 ? styles.statusPaid : (row.paidAmount > 0 ? styles.statusPartial : styles.statusPending)}>
+                                {row.balanceAmount === 0 && row.netAmount > 0 ? "Paid" : (row.paidAmount > 0 ? "Partial" : "Pending")}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div style={styles.modalActions}>
+                    <button 
+                      type="button" 
+                      onClick={() => { setIsImportModalOpen(false); setParsedRows([]); setImportFileName(""); }} 
+                      style={styles.cancelBtn}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={handleExecuteImport} 
+                      style={{ ...styles.confirmBtn, background: "#15803d" }} 
+                      disabled={isSubmittingImport}
+                    >
+                      {isSubmittingImport ? "Saving & Calculating..." : `Confirm & Save All (${parsedRows.length} Workers)`}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
       </div>
 
       {printSalary && <PayslipPrint salary={printSalary} />}
@@ -984,6 +1479,7 @@ const styles = {
   subtitle: { fontSize: "14px", color: "#64748b", margin: 0 },
   headerActions: { display: "flex", gap: "12px", alignItems: "center" },
   generateBtn: { display: "flex", alignItems: "center", gap: "8px", background: "linear-gradient(135deg, #0f766e 0%, #0d9488 100%)", color: "#fff", border: "none", padding: "10px 18px", borderRadius: "10px", fontSize: "14px", fontWeight: "600", cursor: "pointer", boxShadow: "0 4px 12px rgba(13, 148, 136, 0.25)", height: "42px" },
+  importExcelBtn: { display: "flex", alignItems: "center", gap: "8px", background: "linear-gradient(135deg, #15803d 0%, #16a34a 100%)", color: "#fff", border: "none", padding: "10px 18px", borderRadius: "10px", fontSize: "14px", fontWeight: "600", cursor: "pointer", boxShadow: "0 4px 12px rgba(22, 163, 74, 0.25)", height: "42px" },
   exportBtn: { display: "flex", alignItems: "center", gap: "8px", background: "#fff", color: "#334155", border: "1px solid #cbd5e1", padding: "10px 18px", borderRadius: "10px", fontSize: "14px", fontWeight: "600", cursor: "pointer", height: "42px" },
   
   filterCard: { background: "#fff", padding: "18px 22px", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(0,0,0,0.02)", marginBottom: "20px" },

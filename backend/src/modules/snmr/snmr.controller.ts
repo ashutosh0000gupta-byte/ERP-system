@@ -248,6 +248,24 @@ export const importWorkerSalaries = async (req: Request, res: Response) => {
   }
 };
 
+export const importMonthlyExcelSalaries = async (req: Request, res: Response) => {
+  try {
+    const { month, year, siteId, records } = req.body;
+    if (!month || !year || !Array.isArray(records) || records.length === 0) {
+      return res.status(400).json({ error: "Month, year, and a list of worker records are required." });
+    }
+    const result = await snmrService.importMonthlyExcelSalaries({
+      month: Number(month),
+      year: Number(year),
+      siteId,
+      records
+    });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 export const notifyWorkerSalaries = async (req: Request, res: Response) => {
   try {
     const { month, year } = req.body;
