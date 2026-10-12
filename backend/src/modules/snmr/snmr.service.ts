@@ -940,6 +940,8 @@ export const importMonthlyExcelSalaries = async (payload: {
     presentDays: number;
     totalDays?: number;
     otHours?: number;
+    pfDeducted?: number;
+    esicDeducted?: number;
     advanceDeducted?: number;
     otherDeductions?: number;
     allowances?: number;
@@ -1084,8 +1086,19 @@ export const importMonthlyExcelSalaries = async (payload: {
       const conveyanceAllowance = Math.round(grossAttendance * 0.20 * 100) / 100;
       const specialAllowance = Math.round((grossAttendance - basicSalary - conveyanceAllowance) * 100) / 100;
 
-      const pfDeducted = (worker as any).uan ? Math.round(Math.min(basicSalary, 15000) * 0.12 * 100) / 100 : 0;
-      const esicDeducted = (grossAmount <= 21000 && (worker as any).esiNumber) ? Math.round(grossAmount * 0.0075 * 100) / 100 : 0;
+      let pfDeducted = 0;
+      if (row.pfDeducted !== undefined && row.pfDeducted !== null && String(row.pfDeducted).trim() !== "") {
+        pfDeducted = Math.max(0, Number(row.pfDeducted));
+      } else {
+        pfDeducted = (worker as any).uan ? Math.round(Math.min(basicSalary, 15000) * 0.12 * 100) / 100 : 0;
+      }
+
+      let esicDeducted = 0;
+      if (row.esicDeducted !== undefined && row.esicDeducted !== null && String(row.esicDeducted).trim() !== "") {
+        esicDeducted = Math.max(0, Number(row.esicDeducted));
+      } else {
+        esicDeducted = (grossAmount <= 21000 && (worker as any).esiNumber) ? Math.round(grossAmount * 0.0075 * 100) / 100 : 0;
+      }
       const professionalTax = grossAmount >= 15000 ? 200 : 0;
       const otherDeductions = Math.max(0, Number(row.otherDeductions || 0));
 
@@ -1271,6 +1284,56 @@ export const importMonthlyExcelSalaries = async (payload: {
     errors,
     salaries: results
   };
+};
+
+export const updateWorkerSalary = async (id: string, data: {
+  pfDeducted?: number;
+  esicDeducted?: number;
+  advanceDeducted?: number;
+  otherDeductions?: number;
+  grossAmount?: number;
+  paidAmount?: number;
+  paymentMode?: string;
+  notes?: string;
+}) => {
+  const existing = await prisma.workerSalary.findUnique({
+    where: { id },
+    include: { worker: true }
+  });
+  if (!existing) {
+    throw new Error("Salary record not found");
+  }
+
+  const gross = data.grossAmount !== undefined ? Number(data.grossAmount) : Number(existing.grossAmount);
+  const pf = data.pfDeducted !== undefined ? Math.max(0, Number(data.pfDeducted)) : Number(existing.pfDeducted || 0);
+  const esic = data.esicDeducted !== undefined ? Math.max(0, Number(data.esicDeducted)) : Number(existing.esicDeducted || 0);
+  const pTax = Number(existing.professionalTax || 0);
+  const advance = data.advanceDeducted !== undefined ? Math.max(0, Number(data.advanceDeducted)) : Number(existing.advanceDeducted || 0);
+  const other = data.otherDeductions !== undefined ? Math.max(0, Number(data.otherDeductions)) : Number(existing.otherDeductions || 0);
+
+  const totalDeductions = pf + esic + pTax + advance + other;
+  const netAmount = Math.max(0, Math.round((gross - totalDeductions) * 100) / 100);
+  const paid = data.paidAmount !== undefined ? Math.max(0, Number(data.paidAmount)) : Number(existing.paidAmount || 0);
+  const balance = Math.max(0, Math.round((netAmount - paid) * 100) / 100);
+  const status = balance === 0 && netAmount > 0 ? "Paid" : (paid > 0 ? "Partial" : "Pending");
+
+  return prisma.workerSalary.update({
+    where: { id },
+    data: {
+      ...(data.grossAmount !== undefined && { grossAmount: gross }),
+      pfDeducted: pf,
+      esicDeducted: esic,
+      advanceDeducted: advance,
+      otherDeductions: other,
+      netAmount,
+      paidAmount: paid,
+      balanceAmount: balance,
+      status,
+      ...(data.paymentMode && { paymentMode: data.paymentMode }),
+      ...(data.notes !== undefined && { notes: data.notes })
+    },
+    include: { worker: { include: { site: true } } }
+  });
 };
 
 export const notifyWorkerSalaries = async (month: number, year: number) => {

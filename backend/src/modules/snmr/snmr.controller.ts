@@ -266,6 +266,16 @@ export const importMonthlyExcelSalaries = async (req: Request, res: Response) =>
   }
 };
 
+export const updateWorkerSalary = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const result = await snmrService.updateWorkerSalary(id, req.body);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 export const notifyWorkerSalaries = async (req: Request, res: Response) => {
   try {
     const { month, year } = req.body;
