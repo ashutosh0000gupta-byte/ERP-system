@@ -298,6 +298,16 @@ const LEAVE_TYPES = [
 async function main() {
   console.log("🌱 Seeding database…");
 
+  const existingCompany = await prisma.company.findFirst();
+  const forceSeed = process.env.FORCE_SEED === "true";
+
+  if (existingCompany && !forceSeed) {
+    console.log("ℹ️ Database already contains data. Skipping seed to protect existing business data.");
+    console.log("ℹ️ (To force a fresh wipe and reseed, run with FORCE_SEED=true)");
+    return;
+  }
+
+  console.log("⚠️ Performing seed data wipe and initialization...");
   // Wipe in FK-safe order
   await prisma.workerAttendance.deleteMany();
   await prisma.worker.deleteMany();
