@@ -93,18 +93,9 @@ export default function PayslipPrint({ salary }) {
                     </div>
                   </td>
                   <td style={styles.calcAmount}>
-                    ₹{Number(salary.basicSalary || Math.round((Number(salary.grossAmount) - Number(salary.otAmount || 0)) * 0.5)).toLocaleString()}
+                    ₹{Number(salary.basicSalary || Math.round(Number(salary.presentDays || 0) * rateApplied * 100) / 100).toLocaleString()}
                   </td>
                 </tr>
-                {Number(salary.conveyanceAllowance || 0) > 0 && (
-                  <tr>
-                    <td style={styles.calcLabel}>
-                      Conveyance Allowance
-                      <div style={{fontSize: "11px", color: "#64748b"}}>Site travel assistance</div>
-                    </td>
-                    <td style={styles.calcAmount}>₹{Number(salary.conveyanceAllowance).toLocaleString()}</td>
-                  </tr>
-                )}
                 {Number(salary.specialAllowance || 0) > 0 && (
                   <tr>
                     <td style={styles.calcLabel}>
@@ -112,6 +103,15 @@ export default function PayslipPrint({ salary }) {
                       <div style={{fontSize: "11px", color: "#64748b"}}>Site skills & trade allowance</div>
                     </td>
                     <td style={styles.calcAmount}>₹{Number(salary.specialAllowance).toLocaleString()}</td>
+                  </tr>
+                )}
+                {Number(salary.conveyanceAllowance || 0) > 0 && (
+                  <tr>
+                    <td style={styles.calcLabel}>
+                      Conveyance Allowance
+                      <div style={{fontSize: "11px", color: "#64748b"}}>Site travel assistance</div>
+                    </td>
+                    <td style={styles.calcAmount}>₹{Number(salary.conveyanceAllowance).toLocaleString()}</td>
                   </tr>
                 )}
                 <tr>
@@ -125,36 +125,29 @@ export default function PayslipPrint({ salary }) {
                 </tr>
                 <tr style={{ background: "#f8fafc", fontWeight: 700 }}>
                   <td style={styles.calcLabel}>Total Gross Earnings</td>
-                  <td style={styles.calcAmount}>₹{Number(salary.grossAmount).toLocaleString()}</td>
+                  <td style={{ ...styles.calcAmount, color: "#0f766e" }}>₹{Number(salary.grossAmount).toLocaleString()}</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
           <div style={styles.halfWidth}>
-            <h3 style={styles.sectionTitle}>Deductions & Advances</h3>
+            <h3 style={styles.sectionTitle}>Statutory Deductions & Advance</h3>
             <table style={styles.calcTable}>
               <tbody>
                 <tr>
                   <td style={styles.calcLabel}>
-                    Advance Deducted
-                    <div style={{fontSize: "11px", color: "#64748b"}}>Recovered from active advances</div>
-                  </td>
-                  <td style={{ ...styles.calcAmount, color: "#e11d48" }}>-₹{Number(salary.advanceDeducted).toLocaleString()}</td>
-                </tr>
-                <tr>
-                  <td style={styles.calcLabel}>
                     Provident Fund (EPF - 12%)
-                    <div style={{fontSize: "11px", color: "#64748b"}}>Worker PF Contribution</div>
+                    <div style={{fontSize: "11px", color: "#64748b"}}>12% on Basic Salary</div>
                   </td>
-                  <td style={{ ...styles.calcAmount, color: "#e11d48" }}>-₹{Number(salary.pfDeducted || 0).toLocaleString()}</td>
+                  <td style={{ ...styles.calcAmount, color: "#b91c1c" }}>-₹{Number(salary.pfDeducted || 0).toLocaleString()}</td>
                 </tr>
                 <tr>
                   <td style={styles.calcLabel}>
                     Employee State Insurance (ESIC - 0.75%)
-                    <div style={{fontSize: "11px", color: "#64748b"}}>Statutory ESI Contribution</div>
+                    <div style={{fontSize: "11px", color: "#64748b"}}>0.75% on Gross Salary</div>
                   </td>
-                  <td style={{ ...styles.calcAmount, color: "#e11d48" }}>-₹{Number(salary.esicDeducted || 0).toLocaleString()}</td>
+                  <td style={{ ...styles.calcAmount, color: "#b91c1c" }}>-₹{Number(salary.esicDeducted || 0).toLocaleString()}</td>
                 </tr>
                 {Number(salary.professionalTax || 0) > 0 && (
                   <tr>
@@ -162,13 +155,31 @@ export default function PayslipPrint({ salary }) {
                       Professional Tax (P. Tax)
                       <div style={{fontSize: "11px", color: "#64748b"}}>State statutory deduction</div>
                     </td>
-                    <td style={{ ...styles.calcAmount, color: "#e11d48" }}>-₹{Number(salary.professionalTax).toLocaleString()}</td>
+                    <td style={{ ...styles.calcAmount, color: "#b91c1c" }}>-₹{Number(salary.professionalTax).toLocaleString()}</td>
+                  </tr>
+                )}
+                {Number(salary.otherDeductions || 0) > 0 && (
+                  <tr>
+                    <td style={styles.calcLabel}>
+                      Other Deductions
+                      <div style={{fontSize: "11px", color: "#64748b"}}>Mess / accommodation</div>
+                    </td>
+                    <td style={{ ...styles.calcAmount, color: "#b91c1c" }}>-₹{Number(salary.otherDeductions).toLocaleString()}</td>
                   </tr>
                 )}
                 <tr style={{ background: "#f8fafc", fontWeight: 700 }}>
-                  <td style={styles.calcLabel}>Total Deductions</td>
-                  <td style={{ ...styles.calcAmount, color: "#e11d48" }}>
-                    -₹{(Number(salary.advanceDeducted) + Number(salary.pfDeducted || 0) + Number(salary.esicDeducted || 0) + Number(salary.professionalTax || 0) + Number(salary.otherDeductions || 0)).toLocaleString()}
+                  <td style={styles.calcLabel}>Total Statutory Deductions (EPF + ESIC)</td>
+                  <td style={{ ...styles.calcAmount, color: "#b91c1c" }}>
+                    -₹{(Number(salary.pfDeducted || 0) + Number(salary.esicDeducted || 0) + Number(salary.professionalTax || 0) + Number(salary.otherDeductions || 0)).toLocaleString()}
+                  </td>
+                </tr>
+                <tr>
+                  <td style={styles.calcLabel}>
+                    Total Advance Deducted (Kharcha)
+                    <div style={{fontSize: "11px", color: "#64748b"}}>Debit evidence recovery</div>
+                  </td>
+                  <td style={{ ...styles.calcAmount, color: "#e11d48", fontWeight: 700 }}>
+                    -₹{Number(salary.advanceDeducted || 0).toLocaleString()}
                   </td>
                 </tr>
               </tbody>
@@ -177,19 +188,32 @@ export default function PayslipPrint({ salary }) {
         </div>
 
         {/* Net & Payment Settlement */}
-        <div style={styles.netSection}>
-          <div>
-            <div style={styles.netLabel}>NET PAYABLE AMOUNT</div>
-            <div style={styles.netAmount}>₹{Number(salary.netAmount).toLocaleString()}</div>
-          </div>
-          <div style={styles.settlementBox}>
-            <div style={{ fontSize: "12px", color: "#d1fae5" }}>Amount Disbursed (Paid): <strong>₹{paidAmount.toLocaleString()}</strong></div>
-            <div style={{ fontSize: "15px", fontWeight: 800, color: balanceAmount > 0 ? "#fef08a" : "#fff", marginTop: "4px" }}>
-              Pending Balance: ₹{balanceAmount.toLocaleString()}
+        {(() => {
+          const netPay = Number(salary.netAmount || 0);
+          const advance = Number(salary.advanceDeducted || 0);
+          const netPayAfterAdvance = Math.max(0, netPay - advance);
+          const currentPaid = Number(salary.paidAmount || 0);
+          const pendingBalance = Number(salary.balanceAmount !== undefined ? salary.balanceAmount : Math.max(0, netPayAfterAdvance - currentPaid));
+
+          return (
+            <div style={styles.netSection}>
+              <div>
+                <div style={styles.netLabel}>NET PAY (Gross - EPF/ESIC)</div>
+                <div style={{ fontSize: "20px", fontWeight: 800, color: "#d1fae5" }}>₹{netPay.toLocaleString()}</div>
+                <div style={{ fontSize: "12px", color: "#ecfdf5", marginTop: "4px" }}>
+                  Advance Deducted: -₹{advance.toLocaleString()}
+                </div>
+              </div>
+              <div style={styles.settlementBox}>
+                <div style={{ fontSize: "12px", color: "#d1fae5", textTransform: "uppercase", fontWeight: 700 }}>Net Pay After Advance (Debit Evidence)</div>
+                <div style={{ fontSize: "26px", fontWeight: 900, color: "#fff", marginTop: "2px" }}>₹{netPayAfterAdvance.toLocaleString()}</div>
+                <div style={{ fontSize: "12px", color: "#ecfdf5", marginTop: "4px" }}>
+                  Already Paid: <strong>₹{currentPaid.toLocaleString()}</strong> • Pending Balance: <strong style={{ color: pendingBalance > 0 ? "#fef08a" : "#fff" }}>₹{pendingBalance.toLocaleString()}</strong>
+                </div>
+              </div>
             </div>
-            <div style={{ fontSize: "11px", color: "#ecfdf5", marginTop: "2px" }}>Status: {salary.status || "Pending"}</div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Signatures */}
         <div style={styles.footer}>

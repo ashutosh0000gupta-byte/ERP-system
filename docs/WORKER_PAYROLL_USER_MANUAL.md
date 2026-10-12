@@ -110,111 +110,93 @@ SNMR HRMS में वर्कर पेरोल सिस्टम को �
 
 ## 5. सैलरी गणना का गणितीय नियम (Salary Calculation Rules & Formulas)
 
-सिस्टम में सैलरी की गणना पारदर्शी और मानक औद्योगिक नियमों के आधार पर होती है:
+सिस्टम में सैलरी की गणना पारदर्शी, सटीक और आपके मानक नियमों के आधार पर होती है:
 
-### (A) मूल उपस्थिति वेतन (Base Attendance Wage):
-वर्कर के **Salary Type** के अनुसार गणना:
-- **Daily (दैनिक):**  
-  $$\text{Base Wage} = \text{Present Days} \times \text{Daily Wage Rate}$$
-- **Monthly (मासिक):**  
-  $$\text{Base Wage} = \left(\frac{\text{Monthly Wage}}{\text{Days in Month (या 26)}}\right) \times \text{Present Days}$$
-- **Weekly (साप्ताहिक):**  
-  $$\text{Base Wage} = \left(\frac{\text{Weekly Wage}}{6}\right) \times \text{Present Days}$$
-- **Hourly (प्रति घंटा):**  
-  $$\text{Base Wage} = \text{Present Days} \times 8 \times \text{Hourly Rate}$$
-- **Contract (ठेका):**  
-  $$\text{Base Wage} = \text{Contract Lump-sum Rate}$$
+### (A) मूल वेतन (Basic Salary):
+वर्कर के काम किए गए दिनों और दैनिक मजदूरी दर का गुणनफल:
+$$\mathbf{Basic\ Salary} = \text{Worked Days} \times \text{Per Day Salary}$$
+*(उदाहरण: 21 दिन $\times$ ₹400 प्रति दिन = ₹8,400)*
 
 ---
 
-### (B) ओवरटाइम गणना (Overtime - OT Calculation):
-- सामान्य कार्य दिवस 8 घंटे का माना जाता है।
-- **प्रति घंटा ओवरटाइम दर (OT Rate):**  
-  $$\text{OT Rate per Hour} = \frac{\text{Daily Wage Rate}}{8}$$
-- **कुल ओवरटाइम राशि (OT Pay):**  
-  $$\text{OT Amount} = \text{OT Hours} \times \text{OT Rate}$$
+### (B) ग्रॉस वेतन (Gross Salary):
+ग्रॉस सैलरी में बेसिक सैलरी, विशेष भत्ता, कन्वेयंस भत्ता और ओवरटाइम भुगतान शामिल होते हैं:
+$$\mathbf{Gross\ Salary} = \mathbf{Basic\ Salary} + \mathbf{Special\ Allowance} + \mathbf{Conveyance\ Allowance} + \mathbf{Overtime\ Pay}$$
+
+- **Special Allowance (विशेष भत्ता):** ट्रेड व स्किल के आधार पर निर्धारित भत्ता (उदा. ₹7,350)
+- **Conveyance Allowance (कन्वेयंस भत्ता):** यात्रा सहायता भत्ता (उदा. ₹1,050)
+- **Overtime Pay (ओवरटाइम भुगतान):** $\text{OT Hours} \times \left(\frac{\text{Per Day Rate}}{8}\right)$ या एक्सेल में दर्ज सीधा OT भुगतान (उदा. ₹3,200)
 
 ---
 
-### (C) कुल ग्रॉस कमाई (Total Gross Wages):
-ग्रॉस वेज में उपस्थिति का वेतन, ओवरटाइम, यात्रा भत्ता और अन्य भत्ते शामिल होते हैं:
-$$\mathbf{Gross\ Amount} = \text{Base Wage} + \text{OT Amount} + \text{Conveyance Allowance} + \text{Other Allowances}$$
+### (C) वैधानिक कटौतियां (Statutory Deductions - EPF & ESIC):
+$$\mathbf{Total\ Deductions} = \mathbf{EPF} + \mathbf{ESIC}$$
 
-#### 📄 पेस्लिप ब्रेकअप (Salary Slip Earnings Breakup):
-पेस्लिप प्रिंटिंग और वैधानिक रिपोर्टिंग हेतु ग्रॉस का आंतरिक विभाजन:
-1. **Basic Salary (मूल वेतन):** $\text{Base Wage} \times 50\%$
-2. **Conveyance Allowance (कन्वेयंस):** एक्सेल/एडिट मॉडल में दर्ज वास्तविक राशि
-3. **Special Allowance (विशेष भत्ता):** $\text{Gross Amount} - \text{Basic Salary} - \text{Conveyance Allowance}$
-
----
-
-### (D) कुल कटौतियां (Total Deductions):
-वर्कर के वेतन से काटी जाने वाली राशियां:
-$$\mathbf{Total\ Deductions} = \text{EPF (PF)} + \text{ESIC} + \text{Professional Tax} + \text{Advance (खर्चा)} + \text{Other Deductions}$$
-
-1. **EPF (PF):** एक्सेल में दिया गया वास्तविक मान (या यदि UAN है तो $\text{Basic} \times 12\%$)
-2. **ESIC:** एक्सेल में दिया गया वास्तविक मान (या यदि ESI IP है और ग्रॉस $\le ₹21,000$ है तो $\text{Gross} \times 0.75\%$)
-3. **Professional Tax (PT):** यदि ग्रॉस वेतन $\ge ₹15,000$ है तो ₹200 (अन्यथा ₹0)
-4. **Advance Kharcha:** एक्सेल में दर्ज राशि या वर्कर द्वारा साइट पर लिया गया बकाया पेशगी।
-5. **Other Deductions:** मेस, कमरा या अन्य विविध कटौतियां।
+1. **EPF (कर्मचारी भविष्य निधि):** Basic Salary का $12\%$
+   $$\text{EPF} = \text{Basic Salary} \times 12\%$$
+   *(उदा. ₹8,400 $\times 12\% =$ **₹1,008**)*
+2. **ESIC (राज्य कर्मचारी बीमा):** Gross Salary का $0.75\%$
+   $$\text{ESIC} = \text{Gross Salary} \times 0.75\%$$
+   *(उदा. ₹20,000 $\times 0.75\% =$ **₹150**)*
+3. **कुल कटौतियां (Total Deductions):**
+   $$\text{Total Deductions} = 1,008 + 150 = \mathbf{₹1,158}$$
 
 ---
 
-### (E) अंतिम देय वेतन (Net Payable):
-$$\mathbf{Net\ Payable} = \max(0,\ \mathbf{Gross\ Amount} - \mathbf{Total\ Deductions})$$
+### (D) शुद्ध वेतन (Net Pay):
+ग्रॉस वेतन में से वैधानिक कटौतियां (EPF + ESIC) घटाने पर शुद्ध वेतन प्राप्त होता है:
+$$\mathbf{Net\ Pay} = \mathbf{Gross\ Salary} - (\mathbf{EPF} + \mathbf{ESIC})$$
+*(उदा. ₹20,000 - ₹1,158 = **₹18,842**)*
 
 ---
 
-### (F) बकाया राशि और भुगतान स्थिति (Balance & Status):
-$$\mathbf{Balance\ Pending} = \max(0,\ \mathbf{Net\ Payable} - \text{Paid Amount})$$
-
-- **Paid (हरा):** यदि $\text{Balance} == 0$ तथा $\text{Net Payable} > 0$
-- **Partial (पीला):** यदि $\text{Paid Amount} > 0$ तथा कुछ $\text{Balance}$ अभी बाकी है
-- **Pending (लाल):** यदि अभी तक ₹0 भुगतान हुआ है
+### (E) एडवांस कटौती के बाद शुद्ध भुगतान (Net Pay After Debit Evidence / Advance):
+शुद्ध वेतन में से वर्कर द्वारा लिया गया कुल एडवांस (खर्चा / डेबिट एविडेंस) घटाने पर अंतिम इन-हैंड देय राशि प्राप्त होती है:
+$$\mathbf{Net\ Pay\ After\ Advance} = \mathbf{Net\ Pay} - \mathbf{Total\ Advance}$$
+*(उदा. ₹18,842 - ₹8,000 = **₹10,842**)*
 
 ---
 
-## 6. उदाहरण सहित सम्पूर्ण गणना
+### (F) बकाया राशि और भुगतान स्थिति (Pending Balance & Status):
+$$\mathbf{Balance\ Pending} = \max(0,\ \mathbf{Net\ Pay\ After\ Advance} - \mathbf{Paid\ Amount})$$
 
-### 📋 उदाहरण 1: दैनिक वेतन भोगी वर्कर (रमेश कुमार)
+- **Paid (हरा):** यदि $\text{Balance} == 0$ तथा वर्कर का पूरा भुगतान हो चुका है
+- **Partial (पीला):** यदि वर्कर को कुछ भुगतान किया गया है और कुछ राशि अभी बाकी है
+- **Pending (लाल):** यदि अभी तक भुगतान नहीं हुआ है
 
-#### इनपुट डेटा (एक्सेल शीट से):
-- **Worker Name:** रमेश कुमार (`WRK-001`)
-- **Salary Type:** Daily
-- **Wage Rate:** ₹600 प्रति दिन
-- **Present Days:** 26 दिन
-- **OT Hours:** 8 घंटे
-- **Conveyance Allowance:** ₹1,000
-- **EPF (PF):** ₹1,200
-- **ESIC:** ₹250
-- **Advance Kharcha:** ₹1,500
-- **Paid Amount:** ₹10,000 (माह के दौरान बैंक ट्रांसफर द्वारा दिए गए)
+---
 
-#### स्टेप-बाय-स्टेप गणना:
+## 6. उदाहरण सहित सम्पूर्ण गणना (Exact Calculation Breakdown)
 
-1. **मूल उपस्थिति वेतन (Base Wage):**  
-   $$26 \times 600 = ₹15,600$$
+### 📋 उदाहरण: 21 दिन कार्य करने वाले वर्कर का मानक हिसाब
 
-2. **ओवरटाइम दर व राशि (OT Pay):**  
-   $$\text{OT Rate} = \frac{600}{8} = ₹75 \text{ प्रति घंटा}$$  
-   $$\text{OT Pay} = 8 \times 75 = ₹600$$
+#### 1. इनपुट डेटा (Worker Input Data):
+- **Worker worked for:** 21 days
+- **Per day salary:** ₹400
+- **Special allowance:** ₹7,350
+- **Conveyance allowance:** ₹1,050
+- **Overtime:** ₹3,200
+- **Total advance taken (खर्चा):** ₹8,000
 
-3. **कुल ग्रॉस वेतन (Gross Amount):**  
-   $$\text{Gross} = ₹15,600 \text{ (Base)} + ₹600 \text{ (OT)} + ₹1,000 \text{ (Conveyance)} = \mathbf{₹17,200}$$
+---
 
-4. **कुल कटौतियां (Total Deductions):**  
-   $$\text{EPF} = ₹1,200$$  
-   $$\text{ESIC} = ₹250$$  
-   $$\text{Advance Kharcha} = ₹1,500$$  
-   $$\text{Total Deductions} = 1,200 + 250 + 1,500 = \mathbf{₹2,950}$$
+#### 2. स्टेप-बाय-स्टेप गणना (Calculation Steps):
 
-5. **कुल देय शुद्ध वेतन (Net Payable):**  
-   $$\text{Net Payable} = 17,200 - 2,950 = \mathbf{₹14,250}$$
-
-6. **बकाया राशि व स्टेटस (Pending Balance):**  
-   $$\text{Paid So Far} = ₹10,000$$  
-   $$\text{Pending Balance} = 14,250 - 10,000 = \mathbf{₹4,250}$$  
-   $$\text{Status} = \mathbf{Partial\ (आंशिक\ भुगतान)}$$
+| विवरण (Salary Component) | गणना सूत्र (Formula) | राशि (Amount) |
+| :--- | :--- | :--- |
+| **Basic Salary (मूल वेतन)** | $21 \text{ days} \times ₹400$ | **₹8,400** |
+| **Special Allowance (विशेष भत्ता)** | दर्ज की गई राशि | **₹7,350** |
+| **Conveyance Allowance (कन्वेयंस भत्ता)** | दर्ज की गई राशि | **₹1,050** |
+| **Overtime Pay (ओवरटाइम भुगतान)** | दर्ज की गई राशि | **₹3,200** |
+| **Gross Salary (कुल ग्रॉस वेतन)** | $8,400 + 7,350 + 1,050 + 3,200$ | **₹20,000** |
+| **EPF (12% of Basic)** | $8,400 \times 12\%$ | **₹1,008** |
+| **ESIC (0.75% of Gross)** | $20,000 \times 0.75\%$ | **₹150** |
+| **Total Deductions (कुल कटौतियां)** | $1,008 + 150$ | **₹1,158** |
+| **Net Pay (शुद्ध वेतन)** | $20,000 - 1,158$ | **₹18,842** |
+| **Total Advance (कुल एडवांस / खर्चा)** | डेबिट एविडेंस से प्राप्त | **₹8,000** |
+| **Net Pay After Advance (अंतिम इन-हैंड देय)** | $18,842 - 8,000$ | **₹10,842** |
+| **Paid Amount (पहले से दिया गया)** | बैंक / कैश में दिया गया | **₹0** |
+| **Pending Balance (बकाया राशि)** | $10,842 - 0$ | **₹10,842** |
 
 ---
 

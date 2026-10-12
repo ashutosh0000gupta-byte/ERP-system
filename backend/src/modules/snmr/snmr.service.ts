@@ -546,7 +546,6 @@ export const generateWorkerSalaries = async (options: {
     }
 
     const otAmount = Math.round(otHoursTotal * otRate * 100) / 100;
-    const grossAmount = Math.round((grossFromAttendance + otAmount) * 100) / 100;
 
     // 3. Sum up undeducted advances for this worker up to end of period
     const advances = await prisma.workerAdvance.findMany({
@@ -587,28 +586,33 @@ export const generateWorkerSalaries = async (options: {
       continue;
     }
 
-    // 4. Breakdown Gross Attendance Pay into Basic, Conveyance, and Special Allowance
-    const basicSalary = Math.round(grossFromAttendance * 0.50 * 100) / 100;
-    const conveyanceAllowance = Math.round(grossFromAttendance * 0.20 * 100) / 100;
-    const specialAllowance = Math.round((grossFromAttendance - basicSalary - conveyanceAllowance) * 100) / 100;
+    // 4. Basic Salary = Earned Days × Wage Rate (e.g. 21 days × 400 = 8,400)
+    const basicSalary = Math.round(grossFromAttendance * 100) / 100;
+    const conveyanceAllowance = existingSalary ? Number(existingSalary.conveyanceAllowance || 0) : 0;
+    const specialAllowance = existingSalary ? Number(existingSalary.specialAllowance || 0) : 0;
+    const grossAmount = Math.round((basicSalary + specialAllowance + conveyanceAllowance + otAmount) * 100) / 100;
 
     // 5. Statutory Deductions
     // EPF: 12% on Basic Salary (capped at standard ₹15,000 monthly ceiling) if worker has UAN
     const pfDeducted = (worker as any).uan ? Math.round(Math.min(basicSalary, 15000) * 0.12 * 100) / 100 : 0;
     // ESIC: 0.75% of Gross earnings if Gross <= ₹21,000 and worker has ESI number
     const esicDeducted = (grossAmount <= 21000 && (worker as any).esiNumber) ? Math.round(grossAmount * 0.0075 * 100) / 100 : 0;
-    // Professional Tax (P. Tax): standard slab ₹200 if monthly gross >= ₹15,000
-    const professionalTax = grossAmount >= 15000 ? 200 : 0;
+    const professionalTax = 0;
     const otherDeductions = 0;
 
-    const totalDeductions = advanceDeducted + pfDeducted + esicDeducted + professionalTax + otherDeductions;
-    let netAmount = Math.max(0, Math.round((grossAmount - totalDeductions) * 100) / 100);
+    // Calculation Method:
+    // Gross Salary = Basic Salary + Special Allowance + Conveyance Allowance + Overtime Pay
+    // Net Pay = Gross Salary - (EPF + ESIC)
+    // Net Pay After Advance = Net Pay - Total Advance
+    const totalStatutory = pfDeducted + esicDeducted + professionalTax + otherDeductions;
+    const netAmount = Math.max(0, Math.round((grossAmount - totalStatutory) * 100) / 100);
+    const netPayAfterAdvance = Math.max(0, Math.round((netAmount - advanceDeducted) * 100) / 100);
 
     let salary;
     if (existingSalary) {
       // Preserve any payments already made
       const currentPaid = existingSalary.payments.reduce((acc, p) => acc + Number(p.amount), 0) + Number(existingSalary.paidAmount || 0);
-      const balanceAmount = Math.max(0, netAmount - currentPaid);
+      const balanceAmount = Math.max(0, netPayAfterAdvance - currentPaid);
       const status = balanceAmount <= 0 ? "Paid" : (currentPaid > 0 ? "Partial" : "Pending");
 
       salary = await prisma.workerSalary.update({
@@ -667,7 +671,7 @@ export const generateWorkerSalaries = async (options: {
           otherDeductions,
           netAmount,
           paidAmount: 0,
-          balanceAmount: netAmount,
+          balanceAmount: netPayAfterAdvance,
           status: "Pending",
           paymentMode: worker.paymentMethod || "Bank Transfer"
         } as any
@@ -941,6 +945,8 @@ export const importMonthlyExcelSalaries = async (payload: {
     presentDays: number;
     totalDays?: number;
     otHours?: number;
+    otAmount?: number;
+    specialAllowance?: number;
     conveyanceAllowance?: number;
     pfDeducted?: number;
     esicDeducted?: number;
@@ -1079,20 +1085,28 @@ export const importMonthlyExcelSalaries = async (payload: {
           break;
       }
 
-      const otAmount = Math.round(otHours * otRate * 100) / 100;
-      const allowances = Math.max(0, Number(row.allowances || 0));
+      const basicSalary = Math.round(grossAttendance * 100) / 100;
+      let specialAllowance = 0;
+      if (row.specialAllowance !== undefined && row.specialAllowance !== null && String(row.specialAllowance).trim() !== "") {
+        specialAllowance = Math.max(0, Number(row.specialAllowance));
+      } else if (row.allowances !== undefined && row.allowances !== null) {
+        specialAllowance = Math.max(0, Number(row.allowances));
+      }
+
       let conveyanceAllowance = 0;
       if (row.conveyanceAllowance !== undefined && row.conveyanceAllowance !== null && String(row.conveyanceAllowance).trim() !== "") {
         conveyanceAllowance = Math.max(0, Number(row.conveyanceAllowance));
-      } else {
-        conveyanceAllowance = Math.round(grossAttendance * 0.20 * 100) / 100;
       }
-      const grossAmount = Math.round((grossAttendance + otAmount + conveyanceAllowance + allowances) * 100) / 100;
 
-      // Statutory deductions
-      const basicSalary = Math.round(grossAttendance * 0.50 * 100) / 100;
-      const specialAllowance = Math.max(0, Math.round((grossAmount - basicSalary - conveyanceAllowance) * 100) / 100);
+      const explicitOtAmount = (row as any).otAmount || (row as any).overtimeAmount || (row as any).otPay;
+      const otAmount = explicitOtAmount !== undefined && explicitOtAmount !== null && String(explicitOtAmount).trim() !== ""
+        ? Math.max(0, Number(explicitOtAmount))
+        : Math.round(otHours * otRate * 100) / 100;
 
+      // Gross Salary = Basic Salary + Special Allowance + Conveyance Allowance + Overtime Pay
+      const grossAmount = Math.round((basicSalary + specialAllowance + conveyanceAllowance + otAmount) * 100) / 100;
+
+      // Statutory deductions: EPF (12% of basic) + ESIC (0.75% of gross)
       let pfDeducted = 0;
       if (row.pfDeducted !== undefined && row.pfDeducted !== null && String(row.pfDeducted).trim() !== "") {
         pfDeducted = Math.max(0, Number(row.pfDeducted));
@@ -1106,12 +1120,12 @@ export const importMonthlyExcelSalaries = async (payload: {
       } else {
         esicDeducted = (grossAmount <= 21000 && (worker as any).esiNumber) ? Math.round(grossAmount * 0.0075 * 100) / 100 : 0;
       }
-      const professionalTax = grossAmount >= 15000 ? 200 : 0;
+      const professionalTax = 0;
       const otherDeductions = Math.max(0, Number(row.otherDeductions || 0));
 
       // Advance
       let advanceDeducted = 0;
-      if (row.advanceDeducted !== undefined && row.advanceDeducted !== null) {
+      if (row.advanceDeducted !== undefined && row.advanceDeducted !== null && String(row.advanceDeducted).trim() !== "") {
         advanceDeducted = Math.max(0, Number(row.advanceDeducted));
       } else {
         const pendingAdvances = await prisma.workerAdvance.findMany({
@@ -1120,11 +1134,15 @@ export const importMonthlyExcelSalaries = async (payload: {
         advanceDeducted = pendingAdvances.reduce((acc, a) => acc + Number(a.amount), 0);
       }
 
-      const totalDeductions = pfDeducted + esicDeducted + professionalTax + otherDeductions + advanceDeducted;
-      const netAmount = Math.max(0, Math.round((grossAmount - totalDeductions) * 100) / 100);
-      const paidAmount = Math.max(0, Math.min(netAmount, Number(row.paidAmount || 0)));
-      const balanceAmount = Math.max(0, Math.round((netAmount - paidAmount) * 100) / 100);
-      const status = balanceAmount === 0 && netAmount > 0 ? "Paid" : (paidAmount > 0 ? "Partial" : "Pending");
+      // Net Pay = Gross Salary - (EPF + ESIC)
+      const totalStatutory = pfDeducted + esicDeducted + professionalTax + otherDeductions;
+      const netAmount = Math.max(0, Math.round((grossAmount - totalStatutory) * 100) / 100);
+
+      // Net Pay After Advance = Net Pay - Total Advance
+      const netPayAfterAdvance = Math.max(0, Math.round((netAmount - advanceDeducted) * 100) / 100);
+      const paidAmount = Math.max(0, Math.min(netPayAfterAdvance, Number(row.paidAmount || 0)));
+      const balanceAmount = Math.max(0, Math.round((netPayAfterAdvance - paidAmount) * 100) / 100);
+      const status = balanceAmount === 0 && netPayAfterAdvance > 0 ? "Paid" : (paidAmount > 0 ? "Partial" : "Pending");
       const paymentMode = row.paymentMode || worker.paymentMethod || "Bank Transfer";
 
       // 3. Upsert WorkerSalary
@@ -1294,12 +1312,15 @@ export const importMonthlyExcelSalaries = async (payload: {
 };
 
 export const updateWorkerSalary = async (id: string, data: {
+  basicSalary?: number;
+  specialAllowance?: number;
+  conveyanceAllowance?: number;
+  otAmount?: number;
+  grossAmount?: number;
   pfDeducted?: number;
   esicDeducted?: number;
   advanceDeducted?: number;
   otherDeductions?: number;
-  conveyanceAllowance?: number;
-  grossAmount?: number;
   paidAmount?: number;
   paymentMode?: string;
   notes?: string;
@@ -1312,25 +1333,41 @@ export const updateWorkerSalary = async (id: string, data: {
     throw new Error("Salary record not found");
   }
 
-  const gross = data.grossAmount !== undefined ? Number(data.grossAmount) : Number(existing.grossAmount);
+  const basic = data.basicSalary !== undefined ? Math.max(0, Number(data.basicSalary)) : Number(existing.basicSalary || 0);
+  const special = data.specialAllowance !== undefined ? Math.max(0, Number(data.specialAllowance)) : Number(existing.specialAllowance || 0);
   const conveyance = data.conveyanceAllowance !== undefined ? Math.max(0, Number(data.conveyanceAllowance)) : Number(existing.conveyanceAllowance || 0);
+  const ot = data.otAmount !== undefined ? Math.max(0, Number(data.otAmount)) : Number(existing.otAmount || 0);
+
+  // Gross Salary = Basic Salary + Special Allowance + Conveyance Allowance + Overtime Pay
+  const gross = data.grossAmount !== undefined
+    ? Number(data.grossAmount)
+    : (data.basicSalary !== undefined || data.specialAllowance !== undefined || data.conveyanceAllowance !== undefined || data.otAmount !== undefined)
+      ? Math.round((basic + special + conveyance + ot) * 100) / 100
+      : Number(existing.grossAmount);
+
   const pf = data.pfDeducted !== undefined ? Math.max(0, Number(data.pfDeducted)) : Number(existing.pfDeducted || 0);
   const esic = data.esicDeducted !== undefined ? Math.max(0, Number(data.esicDeducted)) : Number(existing.esicDeducted || 0);
   const pTax = Number(existing.professionalTax || 0);
   const advance = data.advanceDeducted !== undefined ? Math.max(0, Number(data.advanceDeducted)) : Number(existing.advanceDeducted || 0);
   const other = data.otherDeductions !== undefined ? Math.max(0, Number(data.otherDeductions)) : Number(existing.otherDeductions || 0);
 
-  const totalDeductions = pf + esic + pTax + advance + other;
-  const netAmount = Math.max(0, Math.round((gross - totalDeductions) * 100) / 100);
+  const totalStatutory = pf + esic + pTax + other;
+  // Net Pay = Gross Salary - (EPF + ESIC)
+  const netAmount = Math.max(0, Math.round((gross - totalStatutory) * 100) / 100);
+  // Net Pay After Advance = Net Pay - Total Advance
+  const netPayAfterAdvance = Math.max(0, Math.round((netAmount - advance) * 100) / 100);
   const paid = data.paidAmount !== undefined ? Math.max(0, Number(data.paidAmount)) : Number(existing.paidAmount || 0);
-  const balance = Math.max(0, Math.round((netAmount - paid) * 100) / 100);
-  const status = balance === 0 && netAmount > 0 ? "Paid" : (paid > 0 ? "Partial" : "Pending");
+  const balance = Math.max(0, Math.round((netPayAfterAdvance - paid) * 100) / 100);
+  const status = balance === 0 && netPayAfterAdvance > 0 ? "Paid" : (paid > 0 ? "Partial" : "Pending");
 
   return prisma.workerSalary.update({
     where: { id },
     data: {
-      ...(data.grossAmount !== undefined && { grossAmount: gross }),
+      ...(data.basicSalary !== undefined && { basicSalary: basic }),
+      ...(data.specialAllowance !== undefined && { specialAllowance: special }),
       ...(data.conveyanceAllowance !== undefined && { conveyanceAllowance: conveyance }),
+      ...(data.otAmount !== undefined && { otAmount: ot }),
+      grossAmount: gross,
       pfDeducted: pf,
       esicDeducted: esic,
       advanceDeducted: advance,

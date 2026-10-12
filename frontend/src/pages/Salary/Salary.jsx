@@ -71,9 +71,12 @@ export default function Salary() {
 
   // Edit Salary & Statutory Deductions Modal
   const [editingSalary, setEditingSalary] = useState(null);
+  const [editBasic, setEditBasic] = useState(0);
+  const [editSpecial, setEditSpecial] = useState(0);
+  const [editConveyance, setEditConveyance] = useState(0);
+  const [editOtAmount, setEditOtAmount] = useState(0);
   const [editPf, setEditPf] = useState(0);
   const [editEsic, setEditEsic] = useState(0);
-  const [editConveyance, setEditConveyance] = useState(0);
   const [editAdvance, setEditAdvance] = useState(0);
   const [editOther, setEditOther] = useState(0);
   const [editGross, setEditGross] = useState(0);
@@ -317,12 +320,23 @@ export default function Salary() {
 
   const handleOpenEditModal = (sal) => {
     setEditingSalary(sal);
+    const basic = sal.basicSalary !== undefined && sal.basicSalary !== null
+      ? Number(sal.basicSalary)
+      : Math.round(Number(sal.presentDays || 0) * Number(sal.rateApplied || sal.dailyWage || 0) * 100) / 100;
+    const special = sal.specialAllowance !== undefined ? Number(sal.specialAllowance) : 0;
+    const conveyance = sal.conveyanceAllowance !== undefined ? Number(sal.conveyanceAllowance) : 0;
+    const ot = sal.otAmount !== undefined ? Number(sal.otAmount) : 0;
+    const gross = sal.grossAmount !== undefined ? Number(sal.grossAmount) : Math.round((basic + special + conveyance + ot) * 100) / 100;
+
+    setEditBasic(basic);
+    setEditSpecial(special);
+    setEditConveyance(conveyance);
+    setEditOtAmount(ot);
+    setEditGross(gross);
     setEditPf(sal.pfDeducted !== undefined ? Number(sal.pfDeducted) : 0);
     setEditEsic(sal.esicDeducted !== undefined ? Number(sal.esicDeducted) : 0);
-    setEditConveyance(sal.conveyanceAllowance !== undefined ? Number(sal.conveyanceAllowance) : 0);
     setEditAdvance(sal.advanceDeducted !== undefined ? Number(sal.advanceDeducted) : 0);
     setEditOther(sal.otherDeductions !== undefined ? Number(sal.otherDeductions) : 0);
-    setEditGross(sal.grossAmount !== undefined ? Number(sal.grossAmount) : 0);
     setEditNotes(sal.notes || "");
   };
 
@@ -332,15 +346,18 @@ export default function Salary() {
     setIsSubmittingEdit(true);
     try {
       await api.put(`/snmr/salaries/${editingSalary.id}`, {
-        grossAmount: Number(editGross || 0),
+        basicSalary: Number(editBasic || 0),
+        specialAllowance: Number(editSpecial || 0),
         conveyanceAllowance: Number(editConveyance || 0),
+        otAmount: Number(editOtAmount || 0),
+        grossAmount: Number(editGross || 0),
         pfDeducted: Number(editPf || 0),
         esicDeducted: Number(editEsic || 0),
         advanceDeducted: Number(editAdvance || 0),
         otherDeductions: Number(editOther || 0),
         notes: editNotes
       });
-      alert("Worker salary, conveyance allowance & deductions updated successfully!");
+      alert("Worker salary, allowances & deductions updated successfully!");
       setEditingSalary(null);
       fetchSalaries();
     } catch (err) {
@@ -359,30 +376,40 @@ export default function Salary() {
       const days = Number(row.presentDays || 0);
       const rate = Number(row.wageRate || 0);
       const otH = Number(row.otHours || 0);
+      const special = Number(row.specialAllowance || 0);
       const conveyance = Number(row.conveyanceAllowance || 0);
       const pf = Number(row.pfDeducted || 0);
       const esic = Number(row.esicDeducted || 0);
       const adv = Number(row.advanceDeducted || 0);
       const other = Number(row.otherDeductions || 0);
-      const allow = Number(row.allowances || 0);
       const paid = Number(row.paidAmount || 0);
 
-      let grossFromDays = 0;
-      if (row.salaryType === "Daily") grossFromDays = days * rate;
-      else if (row.salaryType === "Monthly") grossFromDays = (rate / 26) * days;
-      else if (row.salaryType === "Weekly") grossFromDays = (rate / 6) * days;
-      else if (row.salaryType === "Hourly") grossFromDays = days * 8 * rate;
-      else grossFromDays = days * rate;
+      let basicSalary = 0;
+      if (row.salaryType === "Daily") basicSalary = days * rate;
+      else if (row.salaryType === "Monthly") basicSalary = (rate / 26) * days;
+      else if (row.salaryType === "Weekly") basicSalary = (rate / 6) * days;
+      else if (row.salaryType === "Hourly") basicSalary = days * 8 * rate;
+      else basicSalary = days * rate;
 
-      const otAmt = otH * (rate / 8);
-      const gross = Math.round((grossFromDays + otAmt + conveyance + allow) * 100) / 100;
-      const totalDed = adv + pf + esic + other;
-      const net = Math.max(0, Math.round((gross - totalDed) * 100) / 100);
-      const bal = Math.max(0, Math.round((net - paid) * 100) / 100);
+      const otAmt = Number(row.otAmount !== undefined && row.otAmount !== "" ? row.otAmount : otH * (rate / 8));
+      
+      // Calculation Method:
+      // Gross Salary = Basic Salary + Special Allowance + Conveyance Allowance + Overtime Pay
+      const gross = Math.round((basicSalary + special + conveyance + otAmt) * 100) / 100;
+      
+      // Net Pay = Gross Salary - (EPF + ESIC)
+      const totalStatutory = pf + esic + other;
+      const net = Math.max(0, Math.round((gross - totalStatutory) * 100) / 100);
 
+      // Net Pay After Advance = Net Pay - Total Advance
+      const netAfterAdvance = Math.max(0, Math.round((net - adv) * 100) / 100);
+      const bal = Math.max(0, Math.round((netAfterAdvance - paid) * 100) / 100);
+
+      row.basicSalary = Math.round(basicSalary * 100) / 100;
       row.otAmount = Math.round(otAmt * 100) / 100;
       row.grossAmount = gross;
       row.netAmount = net;
+      row.netPayAfterAdvance = netAfterAdvance;
       row.balanceAmount = bal;
 
       updated[idx] = row;
@@ -398,12 +425,13 @@ export default function Salary() {
       "Salary Type",
       "Wage Rate",
       "Present Days",
-      "OT Hours",
+      "Special Allowance",
       "Conveyance Allowance",
+      "OT Hours",
+      "OT Pay",
       "EPF (PF)",
       "ESIC",
       "Advance Kharcha",
-      "Other Allowances",
       "Other Deductions",
       "Paid Amount",
       "Payment Mode",
@@ -412,29 +440,56 @@ export default function Salary() {
 
     let sampleData = [];
     if (allWorkers.length > 0) {
-      sampleData = allWorkers.map(w => [
-        w.workerId || "",
-        w.fullName || "",
-        w.site?.name || "",
-        w.salaryType || "Daily",
-        Number(w.wageRate || w.dailyWage || 500),
-        26,
-        0,
-        0, // Conveyance Allowance
-        0, // EPF
-        0, // ESIC
-        0, // Advance
-        0, // Other Allowances
-        0, // Other Deductions
-        0, // Paid Amount
-        w.paymentMethod || "Bank Transfer",
-        "Monthly Attendance"
-      ]);
+      sampleData = allWorkers.map((w, index) => {
+        if (index === 0) {
+          // Standard demo values matching user example exactly:
+          // 21 days @ 400 = 8400 Basic + 7350 Special + 1050 Conveyance + 3200 OT = 20000 Gross
+          // EPF: 1008, ESIC: 150 -> Net: 18842, Advance: 8000 -> Net after advance: 10842
+          return [
+            w.workerId || "WRK-001",
+            w.fullName || "Demo Worker",
+            w.site?.name || "Main Site",
+            "Daily",
+            400,
+            21,
+            7350,
+            1050,
+            64,
+            3200,
+            1008,
+            150,
+            8000,
+            0,
+            0,
+            w.paymentMethod || "Bank Transfer",
+            "Calculation Demo: Gross 20000, Net 18842, In-Hand 10842"
+          ];
+        }
+        return [
+          w.workerId || "",
+          w.fullName || "",
+          w.site?.name || "",
+          w.salaryType || "Daily",
+          Number(w.wageRate || w.dailyWage || 400),
+          21,
+          0, // Special Allowance
+          0, // Conveyance Allowance
+          0, // OT Hours
+          0, // OT Pay
+          0, // EPF
+          0, // ESIC
+          0, // Advance
+          0, // Other Deductions
+          0, // Paid Amount
+          w.paymentMethod || "Bank Transfer",
+          "Monthly Attendance"
+        ];
+      });
     } else {
       sampleData = [
-        ["WRK-001", "Ramesh Kumar", "Site Alpha", "Daily", 600, 26, 8, 1000, 1200, 250, 1500, 0, 0, 0, "Bank Transfer", "Sample worker"],
-        ["WRK-002", "Suresh Yadav", "Site Alpha", "Daily", 550, 24.5, 4, 800, 1100, 230, 1000, 0, 0, 0, "Cash", "Sample worker"],
-        ["WRK-003", "Mahesh Verma", "Site Beta", "Daily", 700, 27, 12, 1200, 1400, 300, 2000, 500, 0, 0, "UPI", "Sample worker"]
+        ["WRK-001", "Ramesh Kumar", "Site Alpha", "Daily", 400, 21, 7350, 1050, 64, 3200, 1008, 150, 8000, 0, 0, "Bank Transfer", "Worked 21 days @ 400 (Gross: 20000, Net: 18842, Balance: 10842)"],
+        ["WRK-002", "Suresh Yadav", "Site Alpha", "Daily", 500, 24, 5000, 800, 20, 1250, 1440, 143, 4000, 0, 0, "Cash", "Standard payroll row"],
+        ["WRK-003", "Mahesh Verma", "Site Beta", "Daily", 600, 26, 6000, 1200, 16, 1200, 1800, 180, 5000, 0, 0, "UPI", "Standard payroll row"]
       ];
     }
 
@@ -446,16 +501,17 @@ export default function Salary() {
       { wch: 14 },
       { wch: 14 },
       { wch: 14 },
-      { wch: 12 },
+      { wch: 18 }, // Special Allowance
       { wch: 22 }, // Conveyance Allowance
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 18 },
-      { wch: 18 },
-      { wch: 18 },
-      { wch: 14 },
-      { wch: 16 },
-      { wch: 25 }
+      { wch: 12 }, // OT Hours
+      { wch: 14 }, // OT Pay
+      { wch: 14 }, // EPF
+      { wch: 14 }, // ESIC
+      { wch: 18 }, // Advance Kharcha
+      { wch: 18 }, // Other Deductions
+      { wch: 14 }, // Paid Amount
+      { wch: 16 }, // Payment Mode
+      { wch: 30 }  // Notes
     ];
 
     const wb = XLSX.utils.book_new();
@@ -529,6 +585,20 @@ export default function Salary() {
           const explicitOt = getVal(["otHours", "ot", "overtime", "overtimehours", "othr"]);
           otHours = Number(explicitOt || 0);
 
+          const explicitOtAmount = getVal(["otAmount", "otPay", "overtimeamount", "ot_amount", "overtimepay"]);
+
+          const specialAllowance = Number(getVal([
+            "specialAllowance",
+            "special_allowance",
+            "special",
+            "sa",
+            "otherAllowances",
+            "allowances",
+            "allowance",
+            "bonus",
+            "extra"
+          ]) || 0);
+
           const conveyanceAllowance = Number(getVal([
             "conveyanceAllowance",
             "conveyanceAllowances",
@@ -541,18 +611,9 @@ export default function Salary() {
             "ta"
           ]) || 0);
 
-          const pfDeducted = Number(getVal(["pfDeducted", "epfDeducted", "pf", "epf", "epfpf", "providentfund"]) || 0);
-          const esicDeducted = Number(getVal(["esicDeducted", "esiDeducted", "esic", "esi", "stateinsurance"]) || 0);
-          const advanceDeducted = Number(getVal(["advanceDeducted", "advance", "kharcha", "adv", "advancetaken"]) || 0);
-          const allowances = Number(getVal(["otherAllowances", "allowances", "allowance", "bonus", "extra"]) || 0);
-          const otherDeductions = Number(getVal(["otherDeductions", "deductions", "deduction", "room", "mess"]) || 0);
-          const paidAmount = Number(getVal(["paidAmount", "paid", "amountpaid"]) || 0);
-          const paymentMode = String(getVal(["paymentMode", "paymentMethod", "mode"]) || "Bank Transfer").trim();
-          const notes = String(getVal(["notes", "remarks"]) || "").trim();
-
           if (!fullName && !workerId) continue;
 
-          const rate = wageRate > 0 ? wageRate : 500;
+          const rate = wageRate > 0 ? wageRate : 400;
           let grossFromDays = 0;
           if (salaryType === "Daily") grossFromDays = presentDays * rate;
           else if (salaryType === "Monthly") grossFromDays = (rate / 26) * presentDays;
@@ -561,11 +622,43 @@ export default function Salary() {
           else grossFromDays = presentDays * rate;
 
           const otRate = rate / 8;
-          const otAmount = otHours * otRate;
-          const gross = Math.round((grossFromDays + otAmount + conveyanceAllowance + allowances) * 100) / 100;
-          const totalDed = advanceDeducted + pfDeducted + esicDeducted + otherDeductions;
-          const net = Math.max(0, Math.round((gross - totalDed) * 100) / 100);
-          const balance = Math.max(0, Math.round((net - paidAmount) * 100) / 100);
+          const otAmount = explicitOtAmount !== null && explicitOtAmount !== ""
+            ? Number(explicitOtAmount)
+            : Math.round(otHours * otRate * 100) / 100;
+
+          // 1. Basic Salary = Days Worked × Rate
+          const basicSalary = Math.round(grossFromDays * 100) / 100;
+
+          // 2. Gross Salary = Basic Salary + Special Allowance + Conveyance Allowance + Overtime Pay
+          const gross = Math.round((basicSalary + specialAllowance + conveyanceAllowance + otAmount) * 100) / 100;
+
+          // 3. Statutory Deductions
+          // EPF: 12% on Basic Salary
+          const rawPf = getVal(["pfDeducted", "epfDeducted", "pf", "epf", "epfpf", "providentfund"]);
+          const pfDeducted = rawPf !== null && rawPf !== ""
+            ? Number(rawPf)
+            : Math.round(Math.min(basicSalary, 15000) * 0.12 * 100) / 100;
+
+          // ESIC: 0.75% of Gross earnings
+          const rawEsic = getVal(["esicDeducted", "esiDeducted", "esic", "esi", "stateinsurance"]);
+          const esicDeducted = rawEsic !== null && rawEsic !== ""
+            ? Number(rawEsic)
+            : (gross <= 21000 ? Math.round(gross * 0.0075 * 100) / 100 : 0);
+
+          const otherDeductions = Number(getVal(["otherDeductions", "deductions", "deduction", "room", "mess"]) || 0);
+          const advanceDeducted = Number(getVal(["advanceDeducted", "advance", "kharcha", "adv", "advancetaken", "totaladvance"]) || 0);
+          const paidAmount = Number(getVal(["paidAmount", "paid", "amountpaid"]) || 0);
+          const paymentMode = String(getVal(["paymentMode", "paymentMethod", "mode"]) || "Bank Transfer").trim();
+          const notes = String(getVal(["notes", "remarks"]) || "").trim();
+
+          // Calculation Method:
+          // Total Statutory Deductions = EPF + ESIC + Other
+          const totalStatutory = pfDeducted + esicDeducted + otherDeductions;
+          // Net Pay = Gross Salary - (EPF + ESIC)
+          const net = Math.max(0, Math.round((gross - totalStatutory) * 100) / 100);
+          // Net Pay After Advance = Net Pay - Total Advance
+          const netPayAfterAdvance = Math.max(0, Math.round((net - advanceDeducted) * 100) / 100);
+          const balance = Math.max(0, Math.round((netPayAfterAdvance - paidAmount) * 100) / 100);
 
           parsed.push({
             workerId: workerId || "Auto-assign",
@@ -574,16 +667,18 @@ export default function Salary() {
             salaryType,
             wageRate: rate,
             presentDays,
+            basicSalary,
+            specialAllowance,
+            conveyanceAllowance,
             otHours,
             otAmount,
-            conveyanceAllowance,
+            grossAmount: gross,
             pfDeducted,
             esicDeducted,
             advanceDeducted,
-            allowances,
             otherDeductions,
-            grossAmount: gross,
             netAmount: net,
+            netPayAfterAdvance,
             paidAmount,
             balanceAmount: balance,
             paymentMode,
@@ -880,9 +975,10 @@ export default function Salary() {
                 </thead>
                 <tbody>
                   {filteredSalaries.map(s => {
+                    const netAfterAdvance = Math.max(0, Number(s.netAmount) - Number(s.advanceDeducted || 0));
                     const balance = s.balanceAmount !== undefined 
                       ? Number(s.balanceAmount) 
-                      : Math.max(0, Number(s.netAmount) - Number(s.paidAmount || 0));
+                      : Math.max(0, netAfterAdvance - Number(s.paidAmount || 0));
                     const isPaid = s.status === "Paid" || balance <= 0;
                     const isPartial = s.status === "Partial" || (Number(s.paidAmount || 0) > 0 && balance > 0);
 
@@ -928,13 +1024,18 @@ export default function Salary() {
                         </td>
                         <td style={styles.td}>
                           <div style={{ fontWeight: 700, color: "#0f172a" }}>₹{Number(s.grossAmount).toLocaleString()}</div>
-                          {Number(s.conveyanceAllowance || 0) > 0 && (
-                            <div style={{ fontSize: "11px", marginTop: "3px" }}>
+                          <div style={{ fontSize: "11px", marginTop: "3px", display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                            {Number(s.specialAllowance || 0) > 0 && (
+                              <span style={{ background: "#fef3c7", color: "#b45309", padding: "1px 5px", borderRadius: "4px", fontWeight: 700 }}>
+                                Spcl: ₹{Number(s.specialAllowance).toLocaleString()}
+                              </span>
+                            )}
+                            {Number(s.conveyanceAllowance || 0) > 0 && (
                               <span style={{ background: "#ecfeff", color: "#0891b2", padding: "1px 5px", borderRadius: "4px", fontWeight: 700 }}>
                                 Conv: ₹{Number(s.conveyanceAllowance).toLocaleString()}
                               </span>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </td>
                         <td style={styles.td}>
                           <div style={{ color: Number(s.advanceDeducted) > 0 ? "#e11d48" : "#94a3b8", fontWeight: 600 }}>
@@ -956,9 +1057,14 @@ export default function Salary() {
                           )}
                         </td>
                         <td style={styles.td}>
-                          <span style={{ fontWeight: 800, fontSize: "15px", color: "#0f766e" }}>
+                          <div style={{ fontWeight: 800, fontSize: "15px", color: "#0f766e" }}>
                             ₹{Number(s.netAmount).toLocaleString()}
-                          </span>
+                          </div>
+                          {Number(s.advanceDeducted || 0) > 0 && (
+                            <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>
+                              After Adv: <strong>₹{netAfterAdvance.toLocaleString()}</strong>
+                            </div>
+                          )}
                         </td>
                         <td style={styles.td}>
                           <span style={{ fontWeight: 600, color: Number(s.paidAmount) > 0 ? "#16a34a" : "#64748b" }}>
@@ -1544,6 +1650,12 @@ export default function Salary() {
                         ₹{parsedRows.reduce((acc, r) => acc + Number(r.grossAmount || 0), 0).toLocaleString('en-IN')}
                       </div>
                     </div>
+                    <div style={{ ...styles.miniCard, background: "#fefce8", borderColor: "#fde68a" }}>
+                      <div style={{ ...styles.miniLabel, color: "#b45309" }}>Special Allowance</div>
+                      <div style={{ ...styles.miniValue, color: "#d97706" }}>
+                        ₹{parsedRows.reduce((acc, r) => acc + Number(r.specialAllowance || 0), 0).toLocaleString('en-IN')}
+                      </div>
+                    </div>
                     <div style={{ ...styles.miniCard, background: "#ecfeff", borderColor: "#a5f3fc" }}>
                       <div style={{ ...styles.miniLabel, color: "#0e7490" }}>Conveyance Allowance</div>
                       <div style={{ ...styles.miniValue, color: "#0891b2" }}>
@@ -1585,13 +1697,15 @@ export default function Salary() {
                           <th style={styles.th}>Site</th>
                           <th style={{ ...styles.th, textAlign: "right" }}>Days</th>
                           <th style={{ ...styles.th, textAlign: "right" }}>Daily Rate</th>
+                          <th style={{ ...styles.th, textAlign: "right", color: "#b45309" }}>Special (₹)</th>
+                          <th style={{ ...styles.th, textAlign: "right", color: "#0891b2" }}>Conveyance (₹)</th>
                           <th style={{ ...styles.th, textAlign: "right" }}>OT (Hrs)</th>
                           <th style={{ ...styles.th, textAlign: "right" }}>Gross Wages</th>
-                          <th style={{ ...styles.th, textAlign: "right", color: "#0891b2" }}>Conveyance (₹)</th>
-                          <th style={{ ...styles.th, textAlign: "right", color: "#6b21a8" }}>EPF / PF (₹)</th>
+                          <th style={{ ...styles.th, textAlign: "right", color: "#6b21a8" }}>EPF (₹)</th>
                           <th style={{ ...styles.th, textAlign: "right", color: "#3730a3" }}>ESIC (₹)</th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>Advance Deducted</th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>Net Payable</th>
+                          <th style={{ ...styles.th, textAlign: "right", color: "#e11d48" }}>Advance (₹)</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>Net Pay</th>
+                          <th style={{ ...styles.th, textAlign: "right", color: "#0f766e" }}>After Adv</th>
                           <th style={styles.th}>Status</th>
                         </tr>
                       </thead>
@@ -1616,18 +1730,28 @@ export default function Salary() {
                               />
                             </td>
                             <td style={{ ...styles.td, textAlign: "right" }}>₹{row.wageRate}</td>
-                            <td style={{ ...styles.td, textAlign: "right" }}>{row.otHours > 0 ? `${row.otHours}h (+₹${row.otAmount})` : "-"}</td>
-                            <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>₹{row.grossAmount.toLocaleString('en-IN')}</td>
+                            <td style={{ ...styles.td, textAlign: "right" }}>
+                              <input 
+                                type="number"
+                                min="0"
+                                style={{ width: "70px", padding: "4px 6px", borderRadius: "6px", border: "1.5px solid #fde68a", textAlign: "right", fontSize: "12px", background: "#fefce8", fontWeight: 700, color: "#b45309" }}
+                                value={row.specialAllowance || 0}
+                                onChange={e => handlePreviewRowChange(idx, "specialAllowance", e.target.value)}
+                                title="Edit Special Allowance"
+                              />
+                            </td>
                             <td style={{ ...styles.td, textAlign: "right" }}>
                               <input 
                                 type="number"
                                 min="0"
                                 style={{ width: "70px", padding: "4px 6px", borderRadius: "6px", border: "1.5px solid #a5f3fc", textAlign: "right", fontSize: "12px", background: "#f0fdfa", fontWeight: 700, color: "#0891b2" }}
-                                value={row.conveyanceAllowance}
+                                value={row.conveyanceAllowance || 0}
                                 onChange={e => handlePreviewRowChange(idx, "conveyanceAllowance", e.target.value)}
                                 title="Edit Conveyance Allowance"
                               />
                             </td>
+                            <td style={{ ...styles.td, textAlign: "right" }}>{row.otHours > 0 ? `${row.otHours}h (+₹${row.otAmount})` : "-"}</td>
+                            <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>₹{row.grossAmount.toLocaleString('en-IN')}</td>
                             <td style={{ ...styles.td, textAlign: "right" }}>
                               <input 
                                 type="number"
@@ -1660,6 +1784,9 @@ export default function Salary() {
                             </td>
                             <td style={{ ...styles.td, textAlign: "right", fontWeight: 800, color: "#16a34a" }}>
                               ₹{row.netAmount.toLocaleString('en-IN')}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "right", fontWeight: 800, color: "#0f766e" }}>
+                              ₹{(row.netPayAfterAdvance !== undefined ? row.netPayAfterAdvance : Math.max(0, row.netAmount - row.advanceDeducted)).toLocaleString('en-IN')}
                             </td>
                             <td style={styles.td}>
                               <span style={row.balanceAmount === 0 && row.netAmount > 0 ? styles.statusPaid : (row.paidAmount > 0 ? styles.statusPartial : styles.statusPending)}>
@@ -1725,83 +1852,131 @@ export default function Salary() {
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                  <div>
-                    <label style={styles.inputLabel}>Gross Wages (₹)</label>
-                    <input 
-                      type="number"
-                      step="any"
-                      min="0"
-                      style={styles.modalInput}
-                      value={editGross}
-                      onChange={e => setEditGross(e.target.value)}
-                      required
-                    />
+                <div style={{ background: "#f8fafc", padding: "12px 14px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "#0f766e", marginBottom: "8px", textTransform: "uppercase" }}>
+                    1. Earnings Breakdown (Gross Salary = Basic + Special + Conveyance + OT)
                   </div>
-                  <div>
-                    <label style={{ ...styles.inputLabel, color: "#0891b2", fontWeight: 700 }}>
-                      Conveyance Allowance (₹)
-                    </label>
-                    <input 
-                      type="number"
-                      step="any"
-                      min="0"
-                      style={{ ...styles.modalInput, border: "1.5px solid #a5f3fc", background: "#f0fdfa", fontWeight: 700, color: "#0891b2" }}
-                      value={editConveyance}
-                      onChange={e => setEditConveyance(e.target.value)}
-                      placeholder="e.g. 1000"
-                    />
-                    <span style={{ fontSize: "11px", color: "#0891b2" }}>Travel / Conveyance allowance</span>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                    <div>
+                      <label style={styles.inputLabel}>Basic Salary (₹)</label>
+                      <input 
+                        type="number"
+                        step="any"
+                        min="0"
+                        style={styles.modalInput}
+                        value={editBasic}
+                        onChange={e => {
+                          const val = Number(e.target.value || 0);
+                          setEditBasic(val);
+                          setEditGross(Math.round((val + Number(editSpecial || 0) + Number(editConveyance || 0) + Number(editOtAmount || 0)) * 100) / 100);
+                        }}
+                      />
+                      <span style={{ fontSize: "11px", color: "#64748b" }}>Days × Wage Rate</span>
+                    </div>
+                    <div>
+                      <label style={{ ...styles.inputLabel, color: "#b45309", fontWeight: 700 }}>Special Allowance (₹)</label>
+                      <input 
+                        type="number"
+                        step="any"
+                        min="0"
+                        style={{ ...styles.modalInput, border: "1.5px solid #fde68a", background: "#fefce8" }}
+                        value={editSpecial}
+                        onChange={e => {
+                          const val = Number(e.target.value || 0);
+                          setEditSpecial(val);
+                          setEditGross(Math.round((Number(editBasic || 0) + val + Number(editConveyance || 0) + Number(editOtAmount || 0)) * 100) / 100);
+                        }}
+                      />
+                      <span style={{ fontSize: "11px", color: "#b45309" }}>Skills / Trade allowance</span>
+                    </div>
+                    <div>
+                      <label style={{ ...styles.inputLabel, color: "#0891b2", fontWeight: 700 }}>Conveyance Allowance (₹)</label>
+                      <input 
+                        type="number"
+                        step="any"
+                        min="0"
+                        style={{ ...styles.modalInput, border: "1.5px solid #a5f3fc", background: "#f0fdfa" }}
+                        value={editConveyance}
+                        onChange={e => {
+                          const val = Number(e.target.value || 0);
+                          setEditConveyance(val);
+                          setEditGross(Math.round((Number(editBasic || 0) + Number(editSpecial || 0) + val + Number(editOtAmount || 0)) * 100) / 100);
+                        }}
+                      />
+                      <span style={{ fontSize: "11px", color: "#0891b2" }}>Travel assistance</span>
+                    </div>
+                    <div>
+                      <label style={styles.inputLabel}>Overtime (OT) Pay (₹)</label>
+                      <input 
+                        type="number"
+                        step="any"
+                        min="0"
+                        style={styles.modalInput}
+                        value={editOtAmount}
+                        onChange={e => {
+                          const val = Number(e.target.value || 0);
+                          setEditOtAmount(val);
+                          setEditGross(Math.round((Number(editBasic || 0) + Number(editSpecial || 0) + Number(editConveyance || 0) + val) * 100) / 100);
+                        }}
+                      />
+                      <span style={{ fontSize: "11px", color: "#64748b" }}>OT Hours rate</span>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f1f5f9", padding: "8px 12px", borderRadius: "8px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "#334155" }}>Computed Gross Salary:</span>
+                    <span style={{ fontSize: "15px", fontWeight: 800, color: "#0f172a" }}>₹{Number(editGross).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+
+                <div style={{ background: "#faf5ff", padding: "12px 14px", borderRadius: "10px", border: "1px solid #e9d5ff" }}>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "#7e22ce", marginBottom: "8px", textTransform: "uppercase" }}>
+                    2. Statutory Deductions (Net Pay = Gross - (EPF + ESIC))
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                    <div>
+                      <label style={{ ...styles.inputLabel, color: "#6b21a8", fontWeight: 700 }}>EPF / PF Deduction (₹)</label>
+                      <input 
+                        type="number"
+                        step="any"
+                        min="0"
+                        style={{ ...styles.modalInput, border: "1.5px solid #c084fc", background: "#fff", fontWeight: 700, color: "#6b21a8" }}
+                        value={editPf}
+                        onChange={e => setEditPf(e.target.value)}
+                        placeholder="e.g. 1008"
+                      />
+                      <span style={{ fontSize: "11px", color: "#9333ea" }}>12% on Basic Salary</span>
+                    </div>
+                    <div>
+                      <label style={{ ...styles.inputLabel, color: "#3730a3", fontWeight: 700 }}>ESIC Deduction (₹)</label>
+                      <input 
+                        type="number"
+                        step="any"
+                        min="0"
+                        style={{ ...styles.modalInput, border: "1.5px solid #818cf8", background: "#fff", fontWeight: 700, color: "#3730a3" }}
+                        value={editEsic}
+                        onChange={e => setEditEsic(e.target.value)}
+                        placeholder="e.g. 150"
+                      />
+                      <span style={{ fontSize: "11px", color: "#4f46e5" }}>0.75% on Gross Salary</span>
+                    </div>
                   </div>
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                   <div>
-                    <label style={{ ...styles.inputLabel, color: "#6b21a8", fontWeight: 700 }}>
-                      EPF / PF Deduction (₹)
-                    </label>
+                    <label style={{ ...styles.inputLabel, color: "#e11d48", fontWeight: 700 }}>Total Advance / Kharcha (₹)</label>
                     <input 
                       type="number"
                       step="any"
                       min="0"
-                      style={{ ...styles.modalInput, border: "1.5px solid #c084fc", background: "#faf5ff", fontWeight: 700, color: "#6b21a8" }}
-                      value={editPf}
-                      onChange={e => setEditPf(e.target.value)}
-                      placeholder="e.g. 1800"
-                    />
-                    <span style={{ fontSize: "11px", color: "#9333ea" }}>Har worker ka EPF alag ho sakta hai</span>
-                  </div>
-                  <div>
-                    <label style={{ ...styles.inputLabel, color: "#3730a3", fontWeight: 700 }}>
-                      ESIC Deduction (₹)
-                    </label>
-                    <input 
-                      type="number"
-                      step="any"
-                      min="0"
-                      style={{ ...styles.modalInput, border: "1.5px solid #818cf8", background: "#eef2ff", fontWeight: 700, color: "#3730a3" }}
-                      value={editEsic}
-                      onChange={e => setEditEsic(e.target.value)}
-                      placeholder="e.g. 150"
-                    />
-                    <span style={{ fontSize: "11px", color: "#4f46e5" }}>State Insurance deduction</span>
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                  <div>
-                    <label style={styles.inputLabel}>Advance / Kharcha Deducted (₹)</label>
-                    <input 
-                      type="number"
-                      step="any"
-                      min="0"
-                      style={styles.modalInput}
+                      style={{ ...styles.modalInput, border: "1.5px solid #fca5a5", background: "#fef2f2", fontWeight: 700, color: "#e11d48" }}
                       value={editAdvance}
                       onChange={e => setEditAdvance(e.target.value)}
                     />
+                    <span style={{ fontSize: "11px", color: "#e11d48" }}>Net Pay After Advance = Net - Advance</span>
                   </div>
                   <div>
-                    <label style={styles.inputLabel}>Other Deductions (Mess, Room, etc.) (₹)</label>
+                    <label style={styles.inputLabel}>Other Deductions (Mess, Room) (₹)</label>
                     <input 
                       type="number"
                       step="any"
@@ -1820,7 +1995,7 @@ export default function Salary() {
                     style={styles.modalInput}
                     value={editNotes}
                     onChange={e => setEditNotes(e.target.value)}
-                    placeholder="e.g. Conveyance allowance & EPF adjusted"
+                    placeholder="e.g. Special allowance & advance adjusted"
                   />
                 </div>
 
@@ -1832,25 +2007,41 @@ export default function Salary() {
                   const a = Number(editAdvance || 0);
                   const o = Number(editOther || 0);
                   const pTax = Number(editingSalary.professionalTax || 0);
-                  const net = Math.max(0, Math.round((g - p - es - a - o - pTax) * 100) / 100);
+                  const totalStatutory = p + es + o + pTax;
+                  const netPay = Math.max(0, Math.round((g - totalStatutory) * 100) / 100);
+                  const netAfterAdvance = Math.max(0, Math.round((netPay - a) * 100) / 100);
                   const paid = Number(editingSalary.paidAmount || 0);
-                  const bal = Math.max(0, Math.round((net - paid) * 100) / 100);
+                  const bal = Math.max(0, Math.round((netAfterAdvance - paid) * 100) / 100);
 
                   return (
-                    <div style={{ background: "#ecfdf5", border: "1.5px solid #a7f3d0", padding: "14px 18px", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <div style={{ fontSize: "12px", color: "#065f46", fontWeight: 700 }}>Recalculated Net Payable</div>
-                        <div style={{ fontSize: "22px", fontWeight: 800, color: "#047857" }}>₹{net.toLocaleString('en-IN')}</div>
-                        <div style={{ fontSize: "11px", color: "#059669" }}>
-                          Total Deductions: ₹{(p + es + a + o + pTax).toLocaleString('en-IN')}
+                    <div style={{ background: "#ecfdf5", border: "1.5px solid #a7f3d0", padding: "16px 18px", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px dashed #a7f3d0", paddingBottom: "10px" }}>
+                        <div>
+                          <div style={{ fontSize: "11px", color: "#065f46", fontWeight: 700, textTransform: "uppercase" }}>Gross Salary</div>
+                          <div style={{ fontSize: "17px", fontWeight: 800, color: "#065f46" }}>₹{g.toLocaleString('en-IN')}</div>
+                        </div>
+                        <div style={{ textAlign: "center" }}>
+                          <div style={{ fontSize: "11px", color: "#b91c1c", fontWeight: 700, textTransform: "uppercase" }}>Total Deductions (EPF + ESIC)</div>
+                          <div style={{ fontSize: "17px", fontWeight: 800, color: "#b91c1c" }}>-₹{totalStatutory.toLocaleString('en-IN')}</div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontSize: "11px", color: "#047857", fontWeight: 700, textTransform: "uppercase" }}>Net Pay (Gross - Deductions)</div>
+                          <div style={{ fontSize: "18px", fontWeight: 800, color: "#047857" }}>₹{netPay.toLocaleString('en-IN')}</div>
                         </div>
                       </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: "12px", color: "#64748b", fontWeight: 600 }}>Balance Pending</div>
-                        <div style={{ fontSize: "18px", fontWeight: 800, color: bal > 0 ? "#d97706" : "#16a34a" }}>
-                          ₹{bal.toLocaleString('en-IN')}
+
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                          <div style={{ fontSize: "11px", color: "#e11d48", fontWeight: 700 }}>Total Advance Deducted</div>
+                          <div style={{ fontSize: "16px", fontWeight: 800, color: "#e11d48" }}>-₹{a.toLocaleString('en-IN')}</div>
                         </div>
-                        <div style={{ fontSize: "11px", color: "#64748b" }}>Already Paid: ₹{paid.toLocaleString('en-IN')}</div>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontSize: "12px", color: "#0f766e", fontWeight: 800 }}>Net Pay After Advance (Debit Evidence)</div>
+                          <div style={{ fontSize: "22px", fontWeight: 900, color: "#0f766e" }}>₹{netAfterAdvance.toLocaleString('en-IN')}</div>
+                          <div style={{ fontSize: "11px", color: "#64748b" }}>
+                            Balance Pending: <strong style={{ color: bal > 0 ? "#d97706" : "#16a34a" }}>₹{bal.toLocaleString('en-IN')}</strong> (Already Paid: ₹{paid.toLocaleString('en-IN')})
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
