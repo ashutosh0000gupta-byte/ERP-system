@@ -940,6 +940,7 @@ export const importMonthlyExcelSalaries = async (payload: {
     presentDays: number;
     totalDays?: number;
     otHours?: number;
+    conveyanceAllowance?: number;
     pfDeducted?: number;
     esicDeducted?: number;
     advanceDeducted?: number;
@@ -1079,12 +1080,17 @@ export const importMonthlyExcelSalaries = async (payload: {
 
       const otAmount = Math.round(otHours * otRate * 100) / 100;
       const allowances = Math.max(0, Number(row.allowances || 0));
-      const grossAmount = Math.round((grossAttendance + otAmount + allowances) * 100) / 100;
+      let conveyanceAllowance = 0;
+      if (row.conveyanceAllowance !== undefined && row.conveyanceAllowance !== null && String(row.conveyanceAllowance).trim() !== "") {
+        conveyanceAllowance = Math.max(0, Number(row.conveyanceAllowance));
+      } else {
+        conveyanceAllowance = Math.round(grossAttendance * 0.20 * 100) / 100;
+      }
+      const grossAmount = Math.round((grossAttendance + otAmount + conveyanceAllowance + allowances) * 100) / 100;
 
       // Statutory deductions
       const basicSalary = Math.round(grossAttendance * 0.50 * 100) / 100;
-      const conveyanceAllowance = Math.round(grossAttendance * 0.20 * 100) / 100;
-      const specialAllowance = Math.round((grossAttendance - basicSalary - conveyanceAllowance) * 100) / 100;
+      const specialAllowance = Math.max(0, Math.round((grossAmount - basicSalary - conveyanceAllowance) * 100) / 100);
 
       let pfDeducted = 0;
       if (row.pfDeducted !== undefined && row.pfDeducted !== null && String(row.pfDeducted).trim() !== "") {
@@ -1291,6 +1297,7 @@ export const updateWorkerSalary = async (id: string, data: {
   esicDeducted?: number;
   advanceDeducted?: number;
   otherDeductions?: number;
+  conveyanceAllowance?: number;
   grossAmount?: number;
   paidAmount?: number;
   paymentMode?: string;
@@ -1305,6 +1312,7 @@ export const updateWorkerSalary = async (id: string, data: {
   }
 
   const gross = data.grossAmount !== undefined ? Number(data.grossAmount) : Number(existing.grossAmount);
+  const conveyance = data.conveyanceAllowance !== undefined ? Math.max(0, Number(data.conveyanceAllowance)) : Number(existing.conveyanceAllowance || 0);
   const pf = data.pfDeducted !== undefined ? Math.max(0, Number(data.pfDeducted)) : Number(existing.pfDeducted || 0);
   const esic = data.esicDeducted !== undefined ? Math.max(0, Number(data.esicDeducted)) : Number(existing.esicDeducted || 0);
   const pTax = Number(existing.professionalTax || 0);
@@ -1321,6 +1329,7 @@ export const updateWorkerSalary = async (id: string, data: {
     where: { id },
     data: {
       ...(data.grossAmount !== undefined && { grossAmount: gross }),
+      ...(data.conveyanceAllowance !== undefined && { conveyanceAllowance: conveyance }),
       pfDeducted: pf,
       esicDeducted: esic,
       advanceDeducted: advance,

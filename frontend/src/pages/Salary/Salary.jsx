@@ -71,6 +71,7 @@ export default function Salary() {
   const [editingSalary, setEditingSalary] = useState(null);
   const [editPf, setEditPf] = useState(0);
   const [editEsic, setEditEsic] = useState(0);
+  const [editConveyance, setEditConveyance] = useState(0);
   const [editAdvance, setEditAdvance] = useState(0);
   const [editOther, setEditOther] = useState(0);
   const [editGross, setEditGross] = useState(0);
@@ -255,7 +256,7 @@ export default function Salary() {
     const headers = [
       "Worker ID", "Name", "Site", "Salary Type", "Wage Rate", "Pay Frequency",
       "Period Type", "Start Date", "End Date", "Present Days", "Total Days",
-      "OT Hours", "OT Amount", "Gross Amount", "Advance Deducted", "PF Deducted",
+      "OT Hours", "OT Amount", "Conveyance Allowance", "Gross Amount", "Advance Deducted", "PF Deducted", "ESIC Deducted",
       "Net Payable", "Paid Amount", "Balance Pending", "Status", "Payment Mode", "Bank A/C", "IFSC"
     ];
     
@@ -273,9 +274,11 @@ export default function Salary() {
       s.totalDays,
       s.otHours || 0,
       s.otAmount || 0,
+      s.conveyanceAllowance || 0,
       s.grossAmount,
       s.advanceDeducted,
       s.pfDeducted || 0,
+      s.esicDeducted || 0,
       s.netAmount,
       s.paidAmount || 0,
       s.balanceAmount !== undefined ? s.balanceAmount : Math.max(0, Number(s.netAmount) - Number(s.paidAmount || 0)),
@@ -314,6 +317,7 @@ export default function Salary() {
     setEditingSalary(sal);
     setEditPf(sal.pfDeducted !== undefined ? Number(sal.pfDeducted) : 0);
     setEditEsic(sal.esicDeducted !== undefined ? Number(sal.esicDeducted) : 0);
+    setEditConveyance(sal.conveyanceAllowance !== undefined ? Number(sal.conveyanceAllowance) : 0);
     setEditAdvance(sal.advanceDeducted !== undefined ? Number(sal.advanceDeducted) : 0);
     setEditOther(sal.otherDeductions !== undefined ? Number(sal.otherDeductions) : 0);
     setEditGross(sal.grossAmount !== undefined ? Number(sal.grossAmount) : 0);
@@ -327,13 +331,14 @@ export default function Salary() {
     try {
       await api.put(`/snmr/salaries/${editingSalary.id}`, {
         grossAmount: Number(editGross || 0),
+        conveyanceAllowance: Number(editConveyance || 0),
         pfDeducted: Number(editPf || 0),
         esicDeducted: Number(editEsic || 0),
         advanceDeducted: Number(editAdvance || 0),
         otherDeductions: Number(editOther || 0),
         notes: editNotes
       });
-      alert("Worker salary deductions & EPF/ESIC updated successfully!");
+      alert("Worker salary, conveyance allowance & deductions updated successfully!");
       setEditingSalary(null);
       fetchSalaries();
     } catch (err) {
@@ -352,6 +357,7 @@ export default function Salary() {
       const days = Number(row.presentDays || 0);
       const rate = Number(row.wageRate || 0);
       const otH = Number(row.otHours || 0);
+      const conveyance = Number(row.conveyanceAllowance || 0);
       const pf = Number(row.pfDeducted || 0);
       const esic = Number(row.esicDeducted || 0);
       const adv = Number(row.advanceDeducted || 0);
@@ -367,7 +373,7 @@ export default function Salary() {
       else grossFromDays = days * rate;
 
       const otAmt = otH * (rate / 8);
-      const gross = Math.round((grossFromDays + otAmt + allow) * 100) / 100;
+      const gross = Math.round((grossFromDays + otAmt + conveyance + allow) * 100) / 100;
       const totalDed = adv + pf + esic + other;
       const net = Math.max(0, Math.round((gross - totalDed) * 100) / 100);
       const bal = Math.max(0, Math.round((net - paid) * 100) / 100);
@@ -391,6 +397,7 @@ export default function Salary() {
       "Wage Rate",
       "Present Days",
       "OT Hours",
+      "Conveyance Allowance",
       "EPF (PF)",
       "ESIC",
       "Advance Kharcha",
@@ -411,20 +418,21 @@ export default function Salary() {
         Number(w.wageRate || w.dailyWage || 500),
         26,
         0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
+        0, // Conveyance Allowance
+        0, // EPF
+        0, // ESIC
+        0, // Advance
+        0, // Other Allowances
+        0, // Other Deductions
+        0, // Paid Amount
         w.paymentMethod || "Bank Transfer",
         "Monthly Attendance"
       ]);
     } else {
       sampleData = [
-        ["WRK-001", "Ramesh Kumar", "Site Alpha", "Daily", 600, 26, 8, 1200, 250, 1500, 0, 0, 0, "Bank Transfer", "Sample worker"],
-        ["WRK-002", "Suresh Yadav", "Site Alpha", "Daily", 550, 24.5, 4, 1100, 230, 1000, 0, 0, 0, "Cash", "Sample worker"],
-        ["WRK-003", "Mahesh Verma", "Site Beta", "Daily", 700, 27, 12, 1400, 300, 2000, 500, 0, 0, "UPI", "Sample worker"]
+        ["WRK-001", "Ramesh Kumar", "Site Alpha", "Daily", 600, 26, 8, 1000, 1200, 250, 1500, 0, 0, 0, "Bank Transfer", "Sample worker"],
+        ["WRK-002", "Suresh Yadav", "Site Alpha", "Daily", 550, 24.5, 4, 800, 1100, 230, 1000, 0, 0, 0, "Cash", "Sample worker"],
+        ["WRK-003", "Mahesh Verma", "Site Beta", "Daily", 700, 27, 12, 1200, 1400, 300, 2000, 500, 0, 0, "UPI", "Sample worker"]
       ];
     }
 
@@ -437,6 +445,7 @@ export default function Salary() {
       { wch: 14 },
       { wch: 14 },
       { wch: 12 },
+      { wch: 22 }, // Conveyance Allowance
       { wch: 14 },
       { wch: 14 },
       { wch: 18 },
@@ -518,6 +527,18 @@ export default function Salary() {
           const explicitOt = getVal(["otHours", "ot", "overtime", "overtimehours", "othr"]);
           otHours = Number(explicitOt || 0);
 
+          const conveyanceAllowance = Number(getVal([
+            "conveyanceAllowance",
+            "conveyanceAllowances",
+            "conveyance_allowance",
+            "conveyance_allowances",
+            "conveyance",
+            "conveyances",
+            "travelallowance",
+            "travel_allowance",
+            "ta"
+          ]) || 0);
+
           const pfDeducted = Number(getVal(["pfDeducted", "epfDeducted", "pf", "epf", "epfpf", "providentfund"]) || 0);
           const esicDeducted = Number(getVal(["esicDeducted", "esiDeducted", "esic", "esi", "stateinsurance"]) || 0);
           const advanceDeducted = Number(getVal(["advanceDeducted", "advance", "kharcha", "adv", "advancetaken"]) || 0);
@@ -539,7 +560,7 @@ export default function Salary() {
 
           const otRate = rate / 8;
           const otAmount = otHours * otRate;
-          const gross = Math.round((grossFromDays + otAmount + allowances) * 100) / 100;
+          const gross = Math.round((grossFromDays + otAmount + conveyanceAllowance + allowances) * 100) / 100;
           const totalDed = advanceDeducted + pfDeducted + esicDeducted + otherDeductions;
           const net = Math.max(0, Math.round((gross - totalDed) * 100) / 100);
           const balance = Math.max(0, Math.round((net - paidAmount) * 100) / 100);
@@ -553,6 +574,7 @@ export default function Salary() {
             presentDays,
             otHours,
             otAmount,
+            conveyanceAllowance,
             pfDeducted,
             esicDeducted,
             advanceDeducted,
@@ -895,7 +917,16 @@ export default function Salary() {
                             <div style={{ fontSize: "11px", color: "#94a3b8" }}>{Number(s.otHours)} hrs</div>
                           )}
                         </td>
-                        <td style={styles.td}>₹{Number(s.grossAmount).toLocaleString()}</td>
+                        <td style={styles.td}>
+                          <div style={{ fontWeight: 700, color: "#0f172a" }}>₹{Number(s.grossAmount).toLocaleString()}</div>
+                          {Number(s.conveyanceAllowance || 0) > 0 && (
+                            <div style={{ fontSize: "11px", marginTop: "3px" }}>
+                              <span style={{ background: "#ecfeff", color: "#0891b2", padding: "1px 5px", borderRadius: "4px", fontWeight: 700 }}>
+                                Conv: ₹{Number(s.conveyanceAllowance).toLocaleString()}
+                              </span>
+                            </div>
+                          )}
+                        </td>
                         <td style={styles.td}>
                           <div style={{ color: Number(s.advanceDeducted) > 0 ? "#e11d48" : "#94a3b8", fontWeight: 600 }}>
                             {Number(s.advanceDeducted) > 0 ? `-₹${Number(s.advanceDeducted).toLocaleString()}` : "Adv: ₹0"}
@@ -1487,7 +1518,7 @@ export default function Salary() {
               {parsedRows.length > 0 && (
                 <div>
                   {/* Summary Cards */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "12px", marginBottom: "16px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginBottom: "16px" }}>
                     <div style={styles.miniCard}>
                       <div style={styles.miniLabel}>Total Workers</div>
                       <div style={styles.miniValue}>{parsedRows.length}</div>
@@ -1502,6 +1533,12 @@ export default function Salary() {
                       <div style={styles.miniLabel}>Total Gross Wages</div>
                       <div style={{ ...styles.miniValue, color: "#0f172a" }}>
                         ₹{parsedRows.reduce((acc, r) => acc + Number(r.grossAmount || 0), 0).toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                    <div style={{ ...styles.miniCard, background: "#ecfeff", borderColor: "#a5f3fc" }}>
+                      <div style={{ ...styles.miniLabel, color: "#0e7490" }}>Conveyance Allowance</div>
+                      <div style={{ ...styles.miniValue, color: "#0891b2" }}>
+                        ₹{parsedRows.reduce((acc, r) => acc + Number(r.conveyanceAllowance || 0), 0).toLocaleString('en-IN')}
                       </div>
                     </div>
                     <div style={{ ...styles.miniCard, background: "#faf5ff", borderColor: "#e9d5ff" }}>
@@ -1541,6 +1578,7 @@ export default function Salary() {
                           <th style={{ ...styles.th, textAlign: "right" }}>Daily Rate</th>
                           <th style={{ ...styles.th, textAlign: "right" }}>OT (Hrs)</th>
                           <th style={{ ...styles.th, textAlign: "right" }}>Gross Wages</th>
+                          <th style={{ ...styles.th, textAlign: "right", color: "#0891b2" }}>Conveyance (₹)</th>
                           <th style={{ ...styles.th, textAlign: "right", color: "#6b21a8" }}>EPF / PF (₹)</th>
                           <th style={{ ...styles.th, textAlign: "right", color: "#3730a3" }}>ESIC (₹)</th>
                           <th style={{ ...styles.th, textAlign: "right" }}>Advance Deducted</th>
@@ -1571,6 +1609,16 @@ export default function Salary() {
                             <td style={{ ...styles.td, textAlign: "right" }}>₹{row.wageRate}</td>
                             <td style={{ ...styles.td, textAlign: "right" }}>{row.otHours > 0 ? `${row.otHours}h (+₹${row.otAmount})` : "-"}</td>
                             <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>₹{row.grossAmount.toLocaleString('en-IN')}</td>
+                            <td style={{ ...styles.td, textAlign: "right" }}>
+                              <input 
+                                type="number"
+                                min="0"
+                                style={{ width: "70px", padding: "4px 6px", borderRadius: "6px", border: "1.5px solid #a5f3fc", textAlign: "right", fontSize: "12px", background: "#f0fdfa", fontWeight: 700, color: "#0891b2" }}
+                                value={row.conveyanceAllowance}
+                                onChange={e => handlePreviewRowChange(idx, "conveyanceAllowance", e.target.value)}
+                                title="Edit Conveyance Allowance"
+                              />
+                            </td>
                             <td style={{ ...styles.td, textAlign: "right" }}>
                               <input 
                                 type="number"
@@ -1682,15 +1730,19 @@ export default function Salary() {
                     />
                   </div>
                   <div>
-                    <label style={styles.inputLabel}>Advance / Kharcha Deducted (₹)</label>
+                    <label style={{ ...styles.inputLabel, color: "#0891b2", fontWeight: 700 }}>
+                      Conveyance Allowance (₹)
+                    </label>
                     <input 
                       type="number"
                       step="any"
                       min="0"
-                      style={styles.modalInput}
-                      value={editAdvance}
-                      onChange={e => setEditAdvance(e.target.value)}
+                      style={{ ...styles.modalInput, border: "1.5px solid #a5f3fc", background: "#f0fdfa", fontWeight: 700, color: "#0891b2" }}
+                      value={editConveyance}
+                      onChange={e => setEditConveyance(e.target.value)}
+                      placeholder="e.g. 1000"
                     />
+                    <span style={{ fontSize: "11px", color: "#0891b2" }}>Travel / Conveyance allowance</span>
                   </div>
                 </div>
 
@@ -1729,6 +1781,17 @@ export default function Salary() {
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                   <div>
+                    <label style={styles.inputLabel}>Advance / Kharcha Deducted (₹)</label>
+                    <input 
+                      type="number"
+                      step="any"
+                      min="0"
+                      style={styles.modalInput}
+                      value={editAdvance}
+                      onChange={e => setEditAdvance(e.target.value)}
+                    />
+                  </div>
+                  <div>
                     <label style={styles.inputLabel}>Other Deductions (Mess, Room, etc.) (₹)</label>
                     <input 
                       type="number"
@@ -1739,16 +1802,17 @@ export default function Salary() {
                       onChange={e => setEditOther(e.target.value)}
                     />
                   </div>
-                  <div>
-                    <label style={styles.inputLabel}>Remarks / Notes</label>
-                    <input 
-                      type="text"
-                      style={styles.modalInput}
-                      value={editNotes}
-                      onChange={e => setEditNotes(e.target.value)}
-                      placeholder="e.g. EPF adjusted"
-                    />
-                  </div>
+                </div>
+
+                <div>
+                  <label style={styles.inputLabel}>Remarks / Notes</label>
+                  <input 
+                    type="text"
+                    style={styles.modalInput}
+                    value={editNotes}
+                    onChange={e => setEditNotes(e.target.value)}
+                    placeholder="e.g. Conveyance allowance & EPF adjusted"
+                  />
                 </div>
 
                 {/* Live Calculation Box */}
