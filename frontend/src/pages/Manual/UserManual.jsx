@@ -177,6 +177,49 @@ export default function UserManual() {
           desc: "Click 'Export CSV / Excel' to download the daily site attendance sheet for auditing and labor compliance."
         }
       ]
+    },
+    {
+      id: "excel_hub",
+      title: "Excel Sheets Hub & Repository (Search, Custom Categories & Security)",
+      category: "excel_hub",
+      badge: "Document Archive",
+      badgeColor: "#0f766e",
+      icon: <FileSpreadsheet size={22} color="#0f766e" />,
+      summary: "Store, organize, search, and archive all types of spreadsheets (.xlsx, .xls, .csv). Group sheets by custom categories, instant live search, in-browser preview, and password-protected deletion.",
+      steps: [
+        {
+          title: "Step 1: Open Excel Sheets Hub via Sidebar or Salary Page",
+          desc: "Click 'Excel Sheets Hub' in the left sidebar menu, or click the 'Excel Sheets Hub' shortcut button at the top of the 'Salary & Payment' page."
+        },
+        {
+          title: "Step 2: Upload Excel / CSV with Title & Drop Zone",
+          desc: "Click '+ Upload New Excel'. Drag & drop or select your .xlsx, .xls, or .csv file. The title automatically populates from the file name, or you can enter a custom title."
+        },
+        {
+          title: "Step 3: Select Existing or Create a Custom Category",
+          desc: "Choose from standard categories (Worker Payroll, Monthly Attendance, Site Expenses, etc.) OR click '+ Create Custom Category' to create your own (e.g., 'Civil Subcontractor Bills', 'Diesel Expenses', 'Material Challan'). Custom categories are saved permanently and appear in future dropdowns."
+        },
+        {
+          title: "Step 4: Group and View Sheets by Category",
+          desc: "Use the 'By Category' view mode to see all spreadsheets organized into neat category folder sections. Click any category pill at the top (e.g., 'Worker Payroll (5)') to filter that category instantly."
+        },
+        {
+          title: "Step 5: Live Instant Search Across All Fields",
+          desc: "Type into the search bar to filter instantly by sheet title, file name, category, site name, notes, or uploader name. The match counter displays matching files in real-time."
+        },
+        {
+          title: "Step 6: Quick In-Browser Preview & Original Download",
+          desc: "Click the 'Preview (Eye icon)' button to view rows, columns, and sheet tabs directly in your browser without needing MS Excel installed. Click 'Download' anytime to save the original file."
+        },
+        {
+          title: "Step 7: 1-Click 'Process as Payroll'",
+          desc: "For payroll and wage sheets, click 'Process Payroll' to load the file directly into the salary calculation engine on the /salary page."
+        },
+        {
+          title: "Step 8: Password-Protected Deletion (Password@123)",
+          desc: "To prevent accidental deletion, clicking 'Delete (Trash icon)' opens an admin security modal. Enter the admin security password 'Password@123' to confirm permanent deletion from database and server storage."
+        }
+      ]
     }
   ];
 
@@ -261,6 +304,13 @@ export default function UserManual() {
           >
             <CalendarCheck size={16} />
             <span>Worker Attendance</span>
+          </button>
+          <button 
+            style={activeTab === "excel_hub" ? styles.tabActive : styles.tabInactive}
+            onClick={() => setActiveTab("excel_hub")}
+          >
+            <FileSpreadsheet size={16} />
+            <span>Excel Sheets Hub</span>
           </button>
         </div>
 
