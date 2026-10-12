@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import MainLayout from "../../components/layout/MainLayout";
 import api from "../../services/api";
 import * as XLSX from "xlsx";
@@ -7,11 +8,12 @@ import {
   Download, Printer, Filter, CreditCard, BookOpen, Clock, 
   ArrowUpRight, ArrowDownLeft, ChevronRight, RefreshCw, FileText,
   Lock, Unlock, Upload, FileSpreadsheet, Sparkles, CheckCircle2, HelpCircle,
-  Sliders, Edit3
+  Sliders, Edit3, FolderArchive
 } from "lucide-react";
 import PayslipPrint from "../../components/shared/PayslipPrint";
 
 export default function Salary() {
+  const navigate = useNavigate();
   const [salaries, setSalaries] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -674,6 +676,13 @@ export default function Salary() {
           </div>
           
           <div style={styles.headerActions}>
+            <button 
+              style={{ ...styles.exportBtn, background: "#f0fdfa", color: "#0f766e", borderColor: "#99f6e4" }}
+              onClick={() => navigate("/excel-sheets")}
+              title="Open Excel Sheets Hub & Repository"
+            >
+              <FolderArchive size={16} /> Excel Sheets Hub
+            </button>
             <button style={styles.importExcelBtn} onClick={() => setIsImportModalOpen(true)}>
               <FileSpreadsheet size={16} /> Upload Monthly Excel
             </button>

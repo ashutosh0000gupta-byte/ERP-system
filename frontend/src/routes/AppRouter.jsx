@@ -29,6 +29,7 @@ const Sites = lazy(() => import("../pages/Sites/Sites"));
 const WorkerAttendance = lazy(() => import("../pages/Attendance/WorkerAttendance"));
 const Advances = lazy(() => import("../pages/Advances/Advances"));
 const Salary = lazy(() => import("../pages/Salary/Salary"));
+const ExcelSheetsHub = lazy(() => import("../pages/ExcelSheets/ExcelSheetsHub"));
 const SiteExpenses = lazy(() => import("../pages/Expenses/SiteExpenses"));
 const WorkerProfile = lazy(() => import("../pages/Workers/WorkerProfile"));
 const Attendance = lazy(() => import("../pages/Attendance/Attendance"));
@@ -93,6 +94,7 @@ export default function AppRouter() {
           <Route path="/sites" element={<RequireAuth><Sites /></RequireAuth>} />
           <Route path="/worker-attendance" element={<RequireAuth><WorkerAttendance /></RequireAuth>} />
           <Route path="/salary" element={<RequireAuth><Salary /></RequireAuth>} />
+          <Route path="/excel-sheets" element={<RequireAuth><ExcelSheetsHub /></RequireAuth>} />
           <Route path="/advances" element={<RequireAuth><Advances /></RequireAuth>} />
           <Route path="/site-expenses" element={<RequireAuth><SiteExpenses /></RequireAuth>} />
           <Route path="/help" element={<RequireAuth><UserManual /></RequireAuth>} />

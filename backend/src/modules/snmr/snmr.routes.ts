@@ -1,3 +1,5 @@
+import path from "path";
+import multer from "multer";
 import { Router } from "express";
 import { authenticate } from "../../middlewares/auth";
 import {
@@ -35,8 +37,17 @@ import {
   getWorkerLedger,
   toggleSalaryLock,
   lockMonthSalaries,
-  clearAllDemoData
+  clearAllDemoData,
+  getExcelSheetArchives,
+  getExcelCategories,
+  uploadExcelSheetArchive,
+  deleteExcelSheetArchive
 } from "./snmr.controller";
+
+const excelUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB
+});
 
 const router = Router();
 
@@ -93,6 +104,12 @@ router.delete("/documents/:id", deleteDocument);
 // Users
 router.get("/users", getSystemUsers);
 router.post("/users", createSystemUser);
+
+// Excel Sheets Hub / Repository
+router.get("/excel-sheets", getExcelSheetArchives);
+router.get("/excel-sheets/categories", getExcelCategories);
+router.post("/excel-sheets/upload", excelUpload.single("file"), uploadExcelSheetArchive);
+router.delete("/excel-sheets/:id", deleteExcelSheetArchive);
 
 // Database Cleanup / Reset
 router.post("/clear-demo-data", clearAllDemoData);

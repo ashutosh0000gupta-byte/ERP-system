@@ -2370,6 +2370,7 @@ model Site {
   attendances  WorkerAttendance[]
   advances     WorkerAdvance[]
   expenses     SiteExpense[]
+  excelSheets  ExcelSheetArchive[]
 
   @@index([status])
   @@map("sites")
@@ -2562,5 +2563,28 @@ model SnmrDocument {
 
   @@index([entityType, entityId])
   @@map("snmr_documents")
+}
+
+model ExcelSheetArchive {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String   @db.VarChar(200)
+  fileName    String   @map("file_name") @db.VarChar(255)
+  fileUrl     String   @map("file_url") @db.Text
+  fileSize    Int      @default(0) @map("file_size")
+  category    String   @db.VarChar(100) // Default or Custom Category
+  month       Int?
+  year        Int?
+  siteId      String?  @map("site_id") @db.Uuid
+  siteName    String?  @map("site_name") @db.VarChar(150)
+  notes       String?  @db.Text
+  uploadedBy  String   @default("Admin") @map("uploaded_by") @db.VarChar(100)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  site        Site?    @relation(fields: [siteId], references: [id], onDelete: SetNull)
+
+  @@index([category])
+  @@index([siteId])
+  @@map("excel_sheet_archives")
 }
 

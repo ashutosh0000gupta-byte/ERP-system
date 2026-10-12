@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma";
+import { saveUploadedFile, deleteStoredFile } from "../../lib/fileStorage";
 
 export const getSites = async () => {
   return prisma.site.findMany({
@@ -1563,5 +1564,163 @@ export const lockMonthSalaries = async (month: number, year: number, isLocked: b
     where: { month: Number(month), year: Number(year) },
     data: { isLocked } as any
   });
+};
+
+// ── Excel Sheet Archive / Repository ───────────────────────────────────────
+
+export const getExcelSheetArchives = async (filters: {
+  search?: string;
+  category?: string;
+  siteId?: string;
+  month?: number | string;
+  year?: number | string;
+}) => {
+  const where: any = {};
+
+  if (filters.category && filters.category !== "All") {
+    where.category = filters.category;
+  }
+  if (filters.siteId && filters.siteId !== "All") {
+    where.siteId = filters.siteId;
+  }
+  if (filters.month && filters.month !== "All") {
+    where.month = Number(filters.month);
+  }
+  if (filters.year && filters.year !== "All") {
+    where.year = Number(filters.year);
+  }
+
+  if (filters.search && filters.search.trim()) {
+    const q = filters.search.trim();
+    where.OR = [
+      { title: { contains: q, mode: "insensitive" } },
+      { fileName: { contains: q, mode: "insensitive" } },
+      { category: { contains: q, mode: "insensitive" } },
+      { siteName: { contains: q, mode: "insensitive" } },
+      { notes: { contains: q, mode: "insensitive" } },
+      { uploadedBy: { contains: q, mode: "insensitive" } },
+    ];
+  }
+
+  return prisma.excelSheetArchive.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    include: {
+      site: {
+        select: { id: true, name: true, location: true, siteId: true }
+      }
+    }
+  });
+};
+
+export const getExcelCategories = async () => {
+  const archives = await prisma.excelSheetArchive.findMany({
+    select: { category: true }
+  });
+
+  const categoryCounts: Record<string, number> = {};
+  archives.forEach((a) => {
+    if (a.category) {
+      categoryCounts[a.category] = (categoryCounts[a.category] || 0) + 1;
+    }
+  });
+
+  const defaultCategories = [
+    "Worker Payroll",
+    "Monthly Attendance",
+    "Site Expenses & Advances",
+    "PF / ESIC Statutory",
+    "Contractor Wages",
+    "Inventory & Material",
+    "General Reports"
+  ];
+
+  defaultCategories.forEach((cat) => {
+    if (categoryCounts[cat] === undefined) {
+      categoryCounts[cat] = 0;
+    }
+  });
+
+  return Object.entries(categoryCounts).map(([name, count]) => ({
+    name,
+    count
+  }));
+};
+
+export const uploadExcelSheetArchive = async (
+  file: Express.Multer.File,
+  data: {
+    title?: string;
+    category?: string;
+    customCategory?: string;
+    month?: number | string;
+    year?: number | string;
+    siteId?: string;
+    notes?: string;
+    uploadedBy?: string;
+  }
+) => {
+  if (!file) {
+    throw new Error("No file provided. Please upload a valid Excel (.xlsx, .xls) or CSV (.csv) file.");
+  }
+
+  const saved = await saveUploadedFile("documents", file);
+
+  let siteName: string | null = null;
+  if (data.siteId && data.siteId !== "null" && data.siteId !== "undefined" && data.siteId !== "All") {
+    const site = await prisma.site.findUnique({ where: { id: data.siteId } });
+    if (site) siteName = site.name;
+  }
+
+  const chosenCategory = (data.customCategory && data.customCategory.trim())
+    ? data.customCategory.trim()
+    : (data.category && data.category.trim() ? data.category.trim() : "General Reports");
+
+  return prisma.excelSheetArchive.create({
+    data: {
+      title: data.title && data.title.trim() ? data.title.trim() : saved.fileName,
+      fileName: saved.fileName,
+      fileUrl: saved.fileUrl,
+      fileSize: saved.fileSize,
+      category: chosenCategory,
+      month: data.month && data.month !== "All" ? Number(data.month) : null,
+      year: data.year && data.year !== "All" ? Number(data.year) : null,
+      siteId: data.siteId && data.siteId !== "null" && data.siteId !== "undefined" && data.siteId !== "All" ? data.siteId : null,
+      siteName,
+      notes: data.notes?.trim() || null,
+      uploadedBy: data.uploadedBy || "Admin",
+    },
+    include: {
+      site: true
+    }
+  });
+};
+
+export const deleteExcelSheetArchive = async (id: string, password?: string) => {
+  if (password !== "Password@123") {
+    throw new Error("Security verification failed: Incorrect admin password.");
+  }
+
+  const archive = await prisma.excelSheetArchive.findUnique({
+    where: { id }
+  });
+
+  if (!archive) {
+    throw new Error("Excel sheet archive not found.");
+  }
+
+  if (archive.fileUrl) {
+    try {
+      await deleteStoredFile(archive.fileUrl);
+    } catch (err) {
+      console.warn("[ExcelArchive] Could not remove physical file:", (err as Error).message);
+    }
+  }
+
+  await prisma.excelSheetArchive.delete({
+    where: { id }
+  });
+
+  return { success: true, message: "Excel sheet archive deleted successfully." };
 };
 

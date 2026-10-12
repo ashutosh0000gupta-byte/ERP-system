@@ -360,3 +360,59 @@ export const lockMonthSalaries = async (req: Request, res: Response) => {
   }
 };
 
+// ── Excel Sheet Archive Controllers ────────────────────────────────────────
+
+export const getExcelSheetArchives = async (req: Request, res: Response) => {
+  try {
+    const { search, category, siteId, month, year } = req.query;
+    const archives = await snmrService.getExcelSheetArchives({
+      search: search as string,
+      category: category as string,
+      siteId: siteId as string,
+      month: month ? Number(month) : undefined,
+      year: year ? Number(year) : undefined,
+    });
+    res.json(archives);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getExcelCategories = async (req: Request, res: Response) => {
+  try {
+    const categories = await snmrService.getExcelCategories();
+    res.json(categories);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const uploadExcelSheetArchive = async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "Please select an Excel or CSV file to upload." });
+    }
+    const uploadedBy = (req as any).user?.name || (req as any).user?.email || "Admin";
+    const archive = await snmrService.uploadExcelSheetArchive(req.file, {
+      ...req.body,
+      uploadedBy,
+    });
+    res.status(201).json(archive);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const deleteExcelSheetArchive = async (req: Request, res: Response) => {
+  try {
+    const password = req.body?.password || req.query?.password;
+    if (password !== "Password@123") {
+      return res.status(403).json({ error: "Security check failed: Incorrect admin password." });
+    }
+    const result = await snmrService.deleteExcelSheetArchive(req.params.id, password as string);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+

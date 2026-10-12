@@ -6,7 +6,7 @@ import {
   GraduationCap, Laptop, CheckSquare, Receipt, Plane, Home, Headphones,
   FileText, LogOut, Building2, GitBranch, BarChart3, Bell, Shield, UserPlus,
   ClipboardList, ChevronDown, UserRound, CreditCard, Briefcase, ClipboardCheck,
-  HelpCircle
+  HelpCircle, FileSpreadsheet
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -26,6 +26,7 @@ const NAV_GROUPS = [
       { icon: Users, title: "Workers", href: "/workers", permission: "dashboard" },
       { icon: CheckSquare, title: "Worker Attendance", href: "/worker-attendance", permission: "dashboard" },
       { icon: Wallet, title: "Salary & Payment", href: "/salary", permission: "dashboard" },
+      { icon: FileSpreadsheet, title: "Excel Sheets Hub", href: "/excel-sheets", permission: "dashboard" },
       { icon: CreditCard, title: "Advance / Expense", href: "/advances", permission: "dashboard" },
       { icon: Building2, title: "Sites / Projects", href: "/sites", permission: "dashboard" },
       { icon: Receipt, title: "Site Expenses", href: "/site-expenses", permission: "dashboard" },
