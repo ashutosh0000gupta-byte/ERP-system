@@ -474,7 +474,7 @@ export default function Workers() {
       ["Field Name", "Required / Optional", "Description", "Example / Valid Options"],
       ["Worker ID", "Optional", "System unique worker code. Leave empty to auto-generate (e.g. SNMR0001)", "SNMR0001"],
       ["Name", "Required", "Full name of the worker", "Anil Sharma"],
-      ["Father Name", "Optional", "Father's name of the worker (पिता का नाम)", "Suresh Sharma"],
+      ["Father Name", "Optional", "Father's name of the worker", "Suresh Sharma"],
       ["Role", "Optional", "Worker role / category: Worker, Supervisor, Foreman, Incharge, Helper, Skilled, etc. (Default: Worker)", "Worker"],
       ["Trade", "Optional", "Skill trade / designation (e.g., Fitter, Welder, Rigger, Helper, Supervisor)", "Fitter"],
       ["Site", "Optional", "Site or project name. Defaults to Unassigned if empty", defaultSiteName],
@@ -978,7 +978,7 @@ export default function Workers() {
                       />
                     </div>
                     <div style={styles.inputGroup}>
-                      <label style={styles.label}>Father's Name (पिता का नाम)</label>
+                      <label style={styles.label}>Father's Name</label>
                       <input 
                         style={styles.input} 
                         placeholder="e.g. Suresh Kumar" 
@@ -990,26 +990,26 @@ export default function Workers() {
 
                   <div style={styles.formRow}>
                     <div style={styles.inputGroup}>
-                      <label style={styles.label}>Worker Role (पद / भूमिका) *</label>
+                      <label style={styles.label}>Worker Role *</label>
                       <select 
                         style={{ ...styles.input, background: "#fff", fontWeight: 600 }}
                         value={formData.category}
                         onChange={e => setFormData({...formData, category: e.target.value})}
                       >
-                        <option value="Worker">Worker (सामान्य श्रमिक)</option>
-                        <option value="Supervisor">Supervisor (सुपरवाइजर)</option>
-                        <option value="Foreman">Foreman (फोरमैन)</option>
-                        <option value="Site Incharge">Site Incharge (साइट इंचार्ज)</option>
-                        <option value="Safety Officer">Safety Officer (सुरक्षा अधिकारी)</option>
-                        <option value="Helper">Helper (हेल्पर)</option>
-                        <option value="Skilled">Skilled (कुशल श्रमिक)</option>
-                        <option value="Semi-Skilled">Semi-Skilled (अर्ध-कुशल)</option>
-                        <option value="Unskilled">Unskilled (अकुशल)</option>
-                        <option value="Staff">Staff (साइट स्टाफ)</option>
+                        <option value="Worker">Worker</option>
+                        <option value="Supervisor">Supervisor</option>
+                        <option value="Foreman">Foreman</option>
+                        <option value="Site Incharge">Site Incharge</option>
+                        <option value="Safety Officer">Safety Officer</option>
+                        <option value="Helper">Helper</option>
+                        <option value="Skilled">Skilled</option>
+                        <option value="Semi-Skilled">Semi-Skilled</option>
+                        <option value="Unskilled">Unskilled</option>
+                        <option value="Staff">Staff</option>
                       </select>
                     </div>
                     <div style={styles.inputGroup}>
-                      <label style={styles.label}>Skill / Trade (काम / ट्रेड)</label>
+                      <label style={styles.label}>Skill / Trade</label>
                       <input 
                         list="trade-datalist"
                         style={styles.input} 

@@ -479,33 +479,33 @@ export default function WorkerProfile() {
                     <input style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1" }} value={editData.fullName} onChange={e => setEditData({...editData, fullName: e.target.value})} required />
                   </div>
                   <div>
-                    <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>Father's Name (पिता का नाम)</label>
+                    <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>Father's Name</label>
                     <input style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1" }} placeholder="e.g. Suresh Kumar" value={editData.fatherName || ""} onChange={e => setEditData({...editData, fatherName: e.target.value})} />
                   </div>
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div>
-                    <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>Worker Role (पद / भूमिका) *</label>
+                    <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>Worker Role *</label>
                     <select 
                       style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1", background: "#fff", fontWeight: 600 }} 
                       value={editData.category || "Worker"} 
                       onChange={e => setEditData({...editData, category: e.target.value})}
                     >
-                      <option value="Worker">Worker (सामान्य श्रमिक)</option>
-                      <option value="Supervisor">Supervisor (सुपरवाइजर)</option>
-                      <option value="Foreman">Foreman (फोरमैन)</option>
-                      <option value="Site Incharge">Site Incharge (साइट इंचार्ज)</option>
-                      <option value="Safety Officer">Safety Officer (सुरक्षा अधिकारी)</option>
-                      <option value="Helper">Helper (हेल्पर)</option>
-                      <option value="Skilled">Skilled (कुशल श्रमिक)</option>
-                      <option value="Semi-Skilled">Semi-Skilled (अर्ध-कुशल)</option>
-                      <option value="Unskilled">Unskilled (अकुशल)</option>
-                      <option value="Staff">Staff (साइट स्टाफ)</option>
+                      <option value="Worker">Worker</option>
+                      <option value="Supervisor">Supervisor</option>
+                      <option value="Foreman">Foreman</option>
+                      <option value="Site Incharge">Site Incharge</option>
+                      <option value="Safety Officer">Safety Officer</option>
+                      <option value="Helper">Helper</option>
+                      <option value="Skilled">Skilled</option>
+                      <option value="Semi-Skilled">Semi-Skilled</option>
+                      <option value="Unskilled">Unskilled</option>
+                      <option value="Staff">Staff</option>
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>Trade / Designation (ट्रेड / काम)</label>
+                    <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>Trade / Designation</label>
                     <input 
                       style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1" }} 
                       placeholder="e.g. FITTER, WELDER, RIGGER, HELPER" 

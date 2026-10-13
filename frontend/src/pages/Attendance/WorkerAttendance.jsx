@@ -194,7 +194,7 @@ export default function WorkerAttendance() {
             }}
             title="Upload whole month Excel sheet for automatic attendance and wage calculation"
           >
-            <FileSpreadsheet size={16} /> Upload Monthly Excel (मासिक एक्सेल अपलोड)
+            <FileSpreadsheet size={16} /> Upload Monthly Excel
           </Link>
         </div>
 
