@@ -421,29 +421,29 @@ export default function Salary() {
   };
 
   const handleDownloadTemplate = () => {
-    // 21 Clean bilingual headings for zero confusion when filling the sheet
+    // 21 Clean English headings for standard corporate and site payroll spreadsheets
     const headers = [
-      "Worker ID (वर्कर कोड)",
-      "Worker Name (वर्कर का नाम)",
-      "Site Name (साइट का नाम)",
-      "Salary Type (दैनिक / मासिक)",
-      "Worker Worked Days (काम किए गए दिन)",
-      "Per Day Salary (प्रति दिन वेतन / दर)",
-      "Basic Salary (मूल वेतन = दिन × दर)",
-      "Special Allowance (विशेष भत्ता)",
-      "Conveyance Allowance (कन्वेयंस भत्ता)",
-      "Overtime Hours (OT घंटे)",
-      "Overtime Pay (OT कमाई)",
-      "Gross Salary (कुल ग्रॉस वेतन)",
-      "EPF (12% of Basic)",
-      "ESIC (0.75% of Gross)",
-      "Total Deductions (कुल कटौतियां = EPF + ESIC)",
-      "Net Pay (शुद्ध वेतन = Gross - Deductions)",
-      "Total Advance (खर्चा / डेबिट एविडेंस)",
-      "Net Pay After Advance (अंतिम इन-हैंड भुगतान)",
-      "Paid Amount (पहले से दिया गया)",
-      "Payment Mode (Bank / Cash / UPI)",
-      "Notes (टिप्पणी / विवरण)"
+      "Worker ID",
+      "Worker Name",
+      "Site Name",
+      "Salary Type",
+      "Worker Worked Days",
+      "Per Day Salary",
+      "Basic Salary",
+      "Special Allowance",
+      "Conveyance Allowance",
+      "Overtime Hours",
+      "Overtime Pay",
+      "Gross Salary",
+      "EPF",
+      "ESIC",
+      "Total Deductions",
+      "Net Pay",
+      "Total Advance",
+      "Net Pay After Advance",
+      "Paid Amount",
+      "Payment Mode",
+      "Notes"
     ];
 
     let sampleData = [];
@@ -455,7 +455,7 @@ export default function Salary() {
           // EPF: 1008, ESIC: 150 -> Net: 18842, Advance: 8000 -> Net after advance: 10842
           return [
             w.workerId || "WRK-001",
-            w.fullName || "Demo Worker (उदाहरण)",
+            w.fullName || "Demo Worker",
             w.site?.name || "Main Site",
             "Daily",
             21,       // Worker Worked Days
@@ -474,7 +474,7 @@ export default function Salary() {
             10842,    // Net Pay After Advance
             0,        // Paid Amount
             w.paymentMethod || "Bank Transfer",
-            "Demo Calculation Row (21 days @ 400 | In-Hand ₹10,842)"
+            "Demo: Worked 21 days @ 400 | Gross: 20000 | In-Hand: 10842"
           ];
         }
         const rate = Number(w.wageRate || w.dailyWage || 400);
@@ -531,7 +531,7 @@ export default function Salary() {
           10842,
           0,
           "Bank Transfer",
-          "Demo: Worked 21 days @ 400 | Gross ₹20,000 | In-Hand ₹10,842"
+          "Demo: Worked 21 days @ 400 | Gross: 20000 | In-Hand: 10842"
         ],
         [
           "WRK-002",
@@ -554,7 +554,7 @@ export default function Salary() {
           13467,
           0,
           "Cash",
-          "Worked 24 days @ 500 | In-Hand ₹13,467"
+          "Worked 24 days @ 500 | In-Hand: 13467"
         ],
         [
           "WRK-003",
@@ -577,7 +577,7 @@ export default function Salary() {
           17200,
           0,
           "UPI",
-          "Worked 26 days @ 600 | In-Hand ₹17,200"
+          "Worked 26 days @ 600 | In-Hand: 17200"
         ]
       ];
     }
@@ -585,73 +585,73 @@ export default function Salary() {
     // Sheet 1: Main Monthly Payroll Template
     const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
     ws["!cols"] = [
-      { wch: 18 }, // Worker ID (वर्कर कोड)
-      { wch: 26 }, // Worker Name (वर्कर का नाम)
-      { wch: 20 }, // Site Name (साइट का नाम)
-      { wch: 20 }, // Salary Type (दैनिक / मासिक)
-      { wch: 25 }, // Worker Worked Days (काम किए गए दिन)
-      { wch: 25 }, // Per Day Salary (प्रति दिन वेतन / दर)
-      { wch: 26 }, // Basic Salary (मूल वेतन = दिन × दर)
-      { wch: 22 }, // Special Allowance (विशेष भत्ता)
-      { wch: 25 }, // Conveyance Allowance (कन्वेयंस भत्ता)
-      { wch: 18 }, // Overtime Hours (OT घंटे)
-      { wch: 18 }, // Overtime Pay (OT कमाई)
-      { wch: 22 }, // Gross Salary (कुल ग्रॉस वेतन)
-      { wch: 20 }, // EPF (12% of Basic)
-      { wch: 22 }, // ESIC (0.75% of Gross)
-      { wch: 30 }, // Total Deductions (कुल कटौतियां = EPF + ESIC)
-      { wch: 30 }, // Net Pay (शुद्ध वेतन = Gross - Deductions)
-      { wch: 26 }, // Total Advance (खर्चा / डेबिट एविडेंस)
-      { wch: 32 }, // Net Pay After Advance (अंतिम इन-हैंड भुगतान)
-      { wch: 22 }, // Paid Amount (पहले से दिया गया)
-      { wch: 24 }, // Payment Mode (Bank / Cash / UPI)
-      { wch: 36 }  // Notes (टिप्पणी / विवरण)
+      { wch: 14 }, // Worker ID
+      { wch: 22 }, // Worker Name
+      { wch: 18 }, // Site Name
+      { wch: 14 }, // Salary Type
+      { wch: 20 }, // Worker Worked Days
+      { wch: 16 }, // Per Day Salary
+      { wch: 16 }, // Basic Salary
+      { wch: 18 }, // Special Allowance
+      { wch: 22 }, // Conveyance Allowance
+      { wch: 16 }, // Overtime Hours
+      { wch: 16 }, // Overtime Pay
+      { wch: 16 }, // Gross Salary
+      { wch: 12 }, // EPF
+      { wch: 12 }, // ESIC
+      { wch: 18 }, // Total Deductions
+      { wch: 14 }, // Net Pay
+      { wch: 16 }, // Total Advance
+      { wch: 22 }, // Net Pay After Advance
+      { wch: 14 }, // Paid Amount
+      { wch: 16 }, // Payment Mode
+      { wch: 32 }  // Notes
     ];
 
-    // Sheet 2: Complete User Instructions & Formula Guide in Hindi + English
+    // Sheet 2: English User Instructions & Formula Guide
     const instructionsData = [
-      ["SNMR ERP - मासिक वेतन एक्सेल शीट भरने के नियम (Monthly Payroll Guide)"],
+      ["SNMR ERP - Monthly Payroll Excel Filling Guidelines & Rules"],
       [""],
-      ["कॉलम का नाम (Heading)", "क्या भरना है (What to Enter)", "कैलकुलेशन नियम (Formula & Rules)", "उदाहरण (Example)"],
-      ["Worker ID (वर्कर कोड)", "श्रमिक / कर्मचारी का कोड", "सिस्टम से मैच करने हेतु (e.g. WRK-001)", "WRK-001"],
-      ["Worker Name (वर्कर का नाम)", "श्रमिक का पूरा नाम", "पहचान के लिए", "Ramesh Kumar"],
-      ["Site Name (साइट का नाम)", "प्रोजेक्ट या कार्यस्थल", "साइट का नाम", "Site Alpha"],
-      ["Salary Type (दैनिक / मासिक)", "वेतन का प्रकार", "Daily या Monthly दर्ज करें", "Daily"],
-      ["Worker Worked Days (काम किए गए दिन)", "महीने में किए गए कुल काम के दिन", "1 से 31 के बीच दिन", "21"],
-      ["Per Day Salary (प्रति दिन वेतन / दर)", "एक दिन का वेतन / दैनिक दर", "तय दर (₹)", "400"],
-      ["Basic Salary (मूल वेतन = दिन × दर)", "मूल वेतन", "दिन × दर (खाली छोड़ें तो ऑटो-कैलकुलेट होगा)", "8400"],
-      ["Special Allowance (विशेष भत्ता)", "मासिक विशेष भत्ता", "सीधे जुड़ेगा (₹)", "7350"],
-      ["Conveyance Allowance (कन्वेयंस भत्ता)", "यात्रा / पेट्रोल भत्ता", "सीधे जुड़ेगा (₹)", "1050"],
-      ["Overtime Hours (OT घंटे)", "महीने में किए गए कुल OT घंटे", "घंटे दर्ज करें", "64"],
-      ["Overtime Pay (OT कमाई)", "ओवरटाइम की राशि", "(दर / 8) × OT घंटे (खाली छोड़ें तो ऑटो-कैलकुलेट होगा)", "3200"],
-      ["Gross Salary (कुल ग्रॉस वेतन)", "कुल ग्रॉस वेतन", "Basic + Special + Conveyance + OT (ऑटो-कैलकुलेट)", "20000"],
-      ["EPF (12% of Basic)", "भविष्य निधि (PF)", "12% of Basic (अधिकतम 15,000 बेसिक पर)", "1008"],
-      ["ESIC (0.75% of Gross)", "कर्मचारी राज्य बीमा", "0.75% of Gross (21,000 ग्रॉस तक)", "150"],
-      ["Total Deductions (कुल कटौतियां = EPF + ESIC)", "कुल कानूनी कटौतियां", "EPF + ESIC (ऑटो-कैलकुलेट)", "1158"],
-      ["Net Pay (शुद्ध वेतन = Gross - Deductions)", "शुद्ध देय वेतन", "Gross - Total Deductions (ऑटो-कैलकुलेट)", "18842"],
-      ["Total Advance (खर्चा / डेबिट एविडेंस)", "महीने में लिया गया कुल खर्चा / पेशगी", "डेबिट एविडेंस से कटौती (₹)", "8000"],
-      ["Net Pay After Advance (अंतिम इन-हैंड भुगतान)", "एडवांस काटने के बाद इन-हैंड वेतन", "Net Pay - Total Advance (ऑटो-कैलकुलेट)", "10842"],
-      ["Paid Amount (पहले से दिया गया)", "यदि इस महीने पहले से कुछ भुगतान हो चुका हो", "बाकी बकाया निकालने के लिए", "0"],
-      ["Payment Mode (Bank / Cash / UPI)", "भुगतान का माध्यम", "Bank Transfer, Cash, या UPI", "Bank Transfer"],
-      ["Notes (टिप्पणी / विवरण)", "कोई विशेष विवरण", "वैकल्पिक टिप्पणी", "Worked 21 days @ 400 | In-Hand ₹10,842"],
+      ["Column Name", "What to Enter", "Calculation Formula / Rule", "Example"],
+      ["Worker ID", "Unique Worker Code", "Matched with system ID (e.g., WRK-001)", "WRK-001"],
+      ["Worker Name", "Full Name of Worker", "Worker identification", "Ramesh Kumar"],
+      ["Site Name", "Project / Site Location", "Site assignment", "Site Alpha"],
+      ["Salary Type", "Salary Structure Type", "Daily, Monthly, Weekly, or Hourly", "Daily"],
+      ["Worker Worked Days", "Total Days Worked in Month", "Must be between 1 and 31 days", "21"],
+      ["Per Day Salary", "Per Day Wage Rate", "Standard daily wage rate (₹)", "400"],
+      ["Basic Salary", "Basic Wage Earned", "Days Worked × Per Day Salary (Auto-calculated if blank)", "8400"],
+      ["Special Allowance", "Monthly Special Allowance", "Directly added to Gross (₹)", "7350"],
+      ["Conveyance Allowance", "Travel / Transport Allowance", "Directly added to Gross (₹)", "1050"],
+      ["Overtime Hours", "Total Overtime Hours", "Number of OT hours worked", "64"],
+      ["Overtime Pay", "Overtime Earnings", "(Rate / 8) × OT Hours (Auto-calculated if blank)", "3200"],
+      ["Gross Salary", "Total Gross Earnings", "Basic + Special + Conveyance + OT (Auto-calculated if blank)", "20000"],
+      ["EPF", "Employee Provident Fund (12%)", "12% of Basic Salary (capped at ₹15,000 basic)", "1008"],
+      ["ESIC", "Employee State Insurance (0.75%)", "0.75% of Gross Salary (applicable up to ₹21,000 gross)", "150"],
+      ["Total Deductions", "Total Statutory Deductions", "EPF + ESIC (Auto-calculated if blank)", "1158"],
+      ["Net Pay", "Net Payable Salary", "Gross Salary - Total Deductions (Auto-calculated if blank)", "18842"],
+      ["Total Advance", "Advances / Kharcha Taken", "Deducted from debit evidence records (₹)", "8000"],
+      ["Net Pay After Advance", "Final Take-Home In-Hand Pay", "Net Pay - Total Advance (Auto-calculated if blank)", "10842"],
+      ["Paid Amount", "Already Paid Amount", "Used to calculate remaining balance due", "0"],
+      ["Payment Mode", "Payment Method", "Bank Transfer, Cash, or UPI", "Bank Transfer"],
+      ["Notes", "Remarks / Description", "Optional notes or comments", "Worked 21 days @ 400 | In-Hand: 10,842"],
       [""],
-      ["विशेष सुविधाएं व महत्वपूर्ण निर्देश (Important Features):"],
-      ["1. ऑटो-कैलकुलेशन (Zero Headache): यदि आप Basic, Gross, EPF, ESIC, Net Pay, या In-Hand खाली छोड़ते हैं, तो सिस्टम खुद सही फॉर्मूले से गणना कर लेगा।"],
-      ["2. अलग-अलग EPF / ESIC सपोर्ट: यदि किसी कर्मचारी का PF या ESIC अलग है, तो आप इस कॉलम में सीधे वैल्यू डाल सकते हैं। सिस्टम आपकी वैल्यू को मानेगा।"],
-      ["3. लाइव प्रीव्यू व एडिट: एक्सेल अपलोड करने के बाद स्क्रीन पर प्रीव्यू टेबल खुलती है जहाँ आप अपलोड से पहले भी किसी भी वर्कर के दिन, भत्ते, PF, ESIC, या एडवांस को एडिट कर सकते हैं।"]
+      ["Important Guidelines & System Rules:"],
+      ["1. Auto-Calculation: If you leave Basic Salary, Overtime Pay, Gross Salary, EPF, ESIC, Total Deductions, Net Pay, or Net Pay After Advance blank, the system will automatically calculate them using standard rules."],
+      ["2. Custom Deductions Support: If any worker has custom or exempt EPF / ESIC, you can enter the exact number directly in the sheet and the system will honor it."],
+      ["3. Interactive Preview & Live Edits: After uploading, an on-screen preview table allows you to review and adjust days, allowances, EPF, ESIC, or advances before final submission."]
     ];
 
     const wsHelp = XLSX.utils.aoa_to_sheet(instructionsData);
     wsHelp["!cols"] = [
-      { wch: 34 },
-      { wch: 38 },
-      { wch: 48 },
-      { wch: 25 }
+      { wch: 25 },
+      { wch: 32 },
+      { wch: 45 },
+      { wch: 22 }
     ];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Monthly_Payroll");
-    XLSX.utils.book_append_sheet(wb, wsHelp, "Instructions_मार्गदर्शिका");
+    XLSX.utils.book_append_sheet(wb, wsHelp, "Instructions_Guide");
     XLSX.writeFile(wb, `SNMR_Monthly_Payroll_Template_${importMonth}_${importYear}.xlsx`);
   };
 
@@ -801,13 +801,13 @@ export default function Salary() {
 
           // 3. Statutory Deductions
           // EPF: 12% on Basic Salary
-          const rawPf = getVal(["epf12ofbasic", "pfDeducted", "epfDeducted", "pf", "epf", "epfpf", "providentfund"]);
+          const rawPf = getVal(["epf", "epf12ofbasic", "pfDeducted", "epfDeducted", "pf", "epfpf", "providentfund"]);
           const pfDeducted = rawPf !== null && rawPf !== ""
             ? Number(rawPf)
             : Math.round(Math.min(basicSalary, 15000) * 0.12 * 100) / 100;
 
           // ESIC: 0.75% of Gross earnings
-          const rawEsic = getVal(["esic075ofgross", "esicDeducted", "esiDeducted", "esic", "esi", "stateinsurance"]);
+          const rawEsic = getVal(["esic", "esic075ofgross", "esicDeducted", "esiDeducted", "esi", "stateinsurance"]);
           const esicDeducted = rawEsic !== null && rawEsic !== ""
             ? Number(rawEsic)
             : (gross <= 21000 ? Math.round(gross * 0.0075 * 100) / 100 : 0);

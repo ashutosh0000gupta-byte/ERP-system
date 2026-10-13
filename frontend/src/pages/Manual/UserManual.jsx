@@ -49,7 +49,7 @@ export default function UserManual() {
         },
         {
           title: "Step 2: Monthly Excel Upload & Automated Calculation (Or Click 'Generate')",
-          desc: "You can either click 'Generate Wages & Payroll' from daily system muster attendance OR click 'Import Monthly Excel'. Download the standard bilingual template pre-filled with your workforce. The sheet contains 21 clear columns in Hindi & English, plus an 'Instructions_मार्गदर्शिका' guide sheet for zero confusion."
+          desc: "You can either click 'Generate Wages & Payroll' from daily system muster attendance OR click 'Import Monthly Excel'. Download the standard English template pre-filled with your workforce. The sheet contains 21 clear columns in professional English, plus an 'Instructions_Guide' sheet for comprehensive column rules and calculations."
         },
         {
           title: "Step 3: Worker-Wise Allowances & Individual EPF / ESIC",
