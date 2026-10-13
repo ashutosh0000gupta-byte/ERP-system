@@ -1575,9 +1575,10 @@ export const deleteDocument = async (id: string) => {
 };
 
 export const updateWorker = async (id: string, data: any) => {
+  const { id: _id, site: _site, createdAt: _c, updatedAt: _u, attendances: _a, advances: _ad, salaries: _s, payments: _p, documents: _d, ...cleanData } = data || {};
   return prisma.worker.update({
     where: { id },
-    data
+    data: cleanData
   });
 };
 

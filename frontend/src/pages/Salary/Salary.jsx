@@ -420,7 +420,7 @@ export default function Salary() {
     });
   };
 
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = (mode = "blank") => {
     // 21 Clean English headings for standard corporate and site payroll spreadsheets
     const headers = [
       "Worker ID",
@@ -446,144 +446,43 @@ export default function Salary() {
       "Notes"
     ];
 
-    let sampleData = [];
-    if (allWorkers.length > 0) {
-      sampleData = allWorkers.map((w, index) => {
-        if (index === 0) {
-          // Standard demo values matching user example exactly:
-          // 21 days @ 400 = 8400 Basic + 7350 Special + 1050 Conveyance + 3200 OT = 20000 Gross
-          // EPF: 1008, ESIC: 150 -> Net: 18842, Advance: 8000 -> Net after advance: 10842
-          return [
-            w.workerId || "WRK-001",
-            w.fullName || "Demo Worker",
-            w.site?.name || "Main Site",
-            "Daily",
-            21,       // Worker Worked Days
-            400,      // Per Day Salary
-            8400,     // Basic Salary
-            7350,     // Special Allowance
-            1050,     // Conveyance Allowance
-            64,       // Overtime Hours
-            3200,     // Overtime Pay
-            20000,    // Gross Salary
-            1008,     // EPF (12%)
-            150,      // ESIC (0.75%)
-            1158,     // Total Deductions
-            18842,    // Net Pay
-            8000,     // Total Advance
-            10842,    // Net Pay After Advance
-            0,        // Paid Amount
-            w.paymentMethod || "Bank Transfer",
-            "Demo: Worked 21 days @ 400 | Gross: 20000 | In-Hand: 10842"
-          ];
-        }
-        const rate = Number(w.wageRate || w.dailyWage || 400);
-        const days = 21;
-        const basic = days * rate;
-        const epf = Math.round(Math.min(basic, 15000) * 0.12);
-        const esic = basic <= 21000 ? Math.round(basic * 0.0075) : 0;
-        const ded = epf + esic;
-        const net = Math.max(0, basic - ded);
-        return [
-          w.workerId || "",
-          w.fullName || "",
-          w.site?.name || "",
-          w.salaryType || "Daily",
-          days,           // Worker Worked Days
-          rate,           // Per Day Salary
-          basic,          // Basic Salary
-          0,              // Special Allowance
-          0,              // Conveyance Allowance
-          0,              // Overtime Hours
-          0,              // Overtime Pay
-          basic,          // Gross Salary
-          epf,            // EPF
-          esic,           // ESIC
-          ded,            // Total Deductions
-          net,            // Net Pay
-          0,              // Total Advance
-          net,            // Net Pay After Advance
-          0,              // Paid Amount
-          w.paymentMethod || "Bank Transfer",
-          "Pre-filled Worker"
-        ];
-      });
+    let dataRows = [];
+    let fileName = `SNMR_Monthly_Payroll_Fresh_Template_${importMonth}_${importYear}.xlsx`;
+
+    if (mode === "active_workers" && allWorkers.length > 0) {
+      // Pre-fill active workforce with master details, but leave all monthly fields (days, OT, allowances, advances, notes) 100% fresh and blank
+      dataRows = allWorkers.map((w) => [
+        w.workerId || "",
+        w.fullName || "",
+        w.site?.name || "",
+        w.salaryType || "Daily",
+        "",                                            // Worker Worked Days (Blank - fresh for this month)
+        Number(w.wageRate || w.dailyWage || 0) || "", // Per Day Salary
+        "",                                            // Basic Salary (Auto-calculated on import if blank)
+        "",                                            // Special Allowance
+        "",                                            // Conveyance Allowance
+        "",                                            // Overtime Hours
+        "",                                            // Overtime Pay
+        "",                                            // Gross Salary
+        "",                                            // EPF
+        "",                                            // ESIC
+        "",                                            // Total Deductions
+        "",                                            // Net Pay
+        "",                                            // Total Advance
+        "",                                            // Net Pay After Advance
+        "",                                            // Paid Amount
+        w.paymentMethod || "Bank Transfer",
+        ""                                             // Notes
+      ]);
+      fileName = `SNMR_Monthly_Payroll_Active_Workers_${importMonth}_${importYear}.xlsx`;
     } else {
-      sampleData = [
-        [
-          "WRK-001",
-          "Ramesh Kumar (Demo)",
-          "Site Alpha",
-          "Daily",
-          21,
-          400,
-          8400,
-          7350,
-          1050,
-          64,
-          3200,
-          20000,
-          1008,
-          150,
-          1158,
-          18842,
-          8000,
-          10842,
-          0,
-          "Bank Transfer",
-          "Demo: Worked 21 days @ 400 | Gross: 20000 | In-Hand: 10842"
-        ],
-        [
-          "WRK-002",
-          "Suresh Yadav",
-          "Site Alpha",
-          "Daily",
-          24,
-          500,
-          12000,
-          5000,
-          800,
-          20,
-          1250,
-          19050,
-          1440,
-          143,
-          1583,
-          17467,
-          4000,
-          13467,
-          0,
-          "Cash",
-          "Worked 24 days @ 500 | In-Hand: 13467"
-        ],
-        [
-          "WRK-003",
-          "Mahesh Verma",
-          "Site Beta",
-          "Daily",
-          26,
-          600,
-          15600,
-          6000,
-          1200,
-          16,
-          1200,
-          24000,
-          1800,
-          0,
-          1800,
-          22200,
-          5000,
-          17200,
-          0,
-          "UPI",
-          "Worked 26 days @ 600 | In-Hand: 17200"
-        ]
-      ];
+      // Fresh Blank Template - headers only, NO pre-filled dummy data, NO demo rows
+      dataRows = [];
+      fileName = `SNMR_Monthly_Payroll_Fresh_Template_${importMonth}_${importYear}.xlsx`;
     }
 
-    // Sheet 1: Main Monthly Payroll Template
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
+    // Sheet 1: Main Monthly Payroll Template (Fresh)
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
     ws["!cols"] = [
       { wch: 14 }, // Worker ID
       { wch: 22 }, // Worker Name
@@ -613,27 +512,27 @@ export default function Salary() {
       ["SNMR ERP - Monthly Payroll Excel Filling Guidelines & Rules"],
       [""],
       ["Column Name", "What to Enter", "Calculation Formula / Rule", "Example"],
-      ["Worker ID", "Unique Worker Code", "Matched with system ID (e.g., WRK-001)", "WRK-001"],
+      ["Worker ID", "Unique Worker Code", "Matched with system ID (e.g., SNMR0001)", "SNMR0001"],
       ["Worker Name", "Full Name of Worker", "Worker identification", "Ramesh Kumar"],
-      ["Site Name", "Project / Site Location", "Site assignment", "Site Alpha"],
+      ["Site Name", "Project / Site Location", "Site assignment", "HCCB Khurda"],
       ["Salary Type", "Salary Structure Type", "Daily, Monthly, Weekly, or Hourly", "Daily"],
-      ["Worker Worked Days", "Total Days Worked in Month", "Must be between 1 and 31 days", "21"],
-      ["Per Day Salary", "Per Day Wage Rate", "Standard daily wage rate (₹)", "400"],
-      ["Basic Salary", "Basic Wage Earned", "Days Worked × Per Day Salary (Auto-calculated if blank)", "8400"],
-      ["Special Allowance", "Monthly Special Allowance", "Directly added to Gross (₹)", "7350"],
-      ["Conveyance Allowance", "Travel / Transport Allowance", "Directly added to Gross (₹)", "1050"],
-      ["Overtime Hours", "Total Overtime Hours", "Number of OT hours worked", "64"],
-      ["Overtime Pay", "Overtime Earnings", "(Rate / 8) × OT Hours (Auto-calculated if blank)", "3200"],
-      ["Gross Salary", "Total Gross Earnings", "Basic + Special + Conveyance + OT (Auto-calculated if blank)", "20000"],
-      ["EPF", "Employee Provident Fund (12%)", "12% of Basic Salary (capped at ₹15,000 basic)", "1008"],
-      ["ESIC", "Employee State Insurance (0.75%)", "0.75% of Gross Salary (applicable up to ₹21,000 gross)", "150"],
-      ["Total Deductions", "Total Statutory Deductions", "EPF + ESIC (Auto-calculated if blank)", "1158"],
-      ["Net Pay", "Net Payable Salary", "Gross Salary - Total Deductions (Auto-calculated if blank)", "18842"],
-      ["Total Advance", "Advances / Kharcha Taken", "Deducted from debit evidence records (₹)", "8000"],
-      ["Net Pay After Advance", "Final Take-Home In-Hand Pay", "Net Pay - Total Advance (Auto-calculated if blank)", "10842"],
+      ["Worker Worked Days", "Total Days Worked in Month", "Must be between 1 and 31 days (can be 0.5 half day)", "26"],
+      ["Per Day Salary", "Per Day Wage Rate", "Standard daily wage rate (₹)", "600"],
+      ["Basic Salary", "Basic Wage Earned", "Days Worked × Per Day Salary (Auto-calculated if blank)", "15600"],
+      ["Special Allowance", "Monthly Special Allowance", "Directly added to Gross (₹)", "0"],
+      ["Conveyance Allowance", "Travel / Transport Allowance", "Directly added to Gross (₹)", "1000"],
+      ["Overtime Hours", "Total Overtime Hours", "Number of OT hours worked", "8"],
+      ["Overtime Pay", "Overtime Earnings", "(Rate / 8) × OT Hours (Auto-calculated if blank)", "600"],
+      ["Gross Salary", "Total Gross Earnings", "Basic + Special + Conveyance + OT (Auto-calculated if blank)", "17200"],
+      ["EPF", "Employee Provident Fund (12%)", "12% of Basic Salary (capped at ₹15,000 basic)", "1200"],
+      ["ESIC", "Employee State Insurance (0.75%)", "0.75% of Gross Salary (applicable up to ₹21,000 gross)", "129"],
+      ["Total Deductions", "Total Statutory Deductions", "EPF + ESIC (Auto-calculated if blank)", "1329"],
+      ["Net Pay", "Net Payable Salary", "Gross Salary - Total Deductions (Auto-calculated if blank)", "15871"],
+      ["Total Advance", "Advances / Kharcha Taken", "Deducted from debit evidence records (₹)", "1000"],
+      ["Net Pay After Advance", "Final Take-Home In-Hand Pay", "Net Pay - Total Advance (Auto-calculated if blank)", "14871"],
       ["Paid Amount", "Already Paid Amount", "Used to calculate remaining balance due", "0"],
       ["Payment Mode", "Payment Method", "Bank Transfer, Cash, or UPI", "Bank Transfer"],
-      ["Notes", "Remarks / Description", "Optional notes or comments", "Worked 21 days @ 400 | In-Hand: 10,842"],
+      ["Notes", "Remarks / Description", "Optional notes or comments", ""],
       [""],
       ["Important Guidelines & System Rules:"],
       ["1. Auto-Calculation: If you leave Basic Salary, Overtime Pay, Gross Salary, EPF, ESIC, Total Deductions, Net Pay, or Net Pay After Advance blank, the system will automatically calculate them using standard rules."],
@@ -652,7 +551,7 @@ export default function Salary() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Monthly_Payroll");
     XLSX.utils.book_append_sheet(wb, wsHelp, "Instructions_Guide");
-    XLSX.writeFile(wb, `SNMR_Monthly_Payroll_Template_${importMonth}_${importYear}.xlsx`);
+    XLSX.writeFile(wb, fileName);
   };
 
   const handleExcelFileChange = (e) => {
@@ -1740,20 +1639,36 @@ export default function Salary() {
                     </div>
                   </div>
 
-                  <div>
+                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
                     <button 
                       type="button" 
-                      onClick={handleDownloadTemplate} 
+                      onClick={() => handleDownloadTemplate("blank")} 
                       style={{
                         display: "flex", alignItems: "center", gap: "6px",
-                        background: "#fff", color: "#0f766e", border: "1.5px solid #0f766e",
+                        background: "#0f766e", color: "#fff", border: "1.5px solid #0f766e",
                         padding: "9px 16px", borderRadius: "8px", fontSize: "13px", fontWeight: "700",
-                        cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.03)"
+                        cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.06)"
                       }}
-                      title="Download template pre-filled with your current workers"
+                      title="Download clean fresh Excel template without any pre-filled records"
                     >
-                      <Download size={15} /> Download Sample Template (.xlsx)
+                      <Download size={15} /> Download Fresh Template (.xlsx)
                     </button>
+
+                    {allWorkers && allWorkers.length > 0 && (
+                      <button 
+                        type="button" 
+                        onClick={() => handleDownloadTemplate("active_workers")} 
+                        style={{
+                          display: "flex", alignItems: "center", gap: "6px",
+                          background: "#fff", color: "#0f766e", border: "1.5px solid #0f766e",
+                          padding: "9px 14px", borderRadius: "8px", fontSize: "13px", fontWeight: "700",
+                          cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.03)"
+                        }}
+                        title="Download template with your registered active workers, leaving all days and advances blank for fresh monthly entry"
+                      >
+                        <FileSpreadsheet size={15} /> Active Workers ({allWorkers.length}) Fresh Template
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

@@ -49,7 +49,7 @@ export default function UserManual() {
         },
         {
           title: "Step 2: Monthly Excel Upload & Automated Calculation (Or Click 'Generate')",
-          desc: "You can either click 'Generate Wages & Payroll' from daily system muster attendance OR click 'Import Monthly Excel'. Download the standard English template pre-filled with your workforce. The sheet contains 21 clear columns in professional English, plus an 'Instructions_Guide' sheet for comprehensive column rules and calculations."
+          desc: "You can either click 'Generate Wages & Payroll' from daily system muster attendance OR click 'Import Monthly Excel'. Click 'Download Fresh Template' to get a 100% clean, fresh sheet, or 'Active Workers Fresh Template' with your active workforce (leaving all monthly attendance and amounts empty for fresh entry). The sheet contains 21 clear columns in professional English, plus an 'Instructions_Guide' sheet for comprehensive column rules and calculations."
         },
         {
           title: "Step 3: Worker-Wise Allowances & Individual EPF / ESIC",
@@ -130,12 +130,12 @@ export default function UserManual() {
       summary: "Importing workforce data via pre-formatted Excel sheets, registering workers, and exporting data.",
       steps: [
         {
-          title: "1. Download the Sample Template",
-          desc: "On the Workers page, click 'Download Template' to get a pre-formatted Excel file with all required headers."
+          title: "1. Download the Fresh Template",
+          desc: "On the Workers page, click 'Download Fresh Template' to get a clean, pre-formatted Excel file with all required headers."
         },
         {
           title: "2. Populate Excel Records",
-          desc: "Fill in Worker ID (e.g., SNMR0057), Full Name, Site, Daily Wage, Trade (Fitter, Welder, Helper, etc.), and Bank Information. Unprovided fields can be marked as 'NA'."
+          desc: "Fill in Worker ID (e.g., SNMR0057), Full Name, Father's Name, Role (Worker, Supervisor, Foreman, Incharge, Helper), Trade (Fitter, Welder, Helper, etc.), Site, Daily Wage, and Bank Information. Unprovided fields can be marked as 'NA'."
         },
         {
           title: "3. Upload with 'Import Excel/CSV'",
@@ -420,7 +420,7 @@ export default function UserManual() {
                 <div>
                   <h4 style={styles.faqTitle}>Excel Import Column Integrity</h4>
                   <p style={styles.faqText}>
-                    Always download the standard template before preparing bulk imports. Retain standard column titles (Worker ID, Name, Site, Daily Wage, Trade, Bank Name, Bank Account, IFSC) to ensure seamless validation.
+                    Always download the standard template before preparing bulk imports. Retain standard column titles (Worker ID, Name, Father Name, Role, Trade, Site, Daily Wage, Bank Name, Bank Account, IFSC) to ensure seamless validation.
                   </p>
                 </div>
               </div>

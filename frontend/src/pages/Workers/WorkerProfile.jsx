@@ -81,6 +81,9 @@ export default function WorkerProfile() {
   const openEditModal = () => {
     setEditData({
       fullName: worker.fullName || "",
+      fatherName: worker.fatherName || "",
+      category: worker.category || "Worker",
+      skillTrade: worker.skillTrade || "",
       mobileNumber: worker.mobileNumber || "",
       currentAddress: worker.currentAddress || "",
       siteId: worker.siteId || "",
@@ -214,6 +217,11 @@ export default function WorkerProfile() {
             <div style={styles.avatarLarge}>{worker.fullName.charAt(0)}</div>
             <div>
               <h1 style={styles.title}>{worker.fullName}</h1>
+              {worker.fatherName && (
+                <div style={{ fontSize: "13px", color: "#64748b", marginTop: "2px", fontWeight: 500 }}>
+                  Father's Name: <strong style={{ color: "#1e293b" }}>{worker.fatherName}</strong>
+                </div>
+              )}
               <div style={styles.badgeContainer}>
                 <span style={styles.badgeID}>{worker.workerId}</span>
                 {worker.status === "Active" ? (
@@ -224,9 +232,14 @@ export default function WorkerProfile() {
                 {worker.site && (
                   <span style={styles.badgeSite}><Building2 size={12} /> {worker.site.name}</span>
                 )}
-                <span style={{ ...styles.badgeID, background: "#ede9fe", color: "#6d28d9", borderColor: "#ddd6fe" }}>
-                  {worker.category || "Worker"}
+                <span style={{ ...styles.badgeID, background: "#ede9fe", color: "#6d28d9", borderColor: "#ddd6fe", fontWeight: "700" }}>
+                  Role: {worker.category || "Worker"}
                 </span>
+                {worker.skillTrade && (
+                  <span style={{ ...styles.badgeID, background: "#f0fdf4", color: "#15803d", borderColor: "#bbf7d0", fontWeight: "600" }}>
+                    Trade: {worker.skillTrade}
+                  </span>
+                )}
               </div>
             </div>
             <div style={{ marginLeft: "auto", display: "flex", gap: "10px", flexWrap: "wrap" }}>
@@ -281,6 +294,10 @@ export default function WorkerProfile() {
           
           <div style={styles.contactGrid}>
             <div style={styles.contactItem}>
+              <User size={16} color="#64748b" />
+              <span>Father: <strong>{worker.fatherName || "Not Provided"}</strong></span>
+            </div>
+            <div style={styles.contactItem}>
               <Phone size={16} color="#64748b" />
               <span>{worker.mobileNumber || "No phone provided"}</span>
             </div>
@@ -289,12 +306,12 @@ export default function WorkerProfile() {
               <span>{worker.currentAddress || "No address provided"}</span>
             </div>
             <div style={styles.contactItem}>
-              <User size={16} color="#64748b" />
+              <Calendar size={16} color="#64748b" />
               <span>Joined {new Date(worker.joiningDate).toLocaleDateString()}</span>
             </div>
             <div style={styles.contactItem}>
               <Building2 size={16} color="#64748b" />
-              <span>Trade: <strong>{worker.skillTrade || "General Labor"}</strong></span>
+              <span>Role / Trade: <strong>{worker.category || "Worker"} ({worker.skillTrade || "General"})</strong></span>
             </div>
           </div>
 
@@ -461,6 +478,44 @@ export default function WorkerProfile() {
                     <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>Full Name *</label>
                     <input style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1" }} value={editData.fullName} onChange={e => setEditData({...editData, fullName: e.target.value})} required />
                   </div>
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>Father's Name (पिता का नाम)</label>
+                    <input style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1" }} placeholder="e.g. Suresh Kumar" value={editData.fatherName || ""} onChange={e => setEditData({...editData, fatherName: e.target.value})} />
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>Worker Role (पद / भूमिका) *</label>
+                    <select 
+                      style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1", background: "#fff", fontWeight: 600 }} 
+                      value={editData.category || "Worker"} 
+                      onChange={e => setEditData({...editData, category: e.target.value})}
+                    >
+                      <option value="Worker">Worker (सामान्य श्रमिक)</option>
+                      <option value="Supervisor">Supervisor (सुपरवाइजर)</option>
+                      <option value="Foreman">Foreman (फोरमैन)</option>
+                      <option value="Site Incharge">Site Incharge (साइट इंचार्ज)</option>
+                      <option value="Safety Officer">Safety Officer (सुरक्षा अधिकारी)</option>
+                      <option value="Helper">Helper (हेल्पर)</option>
+                      <option value="Skilled">Skilled (कुशल श्रमिक)</option>
+                      <option value="Semi-Skilled">Semi-Skilled (अर्ध-कुशल)</option>
+                      <option value="Unskilled">Unskilled (अकुशल)</option>
+                      <option value="Staff">Staff (साइट स्टाफ)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>Trade / Designation (ट्रेड / काम)</label>
+                    <input 
+                      style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1" }} 
+                      placeholder="e.g. FITTER, WELDER, RIGGER, HELPER" 
+                      value={editData.skillTrade || ""} 
+                      onChange={e => setEditData({...editData, skillTrade: e.target.value})} 
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
                   <div>
                     <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>Phone Number</label>
                     <input style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1" }} value={editData.mobileNumber} onChange={e => setEditData({...editData, mobileNumber: e.target.value})} />

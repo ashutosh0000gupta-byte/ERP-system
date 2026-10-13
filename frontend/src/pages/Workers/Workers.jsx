@@ -78,6 +78,8 @@ export default function Workers() {
     setFormData({
       workerId: nextId,
       fullName: "",
+      fatherName: "",
+      category: "Worker",
       skillTrade: "",
       salaryType: "Daily",
       dailyWage: "",
@@ -103,11 +105,13 @@ export default function Workers() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const isStaff = /supervisor|incharge|in-charge|engineer|foreman/i.test(formData.skillTrade || "");
+      const isStaff = /supervisor|incharge|in-charge|engineer|foreman/i.test(formData.category || formData.skillTrade || "");
+      const roleVal = formData.category || (isStaff ? "Supervisor" : "Worker");
       const rateVal = formData.wageRate ? parseFloat(formData.wageRate) : (formData.dailyWage ? parseFloat(formData.dailyWage) : 0);
       const payload = {
         ...formData,
-        category: isStaff ? "Supervisor" : "Worker",
+        fatherName: formData.fatherName ? formData.fatherName.trim() : null,
+        category: roleVal,
         dailyWage: rateVal,
         wageRate: rateVal,
         salaryType: formData.salaryType || "Daily",
@@ -123,6 +127,7 @@ export default function Workers() {
         payload.joiningDate = new Date(payload.joiningDate).toISOString();
       }
       // Remove empty optional fields
+      if (!payload.fatherName) delete payload.fatherName;
       if (!payload.siteId) delete payload.siteId;
       if (!payload.bankName) delete payload.bankName;
       if (!payload.bankAccount) delete payload.bankAccount;
@@ -217,8 +222,9 @@ export default function Workers() {
           const dailyWage = parseFloat(rawDailyWage.replace(/[^0-9.]/g, '') || "0") || 0;
           
           const mobileNumber = getVal(row, ["Mobile", "Phone", "Mobile Number", "Contact", "Phone Number", "mobile_number"]);
-          const skillTrade = getVal(row, ["Trade", "Skill", "Skill Trade", "Category", "Role", "Designation", "skill_trade"]);
-          const fatherName = getVal(row, ["Father Name", "Father's Name", "Father", "father_name"]);
+          const roleVal = getVal(row, ["Role", "Worker Role", "Category", "Worker Category", "Designation", "role", "category"]);
+          const skillTrade = getVal(row, ["Trade", "Skill", "Skill Trade", "skill_trade", "trade"]);
+          const fatherName = getVal(row, ["Father Name", "Father's Name", "Father", "father_name", "pitaji", "father"]);
           const address = getVal(row, ["Address", "Current Address", "Permanent Address", "current_address"]);
           const bankName = getVal(row, ["Bank Name", "Bank", "BankName", "bank_name", "Bank Branch"]);
           const bankAccount = getVal(row, ["Bank Account", "Account No", "A/C", "bankAccount", "Account Number", "bank_account"]);
@@ -236,7 +242,8 @@ export default function Workers() {
           
           if (!name) continue;
           
-          const isStaff = /supervisor|incharge|in-charge|engineer|foreman/i.test(skillTrade);
+          const isStaff = /supervisor|incharge|in-charge|engineer|foreman/i.test(roleVal || skillTrade || "");
+          const category = roleVal || (isStaff ? "Supervisor" : "Worker");
           const siteMatch = sites.find(s => s.name?.toLowerCase().trim() === siteName.toLowerCase().trim());
           
           parsedWorkers.push({
@@ -252,7 +259,7 @@ export default function Workers() {
             otRatePerHour,
             mobileNumber,
             skillTrade,
-            category: isStaff ? "Supervisor" : "Worker",
+            category: category,
             fatherName: fatherName || null,
             currentAddress: address || null,
             permanentAddress: address || null,
@@ -379,112 +386,129 @@ export default function Workers() {
     }
   };
 
-  const downloadSampleTemplate = () => {
+  const downloadFreshTemplate = (includeSample = false) => {
     const defaultSiteName = sites.length > 0 ? sites[0].name : "HCCB Khurda";
-    const sampleData = [
-      {
-        "Worker ID": "SNMR0001",
-        "Name": "ANIL SHARMA",
-        "Site": defaultSiteName,
-        "Daily Wage": 1200,
-        "Salary Type": "Daily",
-        "Pay Frequency": "Weekly",
-        "Payment Mode": "Bank Transfer",
-        "OT Rate": 150,
-        "Mobile": "9876543210",
-        "Trade": "SITE INCHARGE",
-        "Father Name": "NA",
-        "Address": "NA",
-        "Bank Name": "State Bank of India",
-        "Bank Account": "37826459225",
-        "IFSC Code": "SBIN0006018",
-        "PAN": "NA",
-        "Aadhaar": "NA",
-        "UAN": "101234567890",
-        "ESI Number": "31000123450000001"
-      },
-      {
-        "Worker ID": "SNMR0002",
-        "Name": "RAJESH VERMA",
-        "Site": defaultSiteName,
-        "Daily Wage": 1000,
-        "Mobile": "9876543211",
-        "Trade": "SUPERVISOR",
-        "Father Name": "NA",
-        "Address": "NA",
-        "Bank Name": "Punjab National Bank",
-        "Bank Account": "123456789012",
-        "IFSC Code": "PUNB0295200",
-        "PAN": "NA",
-        "Aadhaar": "NA"
-      },
-      {
-        "Worker ID": "SNMR0003",
-        "Name": "UPENDRA KUMAR",
-        "Site": defaultSiteName,
-        "Daily Wage": 836.87,
-        "Mobile": "1234569870",
-        "Trade": "FITTER",
-        "Father Name": "NA",
-        "Address": "NA",
-        "Bank Name": "Canara Bank",
-        "Bank Account": "4588101004320",
-        "IFSC Code": "CNRB0004588",
-        "PAN": "NA",
-        "Aadhaar": "NA"
-      },
-      {
-        "Worker ID": "SNMR0004",
-        "Name": "SUBHASH KUMAR",
-        "Site": defaultSiteName,
-        "Daily Wage": 836.87,
-        "Mobile": "1234569870",
-        "Trade": "RIGGER",
-        "Father Name": "NA",
-        "Address": "NA",
-        "Bank Name": "Central Bank of India",
-        "Bank Account": "2176118485",
-        "IFSC Code": "CBIN0281086",
-        "PAN": "NA",
-        "Aadhaar": "NA"
-      },
-      {
-        "Worker ID": "SNMR0005",
-        "Name": "DUDH NATH ROY",
-        "Site": defaultSiteName,
-        "Daily Wage": 836.87,
-        "Mobile": "1234569870",
-        "Trade": "WELDER",
-        "Father Name": "NA",
-        "Address": "NA",
-        "Bank Name": "Union Bank of India",
-        "Bank Account": "35814047446",
-        "IFSC Code": "UBIN0576221",
-        "PAN": "NA",
-        "Aadhaar": "NA"
-      },
-      {
-        "Worker ID": "SNMR0006",
-        "Name": "RAJESH KUMAR",
-        "Site": defaultSiteName,
-        "Daily Wage": 836.87,
-        "Mobile": "1234569870",
-        "Trade": "HELPER",
-        "Father Name": "NA",
-        "Address": "NA",
-        "Bank Name": "Bank of Baroda",
-        "Bank Account": "6202265865",
-        "IFSC Code": "BARB0001234",
-        "PAN": "NA",
-        "Aadhaar": "NA"
-      }
+    const headers = [
+      "Worker ID",
+      "Name",
+      "Father Name",
+      "Role",
+      "Trade",
+      "Site",
+      "Daily Wage",
+      "Salary Type",
+      "Pay Frequency",
+      "Payment Mode",
+      "OT Rate",
+      "Mobile",
+      "Address",
+      "Bank Name",
+      "Bank Account",
+      "IFSC Code",
+      "PAN",
+      "Aadhaar",
+      "UAN",
+      "ESI Number"
     ];
 
-    const ws = XLSX.utils.json_to_sheet(sampleData);
+    let dataRows = [];
+    let fileName = "Worker_Import_Template_Fresh.xlsx";
+
+    if (includeSample) {
+      dataRows = [
+        [
+          "SNMR0001",
+          "ANIL SHARMA",
+          "SURESH SHARMA",
+          "Supervisor",
+          "SITE INCHARGE",
+          defaultSiteName,
+          1200,
+          "Daily",
+          "Weekly",
+          "Bank Transfer",
+          150,
+          "9876543210",
+          "NA",
+          "State Bank of India",
+          "37826459225",
+          "SBIN0006018",
+          "NA",
+          "NA",
+          "101234567890",
+          "31000123450000001"
+        ]
+      ];
+      fileName = "Worker_Import_Sample_Template.xlsx";
+    }
+
+    // Sheet 1: Workers (Fresh blank sheet for importing)
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+    ws["!cols"] = [
+      { wch: 14 }, // Worker ID
+      { wch: 22 }, // Name
+      { wch: 20 }, // Father Name
+      { wch: 16 }, // Role
+      { wch: 18 }, // Trade
+      { wch: 18 }, // Site
+      { wch: 14 }, // Daily Wage
+      { wch: 14 }, // Salary Type
+      { wch: 16 }, // Pay Frequency
+      { wch: 16 }, // Payment Mode
+      { wch: 12 }, // OT Rate
+      { wch: 16 }, // Mobile
+      { wch: 24 }, // Address
+      { wch: 22 }, // Bank Name
+      { wch: 20 }, // Bank Account
+      { wch: 14 }, // IFSC Code
+      { wch: 14 }, // PAN
+      { wch: 16 }, // Aadhaar
+      { wch: 16 }, // UAN
+      { wch: 20 }  // ESI Number
+    ];
+
+    // Sheet 2: Guidelines and Field Descriptions
+    const guideData = [
+      ["SNMR ERP - Worker Bulk Import Guidelines"],
+      [""],
+      ["Field Name", "Required / Optional", "Description", "Example / Valid Options"],
+      ["Worker ID", "Optional", "System unique worker code. Leave empty to auto-generate (e.g. SNMR0001)", "SNMR0001"],
+      ["Name", "Required", "Full name of the worker", "Anil Sharma"],
+      ["Father Name", "Optional", "Father's name of the worker (पिता का नाम)", "Suresh Sharma"],
+      ["Role", "Optional", "Worker role / category: Worker, Supervisor, Foreman, Incharge, Helper, Skilled, etc. (Default: Worker)", "Worker"],
+      ["Trade", "Optional", "Skill trade / designation (e.g., Fitter, Welder, Rigger, Helper, Supervisor)", "Fitter"],
+      ["Site", "Optional", "Site or project name. Defaults to Unassigned if empty", defaultSiteName],
+      ["Daily Wage", "Required", "Daily wage rate or wage amount in ₹", "600"],
+      ["Salary Type", "Optional", "Daily, Monthly, Weekly, Hourly, Contract (Default: Daily)", "Daily"],
+      ["Pay Frequency", "Optional", "Weekly, Monthly, Bi-weekly (Default: Weekly)", "Weekly"],
+      ["Payment Mode", "Optional", "Bank Transfer, Cash, UPI, Cheque (Default: Bank Transfer)", "Bank Transfer"],
+      ["OT Rate", "Optional", "Overtime hourly rate in ₹", "75"],
+      ["Mobile", "Optional", "10-digit contact mobile number", "9876543210"],
+      ["Address", "Optional", "Worker's address (or NA if unavailable)", "NA"],
+      ["Bank Name", "Optional", "Bank name (e.g., State Bank of India)", "State Bank of India"],
+      ["Bank Account", "Optional", "Bank account number", "37826459225"],
+      ["IFSC Code", "Optional", "Bank IFSC code", "SBIN0006018"],
+      ["PAN", "Optional", "10-digit PAN card number (or NA)", "NA"],
+      ["Aadhaar", "Optional", "12-digit Aadhaar number (or NA)", "NA"],
+      ["UAN", "Optional", "Universal Account Number for EPF (or NA)", "101234567890"],
+      ["ESI Number", "Optional", "Employee State Insurance IP number (or NA)", "31000123450000001"]
+    ];
+
+    const wsGuide = XLSX.utils.aoa_to_sheet(guideData);
+    wsGuide["!cols"] = [
+      { wch: 18 },
+      { wch: 20 },
+      { wch: 45 },
+      { wch: 30 }
+    ];
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Workers");
-    XLSX.writeFile(wb, "Worker_Import_Sample_Template.xlsx");
+    XLSX.utils.book_append_sheet(wb, wsGuide, "Import_Guide");
+    XLSX.writeFile(wb, fileName);
   };
+
+  const downloadSampleTemplate = () => downloadFreshTemplate(false);
 
   useEffect(() => {
     if (printWorker) {
@@ -570,11 +594,11 @@ export default function Workers() {
                 display: "inline-flex",
                 alignItems: "center"
               }} 
-              onClick={downloadSampleTemplate}
-              title="Download pre-formatted Excel template"
+              onClick={() => downloadFreshTemplate(false)}
+              title="Download fresh blank Excel template with headers"
             >
               <Download size={18} color="#15803d" />
-              <span>Download Template</span>
+              <span>Download Fresh Template</span>
             </button>
             <button 
               id="export-workers-btn"
@@ -755,10 +779,11 @@ export default function Workers() {
               <div style={{ display: "flex", gap: "12px", marginTop: "16px", justifyContent: "center" }}>
                 <button 
                   style={{ ...styles.createButton, background: "#f0fdf4", color: "#15803d", border: "1px solid #86efac" }}
-                  onClick={downloadSampleTemplate}
+                  onClick={() => downloadFreshTemplate(false)}
+                  title="Download fresh blank Excel template"
                 >
                   <Download size={16} color="#15803d" />
-                  <span>Download Excel Template</span>
+                  <span>Download Fresh Excel Template</span>
                 </button>
                 <button 
                   style={{ ...styles.createButton, background: "#fff", color: "#334155", border: "1px solid #cbd5e1" }}
@@ -799,43 +824,38 @@ export default function Workers() {
                           </div>
                           <div>
                             <div style={{ fontWeight: 600, color: "#0f172a" }}>{w.fullName}</div>
+                            {w.fatherName && (
+                              <div style={{ fontSize: "11px", color: "#64748b" }}>
+                                S/O: <strong style={{ color: "#334155" }}>{w.fatherName}</strong>
+                              </div>
+                            )}
                             {w.mobileNumber && <div style={{ fontSize: "12px", color: "#64748b" }}>{w.mobileNumber}</div>}
                           </div>
                         </div>
                       </td>
                       <td style={styles.td}>
-                        {isSupervisorOrIncharge(w) ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-start" }}>
                           <span style={{
                             display: "inline-flex",
                             alignItems: "center",
                             gap: "5px",
-                            padding: "4px 10px",
-                            borderRadius: "8px",
-                            fontSize: "12px",
-                            fontWeight: 700,
-                            background: "#f5f3ff",
-                            color: "#6d28d9",
-                            border: "1px solid #ddd6fe"
-                          }}>
-                            <ShieldCheck size={13} color="#7c3aed" />
-                            {w.skillTrade?.toUpperCase() || "SUPERVISOR"}
-                          </span>
-                        ) : (
-                          <span style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "5px",
-                            padding: "4px 8px",
+                            padding: "3px 8px",
                             borderRadius: "6px",
-                            fontSize: "12px",
-                            fontWeight: 600,
-                            background: "#f1f5f9",
-                            color: "#475569"
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            background: isSupervisorOrIncharge(w) ? "#f5f3ff" : "#f1f5f9",
+                            color: isSupervisorOrIncharge(w) ? "#6d28d9" : "#334155",
+                            border: isSupervisorOrIncharge(w) ? "1px solid #ddd6fe" : "1px solid #e2e8f0"
                           }}>
-                            <HardHat size={12} color="#64748b" />
-                            {w.skillTrade || "General Worker"}
+                            {isSupervisorOrIncharge(w) ? <ShieldCheck size={12} color="#7c3aed" /> : <HardHat size={12} color="#64748b" />}
+                            {w.category || (isSupervisorOrIncharge(w) ? "Supervisor" : "Worker")}
                           </span>
-                        )}
+                          {w.skillTrade && (
+                            <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 500 }}>
+                              {w.skillTrade}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td style={styles.td}>
                         {w.bankName || w.bankAccount ? (
@@ -957,6 +977,61 @@ export default function Workers() {
                         onChange={e => setFormData({...formData, fullName: e.target.value})}
                       />
                     </div>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>Father's Name (पिता का नाम)</label>
+                      <input 
+                        style={styles.input} 
+                        placeholder="e.g. Suresh Kumar" 
+                        value={formData.fatherName}
+                        onChange={e => setFormData({...formData, fatherName: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={styles.formRow}>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>Worker Role (पद / भूमिका) *</label>
+                      <select 
+                        style={{ ...styles.input, background: "#fff", fontWeight: 600 }}
+                        value={formData.category}
+                        onChange={e => setFormData({...formData, category: e.target.value})}
+                      >
+                        <option value="Worker">Worker (सामान्य श्रमिक)</option>
+                        <option value="Supervisor">Supervisor (सुपरवाइजर)</option>
+                        <option value="Foreman">Foreman (फोरमैन)</option>
+                        <option value="Site Incharge">Site Incharge (साइट इंचार्ज)</option>
+                        <option value="Safety Officer">Safety Officer (सुरक्षा अधिकारी)</option>
+                        <option value="Helper">Helper (हेल्पर)</option>
+                        <option value="Skilled">Skilled (कुशल श्रमिक)</option>
+                        <option value="Semi-Skilled">Semi-Skilled (अर्ध-कुशल)</option>
+                        <option value="Unskilled">Unskilled (अकुशल)</option>
+                        <option value="Staff">Staff (साइट स्टाफ)</option>
+                      </select>
+                    </div>
+                    <div style={styles.inputGroup}>
+                      <label style={styles.label}>Skill / Trade (काम / ट्रेड)</label>
+                      <input 
+                        list="trade-datalist"
+                        style={styles.input} 
+                        placeholder="e.g. SITE INCHARGE, FITTER, WELDER" 
+                        value={formData.skillTrade}
+                        onChange={e => setFormData({...formData, skillTrade: e.target.value})}
+                      />
+                      <datalist id="trade-datalist">
+                        <option value="SITE INCHARGE" />
+                        <option value="SUPERVISOR" />
+                        <option value="FITTER" />
+                        <option value="RIGGER" />
+                        <option value="WELDER" />
+                        <option value="HELPER" />
+                        <option value="MASON" />
+                        <option value="ELECTRICIAN" />
+                        <option value="CARPENTER" />
+                        <option value="SAFETY OFFICER" />
+                        <option value="ENGINEER" />
+                        <option value="FOREMAN" />
+                      </datalist>
+                    </div>
                   </div>
 
                   <div style={styles.formRow}>
@@ -979,32 +1054,8 @@ export default function Workers() {
                       />
                     </div>
                   </div>
-                  
+
                   <div style={styles.formRow}>
-                    <div style={styles.inputGroup}>
-                      <label style={styles.label}>Skill / Trade / Role</label>
-                      <input 
-                        list="trade-datalist"
-                        style={styles.input} 
-                        placeholder="e.g. SITE INCHARGE, SUPERVISOR, FITTER" 
-                        value={formData.skillTrade}
-                        onChange={e => setFormData({...formData, skillTrade: e.target.value})}
-                      />
-                      <datalist id="trade-datalist">
-                        <option value="SITE INCHARGE" />
-                        <option value="SUPERVISOR" />
-                        <option value="FITTER" />
-                        <option value="RIGGER" />
-                        <option value="WELDER" />
-                        <option value="HELPER" />
-                        <option value="MASON" />
-                        <option value="ELECTRICIAN" />
-                        <option value="CARPENTER" />
-                        <option value="SAFETY OFFICER" />
-                        <option value="ENGINEER" />
-                        <option value="FOREMAN" />
-                      </datalist>
-                    </div>
                     <div style={styles.inputGroup}>
                       <label style={styles.label}>Salary Type</label>
                       <select 
