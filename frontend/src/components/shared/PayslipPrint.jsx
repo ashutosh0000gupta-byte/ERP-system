@@ -158,19 +158,10 @@ export default function PayslipPrint({ salary }) {
                     <td style={{ ...styles.calcAmount, color: "#b91c1c" }}>-₹{Number(salary.professionalTax).toLocaleString()}</td>
                   </tr>
                 )}
-                {Number(salary.otherDeductions || 0) > 0 && (
-                  <tr>
-                    <td style={styles.calcLabel}>
-                      Other Deductions
-                      <div style={{fontSize: "11px", color: "#64748b"}}>Mess / accommodation</div>
-                    </td>
-                    <td style={{ ...styles.calcAmount, color: "#b91c1c" }}>-₹{Number(salary.otherDeductions).toLocaleString()}</td>
-                  </tr>
-                )}
                 <tr style={{ background: "#f8fafc", fontWeight: 700 }}>
                   <td style={styles.calcLabel}>Total Statutory Deductions (EPF + ESIC)</td>
                   <td style={{ ...styles.calcAmount, color: "#b91c1c" }}>
-                    -₹{(Number(salary.pfDeducted || 0) + Number(salary.esicDeducted || 0) + Number(salary.professionalTax || 0) + Number(salary.otherDeductions || 0)).toLocaleString()}
+                    -₹{(Number(salary.pfDeducted || 0) + Number(salary.esicDeducted || 0) + Number(salary.professionalTax || 0)).toLocaleString()}
                   </td>
                 </tr>
                 <tr>

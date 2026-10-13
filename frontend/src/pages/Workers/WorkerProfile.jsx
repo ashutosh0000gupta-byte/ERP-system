@@ -1041,10 +1041,20 @@ export default function WorkerProfile() {
                       const rateApplied = Number(sal.rateApplied || sal.dailyWage || 0);
                       const basicSalary = Number(sal.basicSalary || Math.round(Number(sal.presentDays || 0) * rateApplied * 100) / 100);
                       const grossAmount = Number(sal.grossAmount || (basicSalary + Number(sal.otAmount || 0) + Number(sal.specialAllowance || 0) + Number(sal.conveyanceAllowance || 0)));
-                      const totalDeductions = Number(sal.advanceDeducted || 0) + Number(sal.pfDeducted || 0) + Number(sal.esicDeducted || 0) + Number(sal.professionalTax || 0) + Number(sal.otherDeductions || 0);
-                      const netAmount = Number(sal.netAmount || 0);
-                      const paidAmount = Number(sal.paidAmount || (sal.status === 'Paid' ? netAmount : 0));
-                      const balance = sal.balanceAmount !== undefined ? Number(sal.balanceAmount) : Math.max(0, netAmount - paidAmount);
+                      
+                      // Clean Deductions: Advance + PF + ESIC + PT (NO Other Deductions)
+                      const advanceDeducted = Number(sal.advanceDeducted || 0);
+                      const pfDeducted = Number(sal.pfDeducted || 0);
+                      const esicDeducted = Number(sal.esicDeducted || 0);
+                      const professionalTax = Number(sal.professionalTax || 0);
+                      const totalDeductions = advanceDeducted + pfDeducted + esicDeducted + professionalTax;
+                      
+                      // In-Hand Net Payable = Gross Earnings - Total Deductions
+                      const netPayable = Math.max(0, Math.round((grossAmount - totalDeductions) * 100) / 100);
+                      const paidAmount = Number(sal.paidAmount || (sal.status === 'Paid' ? netPayable : 0));
+                      const balance = sal.balanceAmount !== undefined 
+                        ? Math.min(netPayable, Number(sal.balanceAmount)) 
+                        : Math.max(0, netPayable - paidAmount);
 
                       return (
                         <tr 
@@ -1091,8 +1101,8 @@ export default function WorkerProfile() {
                             {totalDeductions > 0 ? (
                               <div>
                                 <span style={{ fontWeight: 600, color: "#e11d48" }}>-₹{totalDeductions.toLocaleString()}</span>
-                                {Number(sal.advanceDeducted || 0) > 0 && (
-                                  <div style={{ fontSize: "10px", color: "#64748b" }}>Adv: ₹{Number(sal.advanceDeducted).toLocaleString()}</div>
+                                {advanceDeducted > 0 && (
+                                  <div style={{ fontSize: "10px", color: "#64748b" }}>Adv: ₹{advanceDeducted.toLocaleString()}</div>
                                 )}
                               </div>
                             ) : (
@@ -1101,7 +1111,7 @@ export default function WorkerProfile() {
                           </td>
 
                           <td style={{ ...styles.tdSmall, textAlign: "right" }}>
-                            <strong style={{ fontSize: "14px", color: "#0f766e" }}>₹{netAmount.toLocaleString()}</strong>
+                            <strong style={{ fontSize: "14px", color: "#0f766e" }}>₹{netPayable.toLocaleString()}</strong>
                           </td>
 
                           <td style={{ ...styles.tdSmall, textAlign: "right" }}>
@@ -1437,10 +1447,20 @@ export default function WorkerProfile() {
           const rateApplied = Number(sal.rateApplied || sal.dailyWage || 0);
           const basicSalary = Number(sal.basicSalary || Math.round(Number(sal.presentDays || 0) * rateApplied * 100) / 100);
           const grossAmount = Number(sal.grossAmount || (basicSalary + Number(sal.otAmount || 0) + Number(sal.specialAllowance || 0) + Number(sal.conveyanceAllowance || 0)));
-          const totalDeductions = Number(sal.advanceDeducted || 0) + Number(sal.pfDeducted || 0) + Number(sal.esicDeducted || 0) + Number(sal.professionalTax || 0) + Number(sal.otherDeductions || 0);
-          const netAmount = Number(sal.netAmount || 0);
-          const paidAmount = Number(sal.paidAmount || (sal.status === 'Paid' ? netAmount : 0));
-          const balance = sal.balanceAmount !== undefined ? Number(sal.balanceAmount) : Math.max(0, netAmount - paidAmount);
+          
+          // Clean Deductions: Advance + PF + ESIC + PT (NO Other Deductions)
+          const advanceDeducted = Number(sal.advanceDeducted || 0);
+          const pfDeducted = Number(sal.pfDeducted || 0);
+          const esicDeducted = Number(sal.esicDeducted || 0);
+          const professionalTax = Number(sal.professionalTax || 0);
+          const totalDeductions = advanceDeducted + pfDeducted + esicDeducted + professionalTax;
+
+          // In-Hand Net Payable = Gross Earnings - Total Deductions
+          const netPayable = Math.max(0, Math.round((grossAmount - totalDeductions) * 100) / 100);
+          const paidAmount = Number(sal.paidAmount || (sal.status === 'Paid' ? netPayable : 0));
+          const balance = sal.balanceAmount !== undefined 
+            ? Math.min(netPayable, Number(sal.balanceAmount)) 
+            : Math.max(0, netPayable - paidAmount);
 
           return (
             <div style={styles.modalOverlay} onClick={() => setSelectedSalary(null)}>
@@ -1489,7 +1509,7 @@ export default function WorkerProfile() {
                   <div style={{ background: "#ecfdf5", padding: "12px", borderRadius: "10px", border: "1px solid #a7f3d0" }}>
                     <div style={{ fontSize: "11px", fontWeight: 700, color: "#047857", textTransform: "uppercase" }}>Net Payable</div>
                     <div style={{ fontSize: "18px", fontWeight: 800, color: "#0f766e", marginTop: "4px" }}>
-                      ₹{netAmount.toLocaleString()}
+                      ₹{netPayable.toLocaleString()}
                     </div>
                   </div>
                 </div>
@@ -1506,7 +1526,9 @@ export default function WorkerProfile() {
                         <div>
                           <div>Basic Wages (Earned)</div>
                           <div style={{ fontSize: "11px", color: "#64748b" }}>
-                            {Number(sal.presentDays || 0)} days × ₹{rateApplied.toLocaleString()}
+                            {Math.round(Number(sal.presentDays || 0) * rateApplied) === basicSalary
+                              ? `${Number(sal.presentDays || 0)} days × ₹${rateApplied.toLocaleString()}`
+                              : `${Number(sal.presentDays || 0)} days attendance base`}
                           </div>
                         </div>
                         <strong style={{ color: "#0f172a" }}>₹{basicSalary.toLocaleString()}</strong>
@@ -1562,8 +1584,8 @@ export default function WorkerProfile() {
                           <div>Advance Deduction</div>
                           <div style={{ fontSize: "11px", color: "#64748b" }}>Recovered from advances taken</div>
                         </div>
-                        <strong style={{ color: Number(sal.advanceDeducted || 0) > 0 ? "#e11d48" : "#64748b" }}>
-                          ₹{Number(sal.advanceDeducted || 0).toLocaleString()}
+                        <strong style={{ color: advanceDeducted > 0 ? "#e11d48" : "#64748b" }}>
+                          ₹{advanceDeducted.toLocaleString()}
                         </strong>
                       </div>
 
@@ -1572,8 +1594,8 @@ export default function WorkerProfile() {
                           <div>Provident Fund (PF)</div>
                           <div style={{ fontSize: "11px", color: "#64748b" }}>EPF contribution</div>
                         </div>
-                        <strong style={{ color: Number(sal.pfDeducted || 0) > 0 ? "#e11d48" : "#64748b" }}>
-                          ₹{Number(sal.pfDeducted || 0).toLocaleString()}
+                        <strong style={{ color: pfDeducted > 0 ? "#e11d48" : "#64748b" }}>
+                          ₹{pfDeducted.toLocaleString()}
                         </strong>
                       </div>
 
@@ -1582,26 +1604,17 @@ export default function WorkerProfile() {
                           <div>ESIC Contribution</div>
                           <div style={{ fontSize: "11px", color: "#64748b" }}>Employee state insurance</div>
                         </div>
-                        <strong style={{ color: Number(sal.esicDeducted || 0) > 0 ? "#e11d48" : "#64748b" }}>
-                          ₹{Number(sal.esicDeducted || 0).toLocaleString()}
+                        <strong style={{ color: esicDeducted > 0 ? "#e11d48" : "#64748b" }}>
+                          ₹{esicDeducted.toLocaleString()}
                         </strong>
                       </div>
 
-                      {Number(sal.professionalTax || 0) > 0 && (
+                      {professionalTax > 0 && (
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
                           <div>
                             <div>Professional Tax (PT)</div>
                           </div>
-                          <strong>₹{Number(sal.professionalTax).toLocaleString()}</strong>
-                        </div>
-                      )}
-
-                      {Number(sal.otherDeductions || 0) > 0 && (
-                        <div style={{ display: "flex", justifyContent: "space-between" }}>
-                          <div>
-                            <div>Other Deductions</div>
-                          </div>
-                          <strong>₹{Number(sal.otherDeductions).toLocaleString()}</strong>
+                          <strong>₹{professionalTax.toLocaleString()}</strong>
                         </div>
                       )}
 

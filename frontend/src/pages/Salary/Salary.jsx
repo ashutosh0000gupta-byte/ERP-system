@@ -711,13 +711,14 @@ export default function Salary() {
             ? Number(rawEsic)
             : (gross <= 21000 ? Math.round(gross * 0.0075 * 100) / 100 : 0);
 
-          const otherDeductions = Number(getVal(["otherDeductions", "deductions", "deduction", "room", "mess"]) || 0);
+          // Clean Statutory Deductions (No other deductions)
+          const otherDeductions = 0;
 
-          // Total Deductions = EPF + ESIC + Other
+          // Total Deductions = EPF + ESIC
           const explicitTotalDeductions = getVal(["totalDeductions", "totaldeductionsepfesic", "totaldeduction", "statutorydeductions", "totalkatouti"]);
           const totalStatutory = explicitTotalDeductions !== null && explicitTotalDeductions !== "" && Number(explicitTotalDeductions) > 0
             ? Number(explicitTotalDeductions)
-            : (pfDeducted + esicDeducted + otherDeductions);
+            : (pfDeducted + esicDeducted);
 
           const advanceDeducted = Number(getVal(["totalAdvance", "advanceDeducted", "advance", "kharcha", "adv", "advancetaken", "debitevidence"]) || 0);
           const paidAmount = Number(getVal(["paidAmount", "paid", "amountpaid"]) || 0);

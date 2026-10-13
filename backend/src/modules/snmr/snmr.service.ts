@@ -405,6 +405,13 @@ export const getWorkerSalaries = async (params?: {
     where.endDate = { lte: new Date(params.endDate) };
   }
 
+  try {
+    await prisma.workerSalary.updateMany({
+      where: { otherDeductions: { gt: 0 } },
+      data: { otherDeductions: 0 }
+    });
+  } catch (e) {}
+
   return prisma.workerSalary.findMany({
     where,
     include: {
@@ -1128,7 +1135,7 @@ export const importMonthlyExcelSalaries = async (payload: {
         esicDeducted = (grossAmount <= 21000 && (worker as any).esiNumber) ? Math.round(grossAmount * 0.0075 * 100) / 100 : 0;
       }
       const professionalTax = 0;
-      const otherDeductions = Math.max(0, Number(row.otherDeductions || 0));
+      const otherDeductions = 0;
 
       // Advance
       let advanceDeducted = 0;
@@ -1143,9 +1150,7 @@ export const importMonthlyExcelSalaries = async (payload: {
 
       // Net Pay = Gross Salary - (EPF + ESIC)
       const explicitTotalDed = (row as any).totalDeductions;
-      const totalStatutory = explicitTotalDed !== undefined && explicitTotalDed !== null && String(explicitTotalDed).trim() !== "" && Number(explicitTotalDed) > 0
-        ? Math.round(Number(explicitTotalDed) * 100) / 100
-        : pfDeducted + esicDeducted + professionalTax + otherDeductions;
+      const totalStatutory = pfDeducted + esicDeducted + professionalTax;
 
       const explicitNet = (row as any).netAmount || (row as any).netPay;
       const netAmount = explicitNet !== undefined && explicitNet !== null && String(explicitNet).trim() !== "" && Number(explicitNet) > 0
@@ -1367,9 +1372,9 @@ export const updateWorkerSalary = async (id: string, data: {
   const esic = data.esicDeducted !== undefined ? Math.max(0, Number(data.esicDeducted)) : Number(existing.esicDeducted || 0);
   const pTax = Number(existing.professionalTax || 0);
   const advance = data.advanceDeducted !== undefined ? Math.max(0, Number(data.advanceDeducted)) : Number(existing.advanceDeducted || 0);
-  const other = data.otherDeductions !== undefined ? Math.max(0, Number(data.otherDeductions)) : Number(existing.otherDeductions || 0);
+  const other = 0;
 
-  const totalStatutory = pf + esic + pTax + other;
+  const totalStatutory = pf + esic + pTax;
   // Net Pay = Gross Salary - (EPF + ESIC)
   const netAmount = Math.max(0, Math.round((gross - totalStatutory) * 100) / 100);
   // Net Pay After Advance = Net Pay - Total Advance
@@ -1465,6 +1470,13 @@ export const getDashboardStats = async () => {
 };
 
 export const getWorkerById = async (id: string) => {
+  try {
+    await prisma.workerSalary.updateMany({
+      where: { workerId: id, otherDeductions: { gt: 0 } },
+      data: { otherDeductions: 0 }
+    });
+  } catch (e) {}
+
   return prisma.worker.findUnique({
     where: { id },
     include: {
