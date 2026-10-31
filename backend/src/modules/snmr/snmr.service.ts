@@ -306,21 +306,73 @@ export const importWorkers = async (workers: any[]) => {
   };
 };
 
-export const getWorkerAttendance = async (siteId: string, date: string) => {
-  if (!siteId || !date) return [];
-  const startOfDay = new Date(date);
-  startOfDay.setUTCHours(0, 0, 0, 0);
+export const getWorkerAttendance = async (
+  siteId?: string,
+  date?: string,
+  options?: {
+    startDate?: string;
+    endDate?: string;
+    month?: number | string;
+    year?: number | string;
+    status?: string;
+  }
+) => {
+  const where: any = {};
+
+  if (siteId && siteId !== "all") {
+    where.siteId = siteId;
+  }
+
+  if (date) {
+    const startOfDay = new Date(date);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    where.date = startOfDay;
+  } else if (options?.startDate && options?.endDate) {
+    const start = new Date(options.startDate);
+    start.setUTCHours(0, 0, 0, 0);
+    const end = new Date(options.endDate);
+    end.setUTCHours(23, 59, 59, 999);
+    where.date = { gte: start, lte: end };
+  } else if (options?.month && options?.year) {
+    const m = Number(options.month);
+    const y = Number(options.year);
+    if (!isNaN(m) && !isNaN(y)) {
+      const start = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0));
+      const end = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
+      where.date = { gte: start, lte: end };
+    }
+  }
+
+  if (options?.status && options.status !== "all") {
+    where.status = options.status;
+  }
 
   return prisma.workerAttendance.findMany({
-    where: {
-      siteId,
-      date: startOfDay
-    },
+    where,
     include: {
       worker: {
-        select: { workerId: true, fullName: true, skillTrade: true, dailyWage: true }
+        select: {
+          id: true,
+          workerId: true,
+          fullName: true,
+          skillTrade: true,
+          dailyWage: true,
+          mobileNumber: true
+        }
+      },
+      site: {
+        select: {
+          id: true,
+          name: true,
+          location: true
+        }
       }
-    }
+    },
+    orderBy: [
+      { date: "desc" },
+      { createdAt: "desc" }
+    ],
+    take: 1000
   });
 };
 
@@ -359,15 +411,44 @@ export const markWorkerAttendance = async (
   });
 };
 
-export const getWorkerAdvances = async (siteId?: string) => {
-  const where = siteId ? { siteId } : {};
+export const getWorkerAdvances = async (
+  siteId?: string,
+  options?: {
+    startDate?: string;
+    endDate?: string;
+    isDeducted?: string | boolean;
+    month?: number | string;
+    year?: number | string;
+  }
+) => {
+  const where: any = {};
+  if (siteId && siteId !== "all") where.siteId = siteId;
+  if (options?.isDeducted !== undefined && options?.isDeducted !== "all") {
+    where.isDeducted = options.isDeducted === "true" || options.isDeducted === true;
+  }
+  if (options?.startDate && options?.endDate) {
+    const start = new Date(options.startDate);
+    start.setUTCHours(0, 0, 0, 0);
+    const end = new Date(options.endDate);
+    end.setUTCHours(23, 59, 59, 999);
+    where.date = { gte: start, lte: end };
+  } else if (options?.month && options?.year) {
+    const m = Number(options.month);
+    const y = Number(options.year);
+    if (!isNaN(m) && !isNaN(y)) {
+      const start = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0));
+      const end = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
+      where.date = { gte: start, lte: end };
+    }
+  }
+
   return prisma.workerAdvance.findMany({
     where,
     include: {
-      worker: { select: { workerId: true, fullName: true, dailyWage: true } },
-      site: { select: { name: true } }
+      worker: { select: { id: true, workerId: true, fullName: true, dailyWage: true, skillTrade: true, mobileNumber: true } },
+      site: { select: { id: true, name: true } }
     },
-    orderBy: { date: 'desc' }
+    orderBy: { date: "desc" }
   });
 };
 
@@ -1492,11 +1573,38 @@ export const getWorkerById = async (id: string) => {
   });
 };
 
-export const getSiteExpenses = async (siteId?: string) => {
-  const where = siteId ? { siteId } : {};
+export const getSiteExpenses = async (
+  siteId?: string,
+  options?: {
+    startDate?: string;
+    endDate?: string;
+    category?: string;
+    month?: number | string;
+    year?: number | string;
+  }
+) => {
+  const where: any = {};
+  if (siteId && siteId !== "all") where.siteId = siteId;
+  if (options?.category && options.category !== "all") where.category = options.category;
+  if (options?.startDate && options?.endDate) {
+    const start = new Date(options.startDate);
+    start.setUTCHours(0, 0, 0, 0);
+    const end = new Date(options.endDate);
+    end.setUTCHours(23, 59, 59, 999);
+    where.date = { gte: start, lte: end };
+  } else if (options?.month && options?.year) {
+    const m = Number(options.month);
+    const y = Number(options.year);
+    if (!isNaN(m) && !isNaN(y)) {
+      const start = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0));
+      const end = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
+      where.date = { gte: start, lte: end };
+    }
+  }
+
   return prisma.siteExpense.findMany({
     where,
-    orderBy: { date: 'desc' },
+    orderBy: { date: "desc" },
     include: { site: true }
   });
 };

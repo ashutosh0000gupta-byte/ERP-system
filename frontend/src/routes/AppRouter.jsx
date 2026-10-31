@@ -131,7 +131,7 @@ export default function AppRouter() {
           <Route path="/separation"     element={<RequireAuth permission="separation:read"><Separation /></RequireAuth>} />
           <Route path="/org-management" element={<RequireAuth permission="orgmanagement:read"><OrgManagement /></RequireAuth>} />
           <Route path="/workflows"      element={<RequireAuth permission="workflows:read"><WorkflowEngine /></RequireAuth>} />
-          <Route path="/reports"        element={<RequireAuth permission="reports:read"><Reports /></RequireAuth>} />
+          <Route path="/enterprise-reports" element={<RequireAuth permission="reports:read"><Reports /></RequireAuth>} />
           <Route path="/notifications"  element={<RequireAuth permission="notifications:read"><Notifications /></RequireAuth>} />
           <Route path="/compliance"     element={<RequireAuth permission="compliance:read"><Compliance /></RequireAuth>} />
           <Route path="/security"       element={<RequireAuth permission="security:read"><SecurityAdmin /></RequireAuth>} />

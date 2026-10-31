@@ -41,7 +41,8 @@ export const getWorkerAttendance = async (req: Request, res: Response) => {
   try {
     const records = await snmrService.getWorkerAttendance(
       req.query.siteId as string,
-      req.query.date as string
+      req.query.date as string,
+      req.query as any
     );
     res.json(records);
   } catch (err: any) {
@@ -68,7 +69,10 @@ export const markWorkerAttendance = async (req: Request, res: Response) => {
 
 export const getWorkerAdvances = async (req: Request, res: Response) => {
   try {
-    const advances = await snmrService.getWorkerAdvances(req.query.siteId as string | undefined);
+    const advances = await snmrService.getWorkerAdvances(
+      req.query.siteId as string | undefined,
+      req.query as any
+    );
     res.json(advances);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -155,7 +159,10 @@ export const getWorkerById = async (req: Request, res: Response) => {
 
 export const getSiteExpenses = async (req: Request, res: Response) => {
   try {
-    const expenses = await snmrService.getSiteExpenses(req.query.siteId as string);
+    const expenses = await snmrService.getSiteExpenses(
+      req.query.siteId as string,
+      req.query as any
+    );
     res.json(expenses);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
