@@ -57,8 +57,19 @@ app.use(
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (server-to-server, curl, etc.)
+      // Allow requests with no origin (mobile native apps, server-to-server, curl, etc.)
       if (!origin) return callback(null, true);
+      // Allow Capacitor mobile app origins & localhost
+      if (
+        origin.startsWith("capacitor://") ||
+        origin.startsWith("http://localhost") ||
+        origin.startsWith("https://localhost") ||
+        origin.includes("10.226.189.152") ||
+        origin.includes("127.0.0.1")
+      ) {
+        return callback(null, true);
+      }
+      if (env.NODE_ENV !== "production") return callback(null, true);
       if (corsOrigins.includes(origin)) return callback(null, true);
       return callback(AppError.forbidden("Not allowed by CORS"));
     },

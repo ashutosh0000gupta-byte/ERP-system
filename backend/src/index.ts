@@ -7,8 +7,8 @@ import { prisma } from "./lib/prisma";
 
 const port = env.PORT;
 
-const server = app.listen(port, () => {
-  logger.info(`🚀 HRMS API listening on http://localhost:${port} (${env.NODE_ENV})`);
+const server = app.listen(port, "0.0.0.0", () => {
+  logger.info(`🚀 HRMS API listening on http://0.0.0.0:${port} (${env.NODE_ENV})`);
 });
 
 async function shutdown(signal: string) {

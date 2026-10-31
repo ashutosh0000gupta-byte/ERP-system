@@ -1,8 +1,8 @@
-// Sign-in page — supports both email/password and role-based quick access.
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth, DEMO_ACCOUNTS } from "../../context/AuthContext";
 import Spinner from "../../components/shared/Spinner";
+import { getDefaultApiUrl, setCustomApiUrl } from "../../services/api";
 
 /* ─── Feature bullets shown on the left panel ───────── */
 const FEATURES = [
@@ -24,6 +24,60 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Server Settings Modal State (for Mobile App & Network)
+  const [showServerModal, setShowServerModal] = useState(false);
+  const [serverUrlInput, setServerUrlInput] = useState(() => getDefaultApiUrl());
+  const [testStatus, setTestStatus] = useState(null); // { type: 'success' | 'error' | 'testing', msg: string }
+  const [testingConnection, setTestingConnection] = useState(false);
+
+  const testServerUrl = async (urlToTest) => {
+    const target = (urlToTest || serverUrlInput || "").trim();
+    if (!target) {
+      setTestStatus({ type: "error", msg: "Please enter a valid Server URL" });
+      return;
+    }
+    setTestingConnection(true);
+    setTestStatus({ type: "testing", msg: "Checking server connection..." });
+    try {
+      let healthUrl = target.replace(/\/+$/, "");
+      if (!healthUrl.endsWith("/api")) {
+        healthUrl += "/api";
+      }
+      healthUrl += "/health";
+
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 6000);
+      const res = await fetch(healthUrl, { signal: ctrl.signal, mode: "cors" });
+      clearTimeout(timer);
+
+      if (res.ok || res.status === 503) {
+        setTestStatus({
+          type: "success",
+          msg: "✅ Server Connected! Server reachable at " + target,
+        });
+      } else {
+        setTestStatus({
+          type: "error",
+          msg: `⚠️ Server responded with status: ${res.status}`,
+        });
+      }
+    } catch (err) {
+      setTestStatus({
+        type: "error",
+        msg: "❌ Cannot reach server! Make sure Phone & Laptop are on the same Wi-Fi / Hotspot, and backend is running.",
+      });
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
+  const saveServerUrl = () => {
+    setCustomApiUrl(serverUrlInput);
+    setShowServerModal(false);
+    setTestStatus(null);
+    setError("");
+  };
 
   const submit = async (e, creds) => {
     e?.preventDefault();
@@ -263,10 +317,205 @@ export default function Login() {
               >
                 {busy ? <Spinner size={18} /> : "Sign In →"}
               </button>
+
+              {/* Server Connection Settings trigger */}
+              <div style={{ marginTop: "8px", textAlign: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowServerModal(true);
+                    setTestStatus(null);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#0f766e",
+                    fontSize: "12.5px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                  }}
+                >
+                  ⚙️ Server Settings (सर्वर IP बदलें)
+                </button>
+                <p style={{ fontSize: "11px", color: "#94a3b8", marginTop: "1px" }}>
+                  Active Server: <code style={{ color: "#0f766e", fontWeight: 600 }}>{getDefaultApiUrl()}</code>
+                </p>
+              </div>
             </form>
           </div>
         </div>
       </div>
+
+      {/* Server Settings Modal */}
+      {showServerModal && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(13,27,42,0.65)",
+          backdropFilter: "blur(6px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "20px",
+          zIndex: 9999,
+        }}>
+          <div style={{
+            background: "#ffffff",
+            borderRadius: "20px",
+            maxWidth: "440px",
+            width: "100%",
+            padding: "26px 22px",
+            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+              <h3 style={{ fontSize: "17px", fontWeight: 800, color: "#0f172a", margin: 0 }}>
+                ⚙️ Server Connection Settings
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowServerModal(false)}
+                style={{ background: "#f1f5f9", border: "none", borderRadius: "50%", width: "30px", height: "30px", fontSize: "15px", cursor: "pointer", color: "#64748b" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ fontSize: "12px", color: "#64748b", lineHeight: 1.5, marginBottom: "14px" }}>
+              Mobile app ko laptop ke server se connect karne ke liye laptop ka Wi-Fi IP address ya online tunnel URL enter karein.
+            </p>
+
+            {/* URL Input */}
+            <div style={{ marginBottom: "12px" }}>
+              <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155", display: "block", marginBottom: "5px" }}>
+                Backend Server API URL
+              </label>
+              <input
+                type="text"
+                value={serverUrlInput}
+                onChange={(e) => setServerUrlInput(e.target.value)}
+                placeholder="http://10.226.189.152:4000/api"
+                style={{
+                  ...inputStyle,
+                  fontFamily: "monospace",
+                  fontSize: "12.5px",
+                  borderColor: "#cbd5e1",
+                }}
+              />
+            </div>
+
+            {/* Quick preset buttons */}
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const url = "http://10.226.189.152:4000/api";
+                  setServerUrlInput(url);
+                  testServerUrl(url);
+                }}
+                style={{
+                  fontSize: "11.5px",
+                  padding: "5px 10px",
+                  borderRadius: "6px",
+                  border: "1px solid #0f766e",
+                  background: "#f0fdfa",
+                  color: "#0f766e",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                📶 Wi-Fi IP (10.226.189.152)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const url = "http://localhost:4000/api";
+                  setServerUrlInput(url);
+                  testServerUrl(url);
+                }}
+                style={{
+                  fontSize: "11.5px",
+                  padding: "5px 10px",
+                  borderRadius: "6px",
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  color: "#475569",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                💻 Localhost (localhost:4000)
+              </button>
+            </div>
+
+            {/* Status banner */}
+            {testStatus && (
+              <div style={{
+                padding: "10px 12px",
+                borderRadius: "8px",
+                fontSize: "12px",
+                marginBottom: "14px",
+                background: testStatus.type === "success" ? "#ecfdf5" : testStatus.type === "error" ? "#fef2f2" : "#f0f9ff",
+                color: testStatus.type === "success" ? "#065f46" : testStatus.type === "error" ? "#991b1b" : "#075985",
+                border: `1px solid ${testStatus.type === "success" ? "#a7f3d0" : testStatus.type === "error" ? "#fecaca" : "#bae6fd"}`,
+                lineHeight: 1.4,
+              }}>
+                {testStatus.msg}
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                type="button"
+                onClick={() => testServerUrl()}
+                disabled={testingConnection}
+                style={{
+                  flex: 1,
+                  height: "40px",
+                  borderRadius: "10px",
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  color: "#334155",
+                  fontWeight: 700,
+                  fontSize: "12.5px",
+                  cursor: testingConnection ? "wait" : "pointer",
+                }}
+              >
+                {testingConnection ? "Pinging..." : "🔍 Test Connection"}
+              </button>
+              <button
+                type="button"
+                onClick={saveServerUrl}
+                style={{
+                  flex: 1,
+                  height: "40px",
+                  borderRadius: "10px",
+                  border: "none",
+                  background: "#0f766e",
+                  color: "#ffffff",
+                  fontWeight: 700,
+                  fontSize: "12.5px",
+                  cursor: "pointer",
+                }}
+              >
+                💾 Save & Connect
+              </button>
+            </div>
+
+            {/* Checklist / Help */}
+            <div style={{ marginTop: "14px", padding: "10px 12px", background: "#f8fafc", borderRadius: "10px", fontSize: "11px", color: "#64748b" }}>
+              <p style={{ fontWeight: 700, color: "#334155", marginBottom: "3px" }}>📌 Important for Mobile Phone:</p>
+              <p style={{ margin: "2px 0" }}>1. Mobile aur Laptop dono <strong>same Wi-Fi / Hotspot</strong> se connect hone chahiye.</p>
+              <p style={{ margin: "2px 0" }}>2. Laptop me backend chalu hona chahiye (port 4000).</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Responsive: hide left panel on narrow screens ── */}
       <style>{`
