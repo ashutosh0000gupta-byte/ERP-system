@@ -1,0 +1,9 @@
+{
+  "appId": "com.snmrfabindia.erp",
+  "appName": "SNMR ERP",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "short_name": "SNMR ERP",
+  "name": "SNMR FAB INDIA - Mobile ERP & Daily Site Operations",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/mobile",
+  "background_color": "#0f172a",
+  "theme_color": "#0f766e",
+  "display": "standalone",
+  "orientation": "portrait"
+}

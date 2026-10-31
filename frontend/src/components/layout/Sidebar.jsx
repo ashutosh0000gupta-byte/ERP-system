@@ -6,7 +6,7 @@ import {
   GraduationCap, Laptop, CheckSquare, Receipt, Plane, Home, Headphones,
   FileText, LogOut, Building2, GitBranch, BarChart3, Bell, Shield, UserPlus,
   ClipboardList, ChevronDown, UserRound, CreditCard, Briefcase, ClipboardCheck,
-  HelpCircle, FileSpreadsheet
+  HelpCircle, FileSpreadsheet, Smartphone
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -39,6 +39,7 @@ const NAV_GROUPS = [
     category: "SYSTEM",
     items: [
       { icon: HelpCircle, title: "Help & Manual", href: "/help", permission: "dashboard" },
+      { icon: Smartphone, title: "Mobile Quick App", href: "/mobile", permission: "dashboard" },
       { icon: BarChart3, title: "Reports", href: "/reports", permission: "dashboard" },
       { icon: FileText, title: "Documents", href: "/documents", permission: "dashboard" },
       { icon: UserCheck, title: "Users & Roles", href: "/users", permission: "dashboard" },

@@ -1618,6 +1618,7 @@ export const createSiteExpense = async (data: any) => {
       amount: data.amount,
       description: data.description,
       recordedBy: data.recordedBy,
+      receiptUrl: data.receiptUrl || null,
     },
     include: { site: true }
   });

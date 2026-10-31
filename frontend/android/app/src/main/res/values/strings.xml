@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SNMR ERP</string>
+    <string name="title_activity_main">SNMR ERP</string>
+    <string name="package_name">com.snmrfabindia.erp</string>
+    <string name="custom_url_scheme">com.snmrfabindia.erp</string>
+</resources>

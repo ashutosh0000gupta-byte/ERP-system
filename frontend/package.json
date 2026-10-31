@@ -12,6 +12,9 @@
     "start": "npx serve -s dist -l ${PORT:-4173}"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/cli": "^8.6.0",
+    "@capacitor/core": "^8.6.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.101.2",
     "axios": "^1.18.1",

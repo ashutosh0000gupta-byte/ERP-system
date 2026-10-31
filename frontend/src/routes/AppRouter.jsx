@@ -20,6 +20,7 @@ import DocumentsList from "../pages/Documents/DocumentsList";
 import UsersList from "../pages/Users/UsersList";
 import ReportsPage from "../pages/Reports/ReportsPage";
 import SettingsPage from "../pages/Settings/SettingsPage";
+import MobileApp from "../pages/Mobile/MobileApp";
 
 // ── Lazily loaded modules ────────────────────────────────────────────────────
 const Employees = lazy(() => import("../pages/Employees/Employees"));
@@ -87,6 +88,7 @@ export default function AppRouter() {
 
           {/* Authenticated — dashboard chosen by the logged-in user's real role */}
           <Route path="/" element={<RequireAuth><DashboardRouter /></RequireAuth>} />
+          <Route path="/mobile" element={<RequireAuth><MobileApp /></RequireAuth>} />
 
           {/* Core HR */}
           <Route path="/workers" element={<RequireAuth><Workers /></RequireAuth>} />
