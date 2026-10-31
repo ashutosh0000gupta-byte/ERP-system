@@ -70,7 +70,7 @@ app.use(
         return callback(null, true);
       }
       if (env.NODE_ENV !== "production") return callback(null, true);
-      if (corsOrigins.includes(origin)) return callback(null, true);
+      if (corsOrigins.includes("*") || corsOrigins.includes(origin)) return callback(null, true);
       return callback(AppError.forbidden("Not allowed by CORS"));
     },
     credentials: true,
