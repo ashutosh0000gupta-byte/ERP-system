@@ -398,7 +398,7 @@ export default function Login() {
                 type="text"
                 value={serverUrlInput}
                 onChange={(e) => setServerUrlInput(e.target.value)}
-                placeholder="http://10.226.189.152:4000/api"
+                placeholder="https://erp-system-8q4z.onrender.com/api"
                 style={{
                   ...inputStyle,
                   fontFamily: "monospace",
@@ -413,7 +413,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => {
-                  const url = "http://10.226.189.152:4000/api";
+                  const url = "https://erp-system-8q4z.onrender.com/api";
                   setServerUrlInput(url);
                   testServerUrl(url);
                 }}
@@ -428,7 +428,27 @@ export default function Login() {
                   cursor: "pointer",
                 }}
               >
-                📶 Wi-Fi IP (10.226.189.152)
+                ☁️ Render Cloud (erp-system-8q4z)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const url = "http://10.226.189.152:4000/api";
+                  setServerUrlInput(url);
+                  testServerUrl(url);
+                }}
+                style={{
+                  fontSize: "11.5px",
+                  padding: "5px 10px",
+                  borderRadius: "6px",
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  color: "#475569",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                📶 Laptop Wi-Fi
               </button>
               <button
                 type="button"
@@ -448,7 +468,7 @@ export default function Login() {
                   cursor: "pointer",
                 }}
               >
-                💻 Localhost (localhost:4000)
+                💻 Localhost
               </button>
             </div>
 

@@ -15,16 +15,17 @@ import axios from "axios";
 
 export const getDefaultApiUrl = () => {
   const saved = localStorage.getItem("hrms_api_url");
-  if (saved && saved.trim()) return saved.trim();
+  if (saved && saved.trim() && !saved.includes("localhost") && !saved.includes("10.226.189.152")) {
+    return saved.trim();
+  }
 
-  // If running in Capacitor/Android or mobile phone
   const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl && envUrl.trim() && !envUrl.includes("localhost")) {
+  if (envUrl && envUrl.trim() && !envUrl.includes("localhost") && !envUrl.includes("10.226.189.152")) {
     return envUrl.trim();
   }
 
-  // Default to laptop's Wi-Fi network IP so mobile app can connect
-  return "http://10.226.189.152:4000/api";
+  // Default to live Render cloud backend
+  return "https://erp-system-8q4z.onrender.com/api";
 };
 
 export const setCustomApiUrl = (url) => {
