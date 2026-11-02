@@ -183,7 +183,51 @@ export default function Login() {
         padding: "40px 24px",
         background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
         overflowY: "auto",
+        position: "relative",
       }}>
+        {/* Side Server Settings Button (Top-Right Corner) */}
+        <button
+          type="button"
+          onClick={() => {
+            setShowServerModal(true);
+            setTestStatus(null);
+          }}
+          title="Server Connection Settings"
+          style={{
+            position: "absolute",
+            top: "20px",
+            right: "24px",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            background: "rgba(255, 255, 255, 0.85)",
+            backdropFilter: "blur(8px)",
+            border: "1px solid #cbd5e1",
+            borderRadius: "10px",
+            padding: "7px 12px",
+            fontSize: "12px",
+            fontWeight: "600",
+            color: "#475569",
+            cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+            transition: "all 0.15s ease",
+            zIndex: 10
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#ffffff";
+            e.currentTarget.style.borderColor = "#0f766e";
+            e.currentTarget.style.color = "#0f766e";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "rgba(255, 255, 255, 0.85)";
+            e.currentTarget.style.borderColor = "#cbd5e1";
+            e.currentTarget.style.color = "#475569";
+          }}
+        >
+          <span>⚙️</span>
+          <span>Server Settings</span>
+        </button>
+
         <div style={{
           width: "100%",
           maxWidth: "420px",
@@ -317,35 +361,6 @@ export default function Login() {
               >
                 {busy ? <Spinner size={18} /> : "Sign In →"}
               </button>
-
-              {/* Server Connection Settings trigger */}
-              <div style={{ marginTop: "8px", textAlign: "center" }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowServerModal(true);
-                    setTestStatus(null);
-                  }}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "#0f766e",
-                    fontSize: "12.5px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "5px",
-                    padding: "6px 12px",
-                    borderRadius: "8px",
-                  }}
-                >
-                  ⚙️ Server Settings (सर्वर IP बदलें)
-                </button>
-                <p style={{ fontSize: "11px", color: "#94a3b8", marginTop: "1px" }}>
-                  Active Server: <code style={{ color: "#0f766e", fontWeight: 600 }}>{getDefaultApiUrl()}</code>
-                </p>
-              </div>
             </form>
           </div>
         </div>
@@ -386,7 +401,7 @@ export default function Login() {
             </div>
 
             <p style={{ fontSize: "12px", color: "#64748b", lineHeight: 1.5, marginBottom: "14px" }}>
-              Mobile app ko laptop ke server se connect karne ke liye laptop ka Wi-Fi IP address ya online tunnel URL enter karein.
+              Configure the backend server API URL to connect this app to the cloud server or a local development backend.
             </p>
 
             {/* URL Input */}
@@ -529,9 +544,9 @@ export default function Login() {
 
             {/* Checklist / Help */}
             <div style={{ marginTop: "14px", padding: "10px 12px", background: "#f8fafc", borderRadius: "10px", fontSize: "11px", color: "#64748b" }}>
-              <p style={{ fontWeight: 700, color: "#334155", marginBottom: "3px" }}>📌 Important for Mobile Phone:</p>
-              <p style={{ margin: "2px 0" }}>1. Mobile aur Laptop dono <strong>same Wi-Fi / Hotspot</strong> se connect hone chahiye.</p>
-              <p style={{ margin: "2px 0" }}>2. Laptop me backend chalu hona chahiye (port 4000).</p>
+              <p style={{ fontWeight: 700, color: "#334155", marginBottom: "3px" }}>📌 Connection Notes:</p>
+              <p style={{ margin: "2px 0" }}>1. By default, the app is connected to the live Render Cloud backend 24x7.</p>
+              <p style={{ margin: "2px 0" }}>2. If testing locally, ensure phone and laptop are on the same Wi-Fi network.</p>
             </div>
           </div>
         </div>

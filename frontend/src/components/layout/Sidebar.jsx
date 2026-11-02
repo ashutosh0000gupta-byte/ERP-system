@@ -39,7 +39,6 @@ const NAV_GROUPS = [
     category: "SYSTEM",
     items: [
       { icon: HelpCircle, title: "Help & Manual", href: "/help", permission: "dashboard" },
-      { icon: Smartphone, title: "Mobile Quick App", href: "/mobile", permission: "dashboard" },
       { icon: BarChart3, title: "Reports", href: "/reports", permission: "dashboard" },
       { icon: FileText, title: "Documents", href: "/documents", permission: "dashboard" },
       { icon: UserCheck, title: "Users & Roles", href: "/users", permission: "dashboard" },

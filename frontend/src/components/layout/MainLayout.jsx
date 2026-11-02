@@ -106,7 +106,7 @@ export default function MainLayout({ children }) {
             flexShrink: 0
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span>🖥️ Desktop Mode (फ़ुल स्क्रीन)</span>
+              <span>🖥️ Desktop View Active</span>
             </div>
             <button
               onClick={() => {

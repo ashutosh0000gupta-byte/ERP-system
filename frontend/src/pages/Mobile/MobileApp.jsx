@@ -274,7 +274,7 @@ export default function MobileApp() {
     triggerHaptic(20);
     await Promise.all([loadInitialData(), refreshSiteData(), loadNotifications()]);
     setRefreshing(false);
-    showToast("Data Synced Fresh! 🔄");
+    showToast("Data refreshed successfully! 🔄");
   };
 
   // Handle Photo Capture for Bill / Receipt
@@ -283,7 +283,7 @@ export default function MobileApp() {
     if (!file) return;
 
     if (file.size > 8 * 1024 * 1024) {
-      alert("Photo size 8MB se kam honi chahiye");
+      alert("Photo size must be less than 8MB");
       return;
     }
 
@@ -291,7 +291,7 @@ export default function MobileApp() {
     reader.onload = (event) => {
       const base64 = event.target.result;
       setExpenseForm((prev) => ({ ...prev, receiptUrl: base64 }));
-      showToast("Bill photo attach ho gayi! 📸");
+      showToast("Bill photo attached successfully! 📸");
     };
     reader.readAsDataURL(file);
   };
@@ -300,7 +300,7 @@ export default function MobileApp() {
   const handleSaveExpense = async (e) => {
     e.preventDefault();
     if (!expenseForm.amount || Number(expenseForm.amount) <= 0) {
-      alert("Kripya valid amount dalein.");
+      alert("Please enter a valid amount.");
       return;
     }
     setSubmittingExpense(true);
@@ -314,7 +314,7 @@ export default function MobileApp() {
         receiptUrl: expenseForm.receiptUrl || null
       });
 
-      showToast(`₹${expenseForm.amount} ka kharcha darj hua!`);
+      showToast(`Expense of ₹${expenseForm.amount} recorded successfully!`);
       setExpenseForm({
         siteId: selectedSiteId,
         date: todayStr,
@@ -326,7 +326,7 @@ export default function MobileApp() {
       refreshSiteData();
     } catch (err) {
       console.error("Expense save failed", err);
-      alert("Kharch save nahi hua: " + (err.response?.data?.error || err.message));
+      alert("Failed to save expense: " + (err.response?.data?.error || err.message));
     } finally {
       setSubmittingExpense(false);
     }
@@ -360,7 +360,7 @@ export default function MobileApp() {
       }));
     } catch (err) {
       console.error("Attendance mark failed", err);
-      alert("Attendance save nahi hui: " + (err.response?.data?.error || err.message));
+      alert("Failed to save attendance: " + (err.response?.data?.error || err.message));
     } finally {
       setSavingAttendanceWorkerId(null);
     }
@@ -371,7 +371,7 @@ export default function MobileApp() {
     const siteWorkers = workers.filter((w) => w.siteId === selectedSiteId || !w.siteId);
     if (!siteWorkers.length) return;
 
-    if (!window.confirm(`Kya aap sabhi ${siteWorkers.length} workers ko Present mark karna chahte hain?`)) {
+    if (!window.confirm(`Are you sure you want to mark all ${siteWorkers.length} workers as Present?`)) {
       return;
     }
 
@@ -390,7 +390,7 @@ export default function MobileApp() {
           })
         )
       );
-      showToast(`Sabhi ${siteWorkers.length} workers Present mark ho gaye! ✅`);
+      showToast(`All ${siteWorkers.length} workers marked Present! ✅`);
       refreshSiteData();
     } catch (err) {
       alert("Bulk attendance error: " + err.message);
@@ -403,11 +403,11 @@ export default function MobileApp() {
   const handleSaveAdvance = async (e) => {
     e.preventDefault();
     if (!advanceForm.workerId) {
-      alert("Kripya worker select karein.");
+      alert("Please select a worker.");
       return;
     }
     if (!advanceForm.amount || Number(advanceForm.amount) <= 0) {
-      alert("Kripya sahi advance amount dalein.");
+      alert("Please enter a valid advance amount.");
       return;
     }
 
@@ -422,7 +422,7 @@ export default function MobileApp() {
       });
 
       const workerObj = workers.find((w) => w.id === advanceForm.workerId);
-      showToast(`${workerObj?.fullName || "Worker"} ko ₹${advanceForm.amount} advance darj hua!`);
+      showToast(`Advance of ₹${advanceForm.amount} issued to ${workerObj?.fullName || "Worker"}!`);
 
       setAdvanceForm({
         workerId: "",
@@ -434,7 +434,7 @@ export default function MobileApp() {
       refreshSiteData();
     } catch (err) {
       console.error("Advance save failed", err);
-      alert("Advance record nahi hua: " + (err.response?.data?.error || err.message));
+      alert("Failed to record advance: " + (err.response?.data?.error || err.message));
     } finally {
       setSubmittingAdvance(false);
     }
@@ -444,7 +444,7 @@ export default function MobileApp() {
   const handleCreateWorker = async (e) => {
     e.preventDefault();
     if (!newWorkerForm.fullName.trim()) {
-      alert("Worker ka naam zaroori hai.");
+      alert("Worker name is required.");
       return;
     }
 
@@ -461,7 +461,7 @@ export default function MobileApp() {
         joiningDate: new Date().toISOString()
       });
 
-      showToast(`Naya worker ${res.data.fullName} register ho gaya! 👷`);
+      showToast(`New worker ${res.data.fullName} registered successfully! 👷`);
       setIsAddWorkerOpen(false);
       setNewWorkerForm({
         fullName: "",
@@ -477,7 +477,7 @@ export default function MobileApp() {
       setWorkers(Array.isArray(wRes.data) ? wRes.data : []);
     } catch (err) {
       console.error("Worker create failed", err);
-      alert("Worker add karne me dikkat: " + (err.response?.data?.error || err.message));
+      alert("Failed to add worker: " + (err.response?.data?.error || err.message));
     } finally {
       setSubmittingWorker(false);
     }
@@ -494,7 +494,7 @@ export default function MobileApp() {
         endDate: leaveForm.endDate,
         reason: leaveForm.reason || "Personal Leave"
       });
-      showToast("Chhutti ki arzi submit ho gayi! 📝");
+      showToast("Leave request submitted successfully! 📝");
       setIsLeaveModalOpen(false);
       setLeaveForm({
         leaveType: "Casual",
@@ -503,8 +503,7 @@ export default function MobileApp() {
         reason: ""
       });
     } catch (err) {
-      // If endpoint differs, friendly notification
-      showToast("Leave request sent for manager approval! 📝");
+      showToast("Leave request submitted for approval! 📝");
       setIsLeaveModalOpen(false);
     } finally {
       setSubmittingLeave(false);
@@ -524,11 +523,11 @@ export default function MobileApp() {
         dueDate: taskForm.dueDate,
         siteId: selectedSiteId
       });
-      showToast("Naya site task jod diya gaya! 📋");
+      showToast("New site task added successfully! 📋");
       setIsTaskModalOpen(false);
       setTaskForm({ title: "", priority: "Medium", dueDate: todayStr, description: "" });
     } catch (err) {
-      showToast("Task note saved to site records! 📋");
+      showToast("Task saved to site records! 📋");
       setIsTaskModalOpen(false);
     } finally {
       setSubmittingTask(false);
@@ -540,7 +539,7 @@ export default function MobileApp() {
     const target = (serverUrlInput || "").trim();
     if (!target) return;
     setTestingServer(true);
-    setServerTestStatus({ type: "testing", msg: "Server ping kar rahe hain..." });
+    setServerTestStatus({ type: "testing", msg: "Pinging backend server..." });
     try {
       let healthUrl = target.replace(/\/+$/, "");
       if (!healthUrl.endsWith("/api")) healthUrl += "/api";
@@ -552,12 +551,12 @@ export default function MobileApp() {
       clearTimeout(timer);
 
       if (res.ok || res.status === 503) {
-        setServerTestStatus({ type: "success", msg: "✅ Server Connected! Server online hai." });
+        setServerTestStatus({ type: "success", msg: "✅ Server Connected! Server is online." });
       } else {
         setServerTestStatus({ type: "error", msg: `⚠️ Server Status: ${res.status}` });
       }
     } catch (err) {
-      setServerTestStatus({ type: "error", msg: "❌ Server reach nahi hua. URL check karein." });
+      setServerTestStatus({ type: "error", msg: "❌ Cannot reach server. Please check the URL." });
     } finally {
       setTestingServer(false);
     }
@@ -566,7 +565,7 @@ export default function MobileApp() {
   const saveServerUrl = () => {
     setCustomApiUrl(serverUrlInput);
     setIsServerModalOpen(false);
-    showToast("Server URL updated! App reload ho raha hai...");
+    showToast("Server URL updated! Reloading app...");
     setTimeout(() => window.location.reload(), 600);
   };
 
@@ -676,7 +675,7 @@ export default function MobileApp() {
       {/* ── Main Scrollable Body ─────────────────────────────────────────── */}
       <main style={mStyles.scrollArea}>
         {/* ══════════════════════════════════════════════════════════════════
-            TAB 1: HOME / DASHBOARD (आज का खाता & Quick Functions)
+            TAB 1: HOME / DASHBOARD (Overview & Quick Functions)
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "home" && (
           <div style={mStyles.contentContainer}>
@@ -684,10 +683,10 @@ export default function MobileApp() {
             <div style={mStyles.dateBanner}>
               <div style={{ flex: 1 }}>
                 <p style={mStyles.dateBannerSub}>
-                  Namaste, {user?.name || user?.email?.split("@")[0] || "Team Member"} 👋
+                  Welcome, {user?.name || user?.email?.split("@")[0] || "Team Member"} 👋
                 </p>
                 <h2 style={mStyles.dateBannerTitle}>
-                  {new Date().toLocaleDateString("hi-IN", {
+                  {new Date().toLocaleDateString("en-US", {
                     weekday: "long",
                     day: "numeric",
                     month: "long"
@@ -711,7 +710,7 @@ export default function MobileApp() {
                   <span style={mStyles.tapHint}>Tap →</span>
                 </div>
                 <span style={mStyles.statValue}>₹{todaySummary.totalExpense.toLocaleString("en-IN")}</span>
-                <span style={mStyles.statLabel}>Aaj Ka Kharch</span>
+                <span style={mStyles.statLabel}>Today's Expenses</span>
               </div>
 
               <div
@@ -741,7 +740,7 @@ export default function MobileApp() {
                   <span style={mStyles.tapHint}>Tap →</span>
                 </div>
                 <span style={mStyles.statValue}>₹{todaySummary.totalAdvance.toLocaleString("en-IN")}</span>
-                <span style={mStyles.statLabel}>Aaj Ka Advance</span>
+                <span style={mStyles.statLabel}>Today's Advances</span>
               </div>
 
               <div
@@ -760,17 +759,17 @@ export default function MobileApp() {
               </div>
             </div>
 
-            {/* ⚡ Quick Functions Section (तुरंत काम) ── Prominent Grid */}
+            {/* ⚡ Quick Functions Section ── Prominent 8-Card Grid */}
             <div style={mStyles.sectionHeaderRow}>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <div style={mStyles.pulseDot} />
-                <h3 style={mStyles.sectionTitle}>⚡ Quick Functions (तुरंत काम)</h3>
+                <h3 style={mStyles.sectionTitle}>⚡ Quick Functions</h3>
               </div>
               <span style={{ fontSize: "11px", fontWeight: "700", color: "#0f766e" }}>1-Tap Action</span>
             </div>
 
             <div style={mStyles.quickActionGrid8}>
-              {/* 1: Hajiri Punch */}
+              {/* 1: Attendance Punch */}
               <button
                 style={{ ...mStyles.quickTileCard, background: "#f0fdf4", borderColor: "#86efac" }}
                 onClick={() => {
@@ -781,11 +780,11 @@ export default function MobileApp() {
                 <div style={{ ...mStyles.tileIconCircle, background: "#16a34a" }}>
                   <CalendarCheck size={19} color="#fff" />
                 </div>
-                <h4 style={mStyles.tileTitle}>Turant Hajiri</h4>
+                <h4 style={mStyles.tileTitle}>Mark Attendance</h4>
                 <p style={mStyles.tileSub}>Daily punches & OT</p>
               </button>
 
-              {/* 2: Naya Kharcha */}
+              {/* 2: Add Expense */}
               <button
                 style={{ ...mStyles.quickTileCard, background: "#fff1f2", borderColor: "#fca5a5" }}
                 onClick={() => {
@@ -796,8 +795,8 @@ export default function MobileApp() {
                 <div style={{ ...mStyles.tileIconCircle, background: "#e11d48" }}>
                   <Camera size={19} color="#fff" />
                 </div>
-                <h4 style={mStyles.tileTitle}>Kharch + Bill</h4>
-                <p style={mStyles.tileSub}>Material, Diesel, Chai</p>
+                <h4 style={mStyles.tileTitle}>Add Expense</h4>
+                <p style={mStyles.tileSub}>Material, fuel, bills</p>
               </button>
 
               {/* 3: Worker Advance */}
@@ -811,11 +810,11 @@ export default function MobileApp() {
                 <div style={{ ...mStyles.tileIconCircle, background: "#7c3aed" }}>
                   <CreditCard size={19} color="#fff" />
                 </div>
-                <h4 style={mStyles.tileTitle}>Cash Advance</h4>
-                <p style={mStyles.tileSub}>Worker payment voucher</p>
+                <h4 style={mStyles.tileTitle}>Issue Advance</h4>
+                <p style={mStyles.tileSub}>Worker cash payment</p>
               </button>
 
-              {/* 4: Naya Worker */}
+              {/* 4: Add Worker */}
               <button
                 style={{ ...mStyles.quickTileCard, background: "#fffbeb", borderColor: "#fde047" }}
                 onClick={() => {
@@ -826,11 +825,11 @@ export default function MobileApp() {
                 <div style={{ ...mStyles.tileIconCircle, background: "#d97706" }}>
                   <Plus size={20} color="#fff" />
                 </div>
-                <h4 style={mStyles.tileTitle}>Naya Worker</h4>
-                <p style={mStyles.tileSub}>15-sec site onboarding</p>
+                <h4 style={mStyles.tileTitle}>Add Worker</h4>
+                <p style={mStyles.tileSub}>Fast site registration</p>
               </button>
 
-              {/* 5: Chhutti Apply */}
+              {/* 5: Apply Leave */}
               <button
                 style={{ ...mStyles.quickTileCard, background: "#eff6ff", borderColor: "#93c5fd" }}
                 onClick={() => {
@@ -841,11 +840,11 @@ export default function MobileApp() {
                 <div style={{ ...mStyles.tileIconCircle, background: "#2563eb" }}>
                   <FileText size={19} color="#fff" />
                 </div>
-                <h4 style={mStyles.tileTitle}>Leave Apply</h4>
-                <p style={mStyles.tileSub}>Quick leave application</p>
+                <h4 style={mStyles.tileTitle}>Apply Leave</h4>
+                <p style={mStyles.tileSub}>Staff leave request</p>
               </button>
 
-              {/* 6: Naya Task */}
+              {/* 6: Add Task */}
               <button
                 style={{ ...mStyles.quickTileCard, background: "#f5f3ff", borderColor: "#c4b5fd" }}
                 onClick={() => {
@@ -871,8 +870,8 @@ export default function MobileApp() {
                 <div style={{ ...mStyles.tileIconCircle, background: "#0f766e" }}>
                   <Phone size={19} color="#fff" />
                 </div>
-                <h4 style={mStyles.tileTitle}>Direct Call</h4>
-                <p style={mStyles.tileSub}>Worker WhatsApp / Phone</p>
+                <h4 style={mStyles.tileTitle}>Worker Contacts</h4>
+                <p style={mStyles.tileSub}>Direct phone & WhatsApp</p>
               </button>
 
               {/* 8: Quick Sync Data */}
@@ -891,16 +890,16 @@ export default function MobileApp() {
             {/* Recent Expenses List */}
             <div style={{ marginTop: "24px" }}>
               <div style={mStyles.sectionHeaderRow}>
-                <h3 style={mStyles.sectionTitle}>Haal Ke Site Kharch</h3>
+                <h3 style={mStyles.sectionTitle}>Recent Site Expenses</h3>
                 <button style={mStyles.seeAllBtn} onClick={() => setActiveTab("expenses")}>
-                  Poora Dekhein →
+                  View All →
                 </button>
               </div>
 
               {recentExpenses.length === 0 ? (
                 <div style={mStyles.emptyStateBox}>
                   <Receipt size={32} color="#cbd5e1" />
-                  <p style={mStyles.emptyText}>Is site par abhi koi kharcha darj nahi hai.</p>
+                  <p style={mStyles.emptyText}>No expenses recorded for this site yet.</p>
                 </div>
               ) : (
                 <div style={mStyles.recentList}>
@@ -911,7 +910,7 @@ export default function MobileApp() {
                         <div>
                           <p style={mStyles.recentItemTitle}>{exp.description || exp.category}</p>
                           <p style={mStyles.recentItemDate}>
-                            {exp.date ? new Date(exp.date).toLocaleDateString("hi-IN") : todayStr}
+                            {exp.date ? new Date(exp.date).toLocaleDateString("en-US") : todayStr}
                           </p>
                         </div>
                       </div>
@@ -937,23 +936,23 @@ export default function MobileApp() {
         )}
 
         {/* ══════════════════════════════════════════════════════════════════
-            TAB 2: DAILY EXPENSES (खर्चा एंट्री & Bill Photo)
+            TAB 2: DAILY EXPENSES (Record Expense & Bill Photo)
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "expenses" && (
           <div style={mStyles.contentContainer}>
             <div style={mStyles.pageHeader}>
               <div>
-                <h2 style={mStyles.pageTitle}>Daily Site Kharch</h2>
-                <p style={mStyles.pageSubtitle}>Bill photo aur category ke sath turant kharcha dalein</p>
+                <h2 style={mStyles.pageTitle}>Daily Site Expenses</h2>
+                <p style={mStyles.pageSubtitle}>Record daily site expenses with bill photos & categories</p>
               </div>
             </div>
 
             {/* New Expense Entry Card */}
             <form onSubmit={handleSaveExpense} style={mStyles.formCard}>
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Kharch Category</label>
+                <label style={mStyles.inputLabel}>Expense Category</label>
                 <div style={mStyles.categoryChipRow}>
-                  {["Material", "Diesel/Gaadi", "Khana/Chai", "Petty Cash", "Tools", "Labour", "Misc"].map(
+                  {["Material", "Fuel / Vehicle", "Food / Tea", "Petty Cash", "Tools / Hardware", "Labor", "Miscellaneous"].map(
                     (cat) => (
                       <button
                         type="button"
@@ -978,7 +977,7 @@ export default function MobileApp() {
 
               {/* Amount Input */}
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Rashi (Amount ₹) *</label>
+                <label style={mStyles.inputLabel}>Amount (₹) *</label>
                 <div style={mStyles.amountInputWrap}>
                   <span style={mStyles.rupeeSymbol}>₹</span>
                   <input
@@ -1014,10 +1013,10 @@ export default function MobileApp() {
 
               {/* Description */}
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Vivaran (Description / Shop Name)</label>
+                <label style={mStyles.inputLabel}>Description / Vendor Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. 10 bags cement, JCB diesel, Chai nasta"
+                  placeholder="e.g. 10 bags cement, JCB diesel, Refreshments"
                   style={mStyles.textInput}
                   value={expenseForm.description}
                   onChange={(e) => setExpenseForm((p) => ({ ...p, description: e.target.value }))}
@@ -1026,7 +1025,7 @@ export default function MobileApp() {
 
               {/* Date */}
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Tarikh (Date)</label>
+                <label style={mStyles.inputLabel}>Date</label>
                 <input
                   type="date"
                   style={mStyles.textInput}
@@ -1037,7 +1036,7 @@ export default function MobileApp() {
 
               {/* Camera / Receipt Upload */}
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Bill / Receipt Photo (Camera se kheencho)</label>
+                <label style={mStyles.inputLabel}>Bill / Receipt Photo (Capture or Upload)</label>
                 {expenseForm.receiptUrl ? (
                   <div style={mStyles.receiptThumbnailWrap}>
                     <img
@@ -1050,13 +1049,13 @@ export default function MobileApp() {
                       style={mStyles.removePhotoBtn}
                       onClick={() => setExpenseForm((p) => ({ ...p, receiptUrl: "" }))}
                     >
-                      <Trash2 size={16} color="#ef4444" /> Photo Hatayein
+                      <Trash2 size={16} color="#ef4444" /> Remove Photo
                     </button>
                   </div>
                 ) : (
                   <label style={mStyles.cameraUploadBox}>
                     <Camera size={26} color="#0f766e" />
-                    <span style={mStyles.cameraUploadText}>📷 Camera se Bill ki Photo Khinchein</span>
+                    <span style={mStyles.cameraUploadText}>📷 Capture or Upload Bill / Receipt</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -1074,12 +1073,12 @@ export default function MobileApp() {
                 style={mStyles.submitBigBtn}
                 disabled={submittingExpense || !expenseForm.amount}
               >
-                {submittingExpense ? "Save Ho Raha Hai..." : "✓ Kharch Save Karein"}
+                {submittingExpense ? "Saving Expense..." : "✓ Save Expense"}
               </button>
             </form>
 
             {/* List of Recent Expenses */}
-            <h3 style={{ ...mStyles.sectionTitle, marginTop: "24px" }}>Site Ke Haal Ke Kharch</h3>
+            <h3 style={{ ...mStyles.sectionTitle, marginTop: "24px" }}>Recent Expenses for Site</h3>
             <div style={mStyles.recentList}>
               {recentExpenses.map((exp) => (
                 <div key={exp.id} style={mStyles.recentItem}>
@@ -1088,7 +1087,7 @@ export default function MobileApp() {
                     <div>
                       <p style={mStyles.recentItemTitle}>{exp.description || exp.category}</p>
                       <p style={mStyles.recentItemDate}>
-                        {exp.date ? new Date(exp.date).toLocaleDateString("hi-IN") : todayStr}
+                        {exp.date ? new Date(exp.date).toLocaleDateString("en-US") : todayStr}
                       </p>
                     </div>
                   </div>
@@ -1101,7 +1100,7 @@ export default function MobileApp() {
                         style={mStyles.viewBillBtn}
                         onClick={() => setPreviewImage(exp.receiptUrl)}
                       >
-                        📷 Bill Dekhein
+                        📷 View Bill
                       </button>
                     )}
                   </div>
@@ -1112,14 +1111,14 @@ export default function MobileApp() {
         )}
 
         {/* ══════════════════════════════════════════════════════════════════
-            TAB 3: ATTENDANCE / HAJIRI (हाजिरी & ओवर-टाइम)
+            TAB 3: ATTENDANCE (Daily Punches & Overtime)
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "attendance" && (
           <div style={mStyles.contentContainer}>
             <div style={mStyles.pageHeader}>
               <div>
-                <h2 style={mStyles.pageTitle}>Site Hajiri & OT</h2>
-                <p style={mStyles.pageSubtitle}>1-tap me Present, Absent aur Overtime lagayein</p>
+                <h2 style={mStyles.pageTitle}>Site Attendance & OT</h2>
+                <p style={mStyles.pageSubtitle}>Mark Present, Half Day, Absent & Overtime with 1 tap</p>
               </div>
             </div>
 
@@ -1133,7 +1132,7 @@ export default function MobileApp() {
               />
 
               <button style={mStyles.markAllPresentBtn} onClick={handleMarkAllPresent}>
-                <Check size={14} /> Sabhi Present
+                <Check size={14} /> Mark All Present
               </button>
             </div>
 
@@ -1142,7 +1141,7 @@ export default function MobileApp() {
               <Search size={16} color="#94a3b8" />
               <input
                 type="text"
-                placeholder="Worker ka naam ya ID khojein..."
+                placeholder="Search worker by name or ID..."
                 style={mStyles.searchInput}
                 value={workerSearch}
                 onChange={(e) => setWorkerSearch(e.target.value)}
@@ -1154,7 +1153,7 @@ export default function MobileApp() {
               {filteredWorkers.length === 0 ? (
                 <div style={mStyles.emptyStateBox}>
                   <Users size={32} color="#cbd5e1" />
-                  <p style={mStyles.emptyText}>Is site par koi worker nahi mila.</p>
+                  <p style={mStyles.emptyText}>No workers found for this site.</p>
                 </div>
               ) : (
                 filteredWorkers.map((w) => {
@@ -1250,28 +1249,28 @@ export default function MobileApp() {
         )}
 
         {/* ══════════════════════════════════════════════════════════════════
-            TAB 4: ADVANCES (एडवांस एंट्री)
+            TAB 4: ADVANCES (Cash Advances Management)
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "advances" && (
           <div style={mStyles.contentContainer}>
             <div style={mStyles.pageHeader}>
               <div>
-                <h2 style={mStyles.pageTitle}>Worker Advance</h2>
-                <p style={mStyles.pageSubtitle}>Worker ko diye gaye advance ka record darj karein</p>
+                <h2 style={mStyles.pageTitle}>Worker Advances</h2>
+                <p style={mStyles.pageSubtitle}>Record cash advances issued to site workers</p>
               </div>
             </div>
 
             {/* Advance Entry Form */}
             <form onSubmit={handleSaveAdvance} style={mStyles.formCard}>
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Worker Chunein</label>
+                <label style={mStyles.inputLabel}>Select Worker</label>
                 <select
                   style={mStyles.textInput}
                   value={advanceForm.workerId}
                   onChange={(e) => setAdvanceForm((p) => ({ ...p, workerId: e.target.value }))}
                   required
                 >
-                  <option value="">-- Worker Select Karein --</option>
+                  <option value="">-- Select Worker --</option>
                   {filteredWorkers.map((w) => (
                     <option key={w.id} value={w.id}>
                       {w.fullName} ({w.workerId || "ID"} • {w.skillTrade})
@@ -1282,7 +1281,7 @@ export default function MobileApp() {
 
               {/* Amount Input */}
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Advance Amount (₹)</label>
+                <label style={mStyles.inputLabel}>Advance Amount (₹) *</label>
                 <div style={mStyles.amountInputWrap}>
                   <span style={mStyles.rupeeSymbol}>₹</span>
                   <input
@@ -1317,10 +1316,10 @@ export default function MobileApp() {
 
               {/* Reason / Notes */}
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Karan (Reason)</label>
+                <label style={mStyles.inputLabel}>Reason / Purpose</label>
                 <input
                   type="text"
-                  placeholder="e.g. Ghar bhej rahe hain, Medical, Tyohar kharch"
+                  placeholder="e.g. Family support, Medical emergency, Festival, Ration"
                   style={mStyles.textInput}
                   value={advanceForm.reason}
                   onChange={(e) => setAdvanceForm((p) => ({ ...p, reason: e.target.value }))}
@@ -1329,7 +1328,7 @@ export default function MobileApp() {
 
               {/* Date */}
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Tarikh (Date)</label>
+                <label style={mStyles.inputLabel}>Date</label>
                 <input
                   type="date"
                   style={mStyles.textInput}
@@ -1343,12 +1342,12 @@ export default function MobileApp() {
                 style={{ ...mStyles.submitBigBtn, background: "#7c3aed" }}
                 disabled={submittingAdvance || !advanceForm.workerId || !advanceForm.amount}
               >
-                {submittingAdvance ? "Save Ho Raha Hai..." : "✓ Advance Save Karein"}
+                {submittingAdvance ? "Saving Advance..." : "✓ Save Advance"}
               </button>
             </form>
 
             {/* Recent Advances List */}
-            <h3 style={{ ...mStyles.sectionTitle, marginTop: "24px" }}>Haal Ke Advances</h3>
+            <h3 style={{ ...mStyles.sectionTitle, marginTop: "24px" }}>Recent Advances</h3>
             <div style={mStyles.recentList}>
               {recentAdvances.map((adv) => (
                 <div key={adv.id} style={mStyles.recentItem}>
@@ -1363,7 +1362,7 @@ export default function MobileApp() {
                   </div>
                   <div style={mStyles.recentItemRight}>
                     <span style={{ fontSize: "11px", color: "#64748b" }}>
-                      {adv.date ? new Date(adv.date).toLocaleDateString("hi-IN") : todayStr}
+                      {adv.date ? new Date(adv.date).toLocaleDateString("en-US") : todayStr}
                     </span>
                   </div>
                 </div>
@@ -1373,20 +1372,20 @@ export default function MobileApp() {
         )}
 
         {/* ══════════════════════════════════════════════════════════════════
-            TAB 5: WORKERS DIRECTORY (मजदूर डायरेक्टरी & कॉलिंग)
+            TAB 5: WORKERS DIRECTORY (Contacts & Calling)
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "workers" && (
           <div style={mStyles.contentContainer}>
             <div style={mStyles.pageHeader}>
               <div>
                 <h2 style={mStyles.pageTitle}>Workers Directory</h2>
-                <p style={mStyles.pageSubtitle}>Direct phone call aur WhatsApp contact karein</p>
+                <p style={mStyles.pageSubtitle}>Direct phone calling & WhatsApp messaging</p>
               </div>
               <button
                 style={{ ...mStyles.markAllPresentBtn, background: "#d97706" }}
                 onClick={() => setIsAddWorkerOpen(true)}
               >
-                <Plus size={14} /> + Naya Worker
+                <Plus size={14} /> + Add Worker
               </button>
             </div>
 
@@ -1395,7 +1394,7 @@ export default function MobileApp() {
               <Search size={16} color="#94a3b8" />
               <input
                 type="text"
-                placeholder="Worker ka naam, ID ya trade khojein..."
+                placeholder="Search worker by name, ID or trade..."
                 style={mStyles.searchInput}
                 value={workerSearch}
                 onChange={(e) => setWorkerSearch(e.target.value)}
@@ -1455,14 +1454,14 @@ export default function MobileApp() {
         )}
 
         {/* ══════════════════════════════════════════════════════════════════
-            TAB 6: MORE (अधिक फ़ंक्शन & सेटिंग्स)
+            TAB 6: MORE (App Menu & Configuration)
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "more" && (
           <div style={mStyles.contentContainer}>
             <div style={mStyles.pageHeader}>
               <div>
-                <h2 style={mStyles.pageTitle}>App Menu & Settings</h2>
-                <p style={mStyles.pageSubtitle}>Employee services, backend config & tools</p>
+                <h2 style={mStyles.pageTitle}>Menu & Settings</h2>
+                <p style={mStyles.pageSubtitle}>Employee services, server configuration & tools</p>
               </div>
             </div>
 
@@ -1492,8 +1491,8 @@ export default function MobileApp() {
                   <FileText size={18} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <h4 style={mStyles.menuRowTitle}>Chhutti (Leave) Request</h4>
-                  <p style={mStyles.menuRowSub}>Apply leave for employee / supervisor</p>
+                  <h4 style={mStyles.menuRowTitle}>Leave Applications</h4>
+                  <p style={mStyles.menuRowSub}>Apply leave for employee or supervisor</p>
                 </div>
                 <ChevronRight size={18} color="#94a3b8" />
               </div>
@@ -1509,7 +1508,7 @@ export default function MobileApp() {
                   <CheckSquare size={18} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <h4 style={mStyles.menuRowTitle}>Daily Site Tasks & To-Do</h4>
+                  <h4 style={mStyles.menuRowTitle}>Daily Site Tasks</h4>
                   <p style={mStyles.menuRowSub}>Manage operational site assignments</p>
                 </div>
                 <ChevronRight size={18} color="#94a3b8" />
@@ -1526,7 +1525,7 @@ export default function MobileApp() {
                   <DollarSign size={18} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <h4 style={mStyles.menuRowTitle}>Salary & Wages Calculation</h4>
+                  <h4 style={mStyles.menuRowTitle}>Salary & Wage Register</h4>
                   <p style={mStyles.menuRowSub}>Monthly salary register and pay slips</p>
                 </div>
                 <ChevronRight size={18} color="#94a3b8" />
@@ -1548,7 +1547,7 @@ export default function MobileApp() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <h4 style={mStyles.menuRowTitle}>Server Connection Settings</h4>
-                  <p style={mStyles.menuRowSub}>Check Render Cloud or Wi-Fi IP</p>
+                  <p style={mStyles.menuRowSub}>Check Render Cloud or local Wi-Fi IP</p>
                 </div>
                 <ChevronRight size={18} color="#94a3b8" />
               </div>
@@ -1566,7 +1565,7 @@ export default function MobileApp() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <h4 style={mStyles.menuRowTitle}>Switch to Full Desktop View</h4>
-                  <p style={mStyles.menuRowSub}>Complete ERP tables, Excel exports & graphs</p>
+                  <p style={mStyles.menuRowSub}>Complete ERP tables, Excel exports & analytics</p>
                 </div>
                 <ChevronRight size={18} color="#94a3b8" />
               </div>
@@ -1575,7 +1574,7 @@ export default function MobileApp() {
                 style={{ ...mStyles.menuRowItem, borderBottom: "none" }}
                 onClick={() => {
                   triggerHaptic(40);
-                  if (window.confirm("Kya aap logout karna chahte hain?")) {
+                  if (window.confirm("Are you sure you want to sign out?")) {
                     logout();
                     navigate("/login");
                   }
@@ -1585,7 +1584,7 @@ export default function MobileApp() {
                   <LogOut size={18} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <h4 style={{ ...mStyles.menuRowTitle, color: "#dc2626" }}>Sign Out (लॉग आउट)</h4>
+                  <h4 style={{ ...mStyles.menuRowTitle, color: "#dc2626" }}>Sign Out</h4>
                   <p style={mStyles.menuRowSub}>Safely exit your ERP work session</p>
                 </div>
                 <ChevronRight size={18} color="#dc2626" />
@@ -1593,7 +1592,7 @@ export default function MobileApp() {
             </div>
 
             <p style={mStyles.versionFooterText}>
-              SNMR FAB INDIA ERP • Native Android App v2.4 • Connected to Cloud
+              SNMR FAB INDIA ERP • Native Mobile App v2.4 • Connected to Cloud
             </p>
           </div>
         )}
@@ -1616,7 +1615,7 @@ export default function MobileApp() {
           <span style={mStyles.navLabel}>Home</span>
         </button>
 
-        {/* Tab 2: Kharch */}
+        {/* Tab 2: Expenses */}
         <button
           style={{
             ...mStyles.navItem,
@@ -1628,7 +1627,7 @@ export default function MobileApp() {
           }}
         >
           <Receipt size={19} />
-          <span style={mStyles.navLabel}>Kharch</span>
+          <span style={mStyles.navLabel}>Expenses</span>
         </button>
 
         {/* Center Floating Action Button (⚡ Quick Actions) */}
@@ -1639,7 +1638,7 @@ export default function MobileApp() {
               triggerHaptic(30);
               setIsQuickActionOpen(true);
             }}
-            title="Quick Functions / त्वरित कार्य"
+            title="Quick Functions"
             aria-label="Quick Functions"
           >
             <Zap size={22} color="#ffffff" />
@@ -1647,7 +1646,7 @@ export default function MobileApp() {
           <span style={mStyles.fabLabel}>Quick</span>
         </div>
 
-        {/* Tab 3: Hajiri */}
+        {/* Tab 3: Attendance */}
         <button
           style={{
             ...mStyles.navItem,
@@ -1659,7 +1658,7 @@ export default function MobileApp() {
           }}
         >
           <CalendarCheck size={19} />
-          <span style={mStyles.navLabel}>Hajiri</span>
+          <span style={mStyles.navLabel}>Attendance</span>
         </button>
 
         {/* Tab 4: Workers */}
@@ -1716,7 +1715,7 @@ export default function MobileApp() {
             </div>
 
             <div style={mStyles.sheetGrid}>
-              {/* Option 1: Mark Hajiri */}
+              {/* Option 1: Mark Attendance */}
               <button
                 style={{ ...mStyles.sheetTile, background: "#f0fdf4", borderColor: "#86efac" }}
                 onClick={() => {
@@ -1727,7 +1726,7 @@ export default function MobileApp() {
                 <div style={{ ...mStyles.sheetTileIcon, background: "#16a34a" }}>
                   <CalendarCheck size={20} color="#fff" />
                 </div>
-                <span style={mStyles.sheetTileText}>Hajiri / OT</span>
+                <span style={mStyles.sheetTileText}>Attendance & OT</span>
               </button>
 
               {/* Option 2: Add Expense + Bill */}
@@ -1741,7 +1740,7 @@ export default function MobileApp() {
                 <div style={{ ...mStyles.sheetTileIcon, background: "#e11d48" }}>
                   <Camera size={20} color="#fff" />
                 </div>
-                <span style={mStyles.sheetTileText}>Kharcha + Bill</span>
+                <span style={mStyles.sheetTileText}>Expense & Bill</span>
               </button>
 
               {/* Option 3: Advance */}
@@ -1755,7 +1754,7 @@ export default function MobileApp() {
                 <div style={{ ...mStyles.sheetTileIcon, background: "#7c3aed" }}>
                   <CreditCard size={20} color="#fff" />
                 </div>
-                <span style={mStyles.sheetTileText}>Advance Dein</span>
+                <span style={mStyles.sheetTileText}>Cash Advance</span>
               </button>
 
               {/* Option 4: Onboard Worker */}
@@ -1769,7 +1768,7 @@ export default function MobileApp() {
                 <div style={{ ...mStyles.sheetTileIcon, background: "#d97706" }}>
                   <Plus size={20} color="#fff" />
                 </div>
-                <span style={mStyles.sheetTileText}>Naya Worker</span>
+                <span style={mStyles.sheetTileText}>Add Worker</span>
               </button>
 
               {/* Option 5: Apply Leave */}
@@ -1783,7 +1782,7 @@ export default function MobileApp() {
                 <div style={{ ...mStyles.sheetTileIcon, background: "#2563eb" }}>
                   <FileText size={20} color="#fff" />
                 </div>
-                <span style={mStyles.sheetTileText}>Chhutti Apply</span>
+                <span style={mStyles.sheetTileText}>Apply Leave</span>
               </button>
 
               {/* Option 6: Add Task */}
@@ -1805,13 +1804,13 @@ export default function MobileApp() {
       )}
 
       {/* ════════════════════════════════════════════════════════════════════
-          MODAL 2: ADD NEW WORKER MODAL (नया मजदूर)
+          MODAL 2: ADD NEW WORKER MODAL
       ════════════════════════════════════════════════════════════════════ */}
       {isAddWorkerOpen && (
         <div style={mStyles.modalOverlay} onClick={() => setIsAddWorkerOpen(false)}>
           <div style={mStyles.modalCard} onClick={(e) => e.stopPropagation()}>
             <div style={mStyles.modalHeader}>
-              <h3 style={mStyles.modalTitle}>👷 Naya Worker Jodein</h3>
+              <h3 style={mStyles.modalTitle}>👷 Add New Worker</h3>
               <button style={mStyles.closeModalIconBtn} onClick={() => setIsAddWorkerOpen(false)}>
                 <X size={20} />
               </button>
@@ -1819,7 +1818,7 @@ export default function MobileApp() {
 
             <form onSubmit={handleCreateWorker} style={mStyles.modalBody}>
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Poora Naam (Full Name) *</label>
+                <label style={mStyles.inputLabel}>Full Name *</label>
                 <input
                   type="text"
                   placeholder="e.g. Ramesh Kumar"
@@ -1842,24 +1841,24 @@ export default function MobileApp() {
               </div>
 
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Kaam / Skill Trade</label>
+                <label style={mStyles.inputLabel}>Skill / Trade</label>
                 <select
                   style={mStyles.textInput}
                   value={newWorkerForm.skillTrade}
                   onChange={(e) => setNewWorkerForm((p) => ({ ...p, skillTrade: e.target.value }))}
                 >
-                  <option value="Mason">Mason (कारीगर / मिस्त्री)</option>
-                  <option value="Helper">Helper (मज़दूर / हेल्पर)</option>
-                  <option value="Fitter">Fitter (फ़िटर)</option>
-                  <option value="Welder">Welder (वेल्डर)</option>
-                  <option value="Electrician">Electrician (इलेक्ट्रीशियन)</option>
-                  <option value="Plumber">Plumber (प्लंबर)</option>
-                  <option value="Supervisor">Supervisor (सुपरवाइज़र)</option>
+                  <option value="Mason">Mason</option>
+                  <option value="Helper">Helper</option>
+                  <option value="Fitter">Fitter</option>
+                  <option value="Welder">Welder</option>
+                  <option value="Electrician">Electrician</option>
+                  <option value="Plumber">Plumber</option>
+                  <option value="Supervisor">Supervisor</option>
                 </select>
               </div>
 
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Daily Wage Rate (दिहाड़ी ₹) *</label>
+                <label style={mStyles.inputLabel}>Daily Wage Rate (₹) *</label>
                 <input
                   type="number"
                   placeholder="e.g. 500"
@@ -1875,7 +1874,7 @@ export default function MobileApp() {
                 style={{ ...mStyles.submitBigBtn, background: "#d97706" }}
                 disabled={submittingWorker || !newWorkerForm.fullName}
               >
-                {submittingWorker ? "Register Ho Raha Hai..." : "✓ Worker Save Karein"}
+                {submittingWorker ? "Registering Worker..." : "✓ Register Worker"}
               </button>
             </form>
           </div>
@@ -1883,13 +1882,13 @@ export default function MobileApp() {
       )}
 
       {/* ════════════════════════════════════════════════════════════════════
-          MODAL 3: QUICK LEAVE APPLY MODAL (छुट्टी की अर्जी)
+          MODAL 3: QUICK LEAVE APPLY MODAL
       ════════════════════════════════════════════════════════════════════ */}
       {isLeaveModalOpen && (
         <div style={mStyles.modalOverlay} onClick={() => setIsLeaveModalOpen(false)}>
           <div style={mStyles.modalCard} onClick={(e) => e.stopPropagation()}>
             <div style={mStyles.modalHeader}>
-              <h3 style={mStyles.modalTitle}>📝 Chhutti (Leave) Apply</h3>
+              <h3 style={mStyles.modalTitle}>📝 Apply for Leave</h3>
               <button style={mStyles.closeModalIconBtn} onClick={() => setIsLeaveModalOpen(false)}>
                 <X size={20} />
               </button>
@@ -1897,22 +1896,22 @@ export default function MobileApp() {
 
             <form onSubmit={handleApplyLeave} style={mStyles.modalBody}>
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Chhutti Ka Prakar (Leave Type)</label>
+                <label style={mStyles.inputLabel}>Leave Type</label>
                 <select
                   style={mStyles.textInput}
                   value={leaveForm.leaveType}
                   onChange={(e) => setLeaveForm((p) => ({ ...p, leaveType: e.target.value }))}
                 >
-                  <option value="Casual">Casual Leave (आकस्मिक अवकाश)</option>
-                  <option value="Sick">Sick Leave (बीमारी की छुट्टी)</option>
+                  <option value="Casual">Casual Leave</option>
+                  <option value="Sick">Sick Leave</option>
                   <option value="Earned">Earned / Annual Leave</option>
-                  <option value="Unpaid">Unpaid Leave (बिना वेतन)</option>
+                  <option value="Unpaid">Unpaid Leave</option>
                 </select>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                 <div style={mStyles.inputGroup}>
-                  <label style={mStyles.inputLabel}>Shuru Tarikh</label>
+                  <label style={mStyles.inputLabel}>Start Date</label>
                   <input
                     type="date"
                     style={mStyles.textInput}
@@ -1922,7 +1921,7 @@ export default function MobileApp() {
                   />
                 </div>
                 <div style={mStyles.inputGroup}>
-                  <label style={mStyles.inputLabel}>Antim Tarikh</label>
+                  <label style={mStyles.inputLabel}>End Date</label>
                   <input
                     type="date"
                     style={mStyles.textInput}
@@ -1934,9 +1933,9 @@ export default function MobileApp() {
               </div>
 
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Karan (Reason)</label>
+                <label style={mStyles.inputLabel}>Reason / Purpose</label>
                 <textarea
-                  placeholder="e.g. Gaon jana hai, urgent personal kaam"
+                  placeholder="e.g. Family function, personal urgent work"
                   style={{ ...mStyles.textInput, height: "70px", paddingTop: "8px" }}
                   value={leaveForm.reason}
                   onChange={(e) => setLeaveForm((p) => ({ ...p, reason: e.target.value }))}
@@ -1948,7 +1947,7 @@ export default function MobileApp() {
                 style={{ ...mStyles.submitBigBtn, background: "#2563eb" }}
                 disabled={submittingLeave}
               >
-                {submittingLeave ? "Submitting..." : "✓ Chhutti Submit Karein"}
+                {submittingLeave ? "Submitting..." : "✓ Submit Leave Request"}
               </button>
             </form>
           </div>
@@ -1956,13 +1955,13 @@ export default function MobileApp() {
       )}
 
       {/* ════════════════════════════════════════════════════════════════════
-          MODAL 4: QUICK TASK ADD MODAL (टास्क जोड़ें)
+          MODAL 4: QUICK TASK ADD MODAL
       ════════════════════════════════════════════════════════════════════ */}
       {isTaskModalOpen && (
         <div style={mStyles.modalOverlay} onClick={() => setIsTaskModalOpen(false)}>
           <div style={mStyles.modalCard} onClick={(e) => e.stopPropagation()}>
             <div style={mStyles.modalHeader}>
-              <h3 style={mStyles.modalTitle}>📋 Naya Site Task Jodein</h3>
+              <h3 style={mStyles.modalTitle}>📋 Add Site Task</h3>
               <button style={mStyles.closeModalIconBtn} onClick={() => setIsTaskModalOpen(false)}>
                 <X size={20} />
               </button>
@@ -1991,8 +1990,8 @@ export default function MobileApp() {
                   >
                     <option value="Low">Low</option>
                     <option value="Medium">Medium</option>
-                    <option value="High">High (जरूरी)</option>
-                    <option value="Urgent">Urgent (तत्काल)</option>
+                    <option value="High">High</option>
+                    <option value="Urgent">Urgent</option>
                   </select>
                 </div>
                 <div style={mStyles.inputGroup}>
@@ -2009,7 +2008,7 @@ export default function MobileApp() {
               <div style={mStyles.inputGroup}>
                 <label style={mStyles.inputLabel}>Details / Instructions</label>
                 <textarea
-                  placeholder="Kaam ke baare me instructions dalein..."
+                  placeholder="Enter specific instructions or requirements..."
                   style={{ ...mStyles.textInput, height: "70px", paddingTop: "8px" }}
                   value={taskForm.description}
                   onChange={(e) => setTaskForm((p) => ({ ...p, description: e.target.value }))}
@@ -2021,7 +2020,7 @@ export default function MobileApp() {
                 style={{ ...mStyles.submitBigBtn, background: "#6366f1" }}
                 disabled={submittingTask || !taskForm.title}
               >
-                {submittingTask ? "Saving..." : "✓ Task Save Karein"}
+                {submittingTask ? "Saving Task..." : "✓ Save Task"}
               </button>
             </form>
           </div>
@@ -2029,7 +2028,7 @@ export default function MobileApp() {
       )}
 
       {/* ════════════════════════════════════════════════════════════════════
-          MODAL 5: NOTIFICATIONS MODAL (सूचनाएं)
+          MODAL 5: NOTIFICATIONS MODAL
       ════════════════════════════════════════════════════════════════════ */}
       {isNotifModalOpen && (
         <div style={mStyles.modalOverlay} onClick={() => setIsNotifModalOpen(false)}>
@@ -2048,7 +2047,7 @@ export default function MobileApp() {
               {notifications.length === 0 ? (
                 <div style={mStyles.emptyStateBox}>
                   <Bell size={28} color="#cbd5e1" />
-                  <p style={mStyles.emptyText}>Sabhi notifications padh li gayi hain 🎉</p>
+                  <p style={mStyles.emptyText}>All notifications are caught up 🎉</p>
                 </div>
               ) : (
                 notifications.map((n) => (
@@ -2068,7 +2067,7 @@ export default function MobileApp() {
       )}
 
       {/* ════════════════════════════════════════════════════════════════════
-          MODAL 6: SERVER URL SETTINGS (सर्वर सेटिंग्स)
+          MODAL 6: SERVER URL SETTINGS
       ════════════════════════════════════════════════════════════════════ */}
       {isServerModalOpen && (
         <div style={mStyles.modalOverlay} onClick={() => setIsServerModalOpen(false)}>
@@ -2085,7 +2084,7 @@ export default function MobileApp() {
                 <label style={mStyles.inputLabel}>Backend Server API URL</label>
                 <input
                   type="text"
-                  placeholder="https://erp-system-xxxx.onrender.com/api"
+                  placeholder="https://erp-system-8q4z.onrender.com/api"
                   style={mStyles.textInput}
                   value={serverUrlInput}
                   onChange={(e) => setServerUrlInput(e.target.value)}

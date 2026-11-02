@@ -262,32 +262,6 @@ export default function Navbar({ onToggleSidebar, sidebarOpen }) {
       {/* ── Right: notifications + divider + user ── */}
       <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
 
-        {/* Mobile App View Button */}
-        <button
-          onClick={() => {
-            switchMode("app");
-            navigate("/mobile");
-          }}
-          title="Switch to Mobile App View"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "5px",
-            background: "rgba(15,118,110,0.08)",
-            color: "var(--primary)",
-            border: "1px solid rgba(15,118,110,0.2)",
-            borderRadius: "var(--radius-sm)",
-            padding: "5px 9px",
-            fontSize: "12px",
-            fontWeight: "700",
-            cursor: "pointer",
-            transition: "all 0.15s ease"
-          }}
-        >
-          <Smartphone size={15} />
-          <span>App Mode</span>
-        </button>
-
         {/* Notification bell */}
         <div ref={notifRef} style={{ position: "relative" }}>
           <button
