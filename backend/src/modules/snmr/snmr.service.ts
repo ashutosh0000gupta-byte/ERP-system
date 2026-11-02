@@ -1722,6 +1722,57 @@ export const createSystemUser = async (data: any) => {
   });
 };
 
+export const updateSystemUserPassword = async (id: string, newPassword: string) => {
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  if (!newPassword || newPassword.trim().length < 4) {
+    throw new Error("Password must be at least 4 characters long");
+  }
+
+  const hashed = await hashPassword(newPassword.trim());
+
+  return prisma.user.update({
+    where: { id },
+    data: {
+      passwordHash: hashed,
+      passwordChangedAt: new Date()
+    },
+    include: { role: true }
+  });
+};
+
+export const deleteSystemUser = async (id: string, currentUserId?: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id },
+    include: { role: true }
+  });
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  if (user.email === "sonu@snmrfab.in" || user.email === "rajesh.menon@company.com") {
+    throw new Error("Cannot delete master administrator account");
+  }
+
+  if (currentUserId && (user.id === currentUserId || user.email === currentUserId)) {
+    throw new Error("You cannot delete your own logged-in account");
+  }
+
+  // Clean up dependent tokens and notifications
+  await prisma.refreshToken.deleteMany({ where: { userId: id } }).catch(() => {});
+  await prisma.notification.deleteMany({ where: { userId: id } }).catch(() => {});
+  await prisma.notificationPreference.deleteMany({ where: { userId: id } }).catch(() => {});
+  await prisma.notificationDelivery.deleteMany({ where: { userId: id } }).catch(() => {});
+
+  // Unlink associated employee
+  await prisma.employee.updateMany({ where: { userId: id }, data: { userId: null } }).catch(() => {});
+
+  return prisma.user.delete({ where: { id } });
+};
+
 
 export const updateWorkerStatus = async (id: string, status: string, exitReason?: string) => {
   return prisma.worker.update({

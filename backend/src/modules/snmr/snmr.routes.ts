@@ -28,6 +28,8 @@ import {
   deleteDocument,
   getSystemUsers,
   createSystemUser,
+  updateSystemUserPassword,
+  deleteSystemUser,
   importWorkerSalaries,
   importMonthlyExcelSalaries,
   updateWorkerSalary,
@@ -104,6 +106,8 @@ router.delete("/documents/:id", deleteDocument);
 // Users
 router.get("/users", getSystemUsers);
 router.post("/users", createSystemUser);
+router.put("/users/:id/password", updateSystemUserPassword);
+router.delete("/users/:id", deleteSystemUser);
 
 // Excel Sheets Hub / Repository
 router.get("/excel-sheets", getExcelSheetArchives);

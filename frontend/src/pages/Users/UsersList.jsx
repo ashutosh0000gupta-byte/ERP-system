@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import MainLayout from "../../components/layout/MainLayout";
 import api from "../../services/api";
-import { Users, Shield, Plus, Lock, Mail, Trash2 } from "lucide-react";
+import { Users, Shield, Plus, Lock, Mail, Trash2, Key } from "lucide-react";
 
 export default function UsersList() {
   const [users, setUsers] = useState([]);
@@ -12,6 +12,14 @@ export default function UsersList() {
     password: "",
     roleName: "SUPERVISOR"
   });
+
+  const [passwordModal, setPasswordModal] = useState({
+    open: false,
+    user: null,
+    newPassword: "",
+    submitting: false
+  });
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     fetchUsers();
@@ -37,9 +45,60 @@ export default function UsersList() {
       setShowModal(false);
       setFormData({ email: "", password: "", roleName: "SUPERVISOR" });
       fetchUsers();
+      alert("User created successfully!");
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.error || err.message;
       alert(msg);
+    }
+  };
+
+  const handleDeleteUser = async (user) => {
+    if (user.email === "sonu@snmrfab.in" || user.email === "rajesh.menon@company.com") {
+      alert("Master Administrator account cannot be deleted.");
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to permanently delete user "${user.email}"?`)) {
+      return;
+    }
+    try {
+      setDeletingId(user.id);
+      await api.delete(`/snmr/users/${user.id}`);
+      alert(`User "${user.email}" has been deleted successfully.`);
+      fetchUsers();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data?.error || err.message;
+      alert(`Failed to delete user: ${msg}`);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleOpenPasswordModal = (user) => {
+    setPasswordModal({
+      open: true,
+      user,
+      newPassword: "",
+      submitting: false
+    });
+  };
+
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    if (!passwordModal.newPassword || passwordModal.newPassword.trim().length < 4) {
+      alert("Password must be at least 4 characters long.");
+      return;
+    }
+    try {
+      setPasswordModal(prev => ({ ...prev, submitting: true }));
+      await api.put(`/snmr/users/${passwordModal.user.id}/password`, {
+        password: passwordModal.newPassword.trim()
+      });
+      alert(`Password updated successfully for ${passwordModal.user.email}!`);
+      setPasswordModal({ open: false, user: null, newPassword: "", submitting: false });
+    } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data?.error || err.message;
+      alert(`Failed to update password: ${msg}`);
+      setPasswordModal(prev => ({ ...prev, submitting: false }));
     }
   };
 
@@ -103,8 +162,29 @@ export default function UsersList() {
                       {new Date(user.createdAt).toLocaleDateString()}
                     </td>
                     <td style={styles.td}>
-                      <button style={styles.iconBtn}><Lock size={16} /></button>
-                      <button style={{...styles.iconBtn, color: "#ef4444"}}><Trash2 size={16} /></button>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <button 
+                          onClick={() => handleOpenPasswordModal(user)} 
+                          style={{ ...styles.iconBtn, color: "#0f766e" }} 
+                          title="Change / Edit Password"
+                        >
+                          <Key size={16} />
+                        </button>
+                        {user.email !== "sonu@snmrfab.in" && user.email !== "rajesh.menon@company.com" && (
+                          <button 
+                            onClick={() => handleDeleteUser(user)} 
+                            disabled={deletingId === user.id}
+                            style={{ 
+                              ...styles.iconBtn, 
+                              color: "#ef4444", 
+                              opacity: deletingId === user.id ? 0.4 : 1 
+                            }} 
+                            title="Delete User"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -113,6 +193,7 @@ export default function UsersList() {
           )}
         </div>
 
+        {/* Create User Modal */}
         {showModal && (
           <div style={styles.modalOverlay}>
             <div style={styles.modal}>
@@ -122,19 +203,37 @@ export default function UsersList() {
                   <label style={styles.label}>Email Address</label>
                   <div style={styles.inputWrapper}>
                     <Mail size={16} color="#94a3b8" />
-                    <input type="email" required style={styles.input} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="supervisor@snmrfab.in" />
+                    <input 
+                      type="email" 
+                      required 
+                      style={styles.input} 
+                      value={formData.email} 
+                      onChange={e => setFormData({...formData, email: e.target.value})} 
+                      placeholder="supervisor@snmrfab.in" 
+                    />
                   </div>
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Password</label>
                   <div style={styles.inputWrapper}>
                     <Lock size={16} color="#94a3b8" />
-                    <input type="password" required style={styles.input} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="Set initial password" />
+                    <input 
+                      type="password" 
+                      required 
+                      style={styles.input} 
+                      value={formData.password} 
+                      onChange={e => setFormData({...formData, password: e.target.value})} 
+                      placeholder="Set initial password" 
+                    />
                   </div>
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Role</label>
-                  <select style={{...styles.input, padding: "10px 14px"}} value={formData.roleName} onChange={e => setFormData({...formData, roleName: e.target.value})}>
+                  <select 
+                    style={{...styles.input, padding: "10px 14px"}} 
+                    value={formData.roleName} 
+                    onChange={e => setFormData({...formData, roleName: e.target.value})}
+                  >
                     <option value="SUPERVISOR">Site Supervisor (Limited Access)</option>
                     <option value="ADMIN">Admin (Full Access)</option>
                   </select>
@@ -143,6 +242,52 @@ export default function UsersList() {
                 <div style={styles.modalActions}>
                   <button type="button" onClick={() => setShowModal(false)} style={styles.cancelBtn}>Cancel</button>
                   <button type="submit" style={styles.submitBtn}>Create User</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Change / Edit Password Modal */}
+        {passwordModal.open && (
+          <div style={styles.modalOverlay}>
+            <div style={styles.modal}>
+              <h2 style={styles.modalTitle}>Change User Password</h2>
+              <p style={{ margin: "-16px 0 20px 0", fontSize: "14px", color: "#64748b" }}>
+                Set a new login password for <strong>{passwordModal.user?.email}</strong>
+              </p>
+              <form onSubmit={handleUpdatePassword} style={styles.form}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>New Password</label>
+                  <div style={styles.inputWrapper}>
+                    <Lock size={16} color="#94a3b8" />
+                    <input 
+                      type="password" 
+                      required 
+                      autoFocus
+                      style={styles.input} 
+                      value={passwordModal.newPassword} 
+                      onChange={e => setPasswordModal({ ...passwordModal, newPassword: e.target.value })} 
+                      placeholder="Enter new password (min. 4 characters)" 
+                    />
+                  </div>
+                </div>
+                
+                <div style={styles.modalActions}>
+                  <button 
+                    type="button" 
+                    onClick={() => setPasswordModal({ open: false, user: null, newPassword: "", submitting: false })} 
+                    style={styles.cancelBtn}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={passwordModal.submitting} 
+                    style={{ ...styles.submitBtn, opacity: passwordModal.submitting ? 0.7 : 1 }}
+                  >
+                    {passwordModal.submitting ? "Saving..." : "Save Password"}
+                  </button>
                 </div>
               </form>
             </div>
@@ -166,7 +311,7 @@ const styles = {
   td: { padding: "16px 20px", fontSize: "14px", verticalAlign: "middle" },
   avatar: { width: "36px", height: "36px", borderRadius: "50%", background: "#f1f5f9", color: "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700", fontSize: "14px" },
   roleBadge: { padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: "700" },
-  iconBtn: { background: "transparent", border: "none", color: "#64748b", cursor: "pointer", padding: "4px", margin: "0 4px" },
+  iconBtn: { background: "transparent", border: "none", color: "#64748b", cursor: "pointer", padding: "6px", borderRadius: "6px", display: "inline-flex", alignItems: "center", justifyContent: "center", transition: "background 0.15s" },
   emptyState: { textAlign: "center", padding: "60px", color: "#64748b" },
   modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(15,23,42,0.4)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999 },
   modal: { background: "#fff", padding: "32px", borderRadius: "24px", width: "100%", maxWidth: "450px", boxShadow: "0 20px 40px rgba(0,0,0,0.1)" },

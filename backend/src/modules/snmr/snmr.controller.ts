@@ -223,6 +223,26 @@ export const createSystemUser = async (req: Request, res: Response) => {
   }
 };
 
+export const updateSystemUserPassword = async (req: Request, res: Response) => {
+  try {
+    const { password } = req.body;
+    await snmrService.updateSystemUserPassword(req.params.id, password);
+    res.json({ success: true, message: "Password updated successfully" });
+  } catch (err: any) {
+    res.status(400).json({ message: err.message, error: err.message });
+  }
+};
+
+export const deleteSystemUser = async (req: Request, res: Response) => {
+  try {
+    const currentUserId = (req as any).user?.id || (req as any).user?.email;
+    await snmrService.deleteSystemUser(req.params.id, currentUserId);
+    res.json({ success: true, message: "User deleted successfully" });
+  } catch (err: any) {
+    res.status(400).json({ message: err.message, error: err.message });
+  }
+};
+
 export const updateWorkerStatus = async (req: Request, res: Response) => {
   try {
     const worker = await snmrService.updateWorkerStatus(req.params.id, req.body.status, req.body.exitReason);
