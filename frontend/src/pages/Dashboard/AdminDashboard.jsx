@@ -49,7 +49,7 @@ const KpiCard = ({ title, value, subtitle, icon: Icon, color }) => (
   </div>
 );
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ isSupervisor = false }) {
   const [stats, setStats] = useState({
     totalWorkers: 0,
     activeSites: 0,
@@ -112,20 +112,24 @@ export default function AdminDashboard() {
             icon={IndianRupee} 
             color="#ef4444" 
           />
-          <KpiCard 
-            title="Total Salaries Paid" 
-            value={`₹${Number(stats.totalSalaries || 0).toLocaleString()}`} 
-            subtitle="Cleared wage payments"
-            icon={IndianRupee} 
-            color="#10b981" 
-          />
-          <KpiCard 
-            title="Salaries Due / Pending" 
-            value={`₹${Number(stats.totalSalariesPending || 0).toLocaleString()}`} 
-            subtitle="Outstanding worker payouts"
-            icon={IndianRupee} 
-            color="#d97706" 
-          />
+          {!isSupervisor && (
+            <>
+              <KpiCard 
+                title="Total Salaries Paid" 
+                value={`₹${Number(stats.totalSalaries || 0).toLocaleString()}`} 
+                subtitle="Cleared wage payments"
+                icon={IndianRupee} 
+                color="#10b981" 
+              />
+              <KpiCard 
+                title="Salaries Due / Pending" 
+                value={`₹${Number(stats.totalSalariesPending || 0).toLocaleString()}`} 
+                subtitle="Outstanding worker payouts"
+                icon={IndianRupee} 
+                color="#d97706" 
+              />
+            </>
+          )}
           <KpiCard 
             title="Total Site Expenses" 
             value={`₹${Number(stats.totalExpenses || 0).toLocaleString()}`} 

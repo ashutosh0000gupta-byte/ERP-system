@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import { saveUploadedFile, deleteStoredFile } from "../../lib/fileStorage";
+import { hashPassword } from "../../lib/password";
 
 export const getSites = async () => {
   return prisma.site.findMany({
@@ -1658,10 +1659,13 @@ export const createSystemUser = async (data: any) => {
   const role = await prisma.role.findFirst({ where: { name: data.roleName || 'SUPERVISOR' } });
   if (!role) throw new Error('Role not found');
   
+  const rawPassword = data.password || data.passwordHash || 'Password@123';
+  const hashed = await hashPassword(rawPassword);
+
   return prisma.user.create({
     data: {
       email: data.email,
-      passwordHash: data.passwordHash || 'placeholder_hash', // In a real scenario, use bcrypt
+      passwordHash: hashed,
       roleId: role.id
     },
     include: { role: true }

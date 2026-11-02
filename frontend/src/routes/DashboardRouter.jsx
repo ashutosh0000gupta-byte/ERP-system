@@ -28,6 +28,8 @@ export default function DashboardRouter() {
       return <HRDashboard user={user} />;
     case "ADMIN":
       return <AdminDashboard user={user} />;
+    case "SUPERVISOR":
+      return <AdminDashboard user={user} isSupervisor={true} />;
     case "EMPLOYEE":
     default:
       return <EmployeeDashboard user={user} />;
