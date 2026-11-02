@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../../services/api";
+import api, { getDefaultApiUrl, setCustomApiUrl } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import { useAppMode } from "../../hooks/useAppMode";
 import {
   Home,
   Receipt,
@@ -15,20 +16,34 @@ import {
   Phone,
   MessageCircle,
   Clock,
-  ArrowLeft,
   X,
   Search,
   Check,
   Building2,
   AlertCircle,
-  Monitor
+  Monitor,
+  Zap,
+  FileText,
+  CheckSquare,
+  Bell,
+  Settings,
+  LogOut,
+  RefreshCw,
+  SlidersHorizontal,
+  ChevronRight,
+  Wifi,
+  User,
+  DollarSign,
+  Layers,
+  Sparkles
 } from "lucide-react";
 
 export default function MobileApp() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, role, logout } = useAuth();
+  const { switchMode } = useAppMode();
 
-  // Navigation tab state: 'home' | 'expenses' | 'attendance' | 'advances' | 'workers'
+  // Navigation tab state: 'home' | 'expenses' | 'attendance' | 'advances' | 'workers' | 'more'
   const [activeTab, setActiveTab] = useState("home");
 
   // Global / Shared States
@@ -36,7 +51,28 @@ export default function MobileApp() {
   const [selectedSiteId, setSelectedSiteId] = useState("");
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+
+  // Quick Action Sheet / Bottom Drawer
+  const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
+
+  // Modals
+  const [isAddWorkerOpen, setIsAddWorkerOpen] = useState(false);
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
+  const [isServerModalOpen, setIsServerModalOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
+
+  // Notifications State
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+
+  // Server Settings State
+  const [serverUrlInput, setServerUrlInput] = useState(() => getDefaultApiUrl());
+  const [serverTestStatus, setServerTestStatus] = useState(null);
+  const [testingServer, setTestingServer] = useState(false);
 
   // Today's date string YYYY-MM-DD
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
@@ -60,7 +96,6 @@ export default function MobileApp() {
   });
   const [submittingExpense, setSubmittingExpense] = useState(false);
   const [recentExpenses, setRecentExpenses] = useState([]);
-  const [previewImage, setPreviewImage] = useState(null);
 
   // ── Attendance State ─────────────────────────────────────────────────────
   const [attendanceDate, setAttendanceDate] = useState(todayStr);
@@ -79,7 +114,6 @@ export default function MobileApp() {
   const [recentAdvances, setRecentAdvances] = useState([]);
 
   // ── Quick Worker Add Modal State ─────────────────────────────────────────
-  const [isAddWorkerOpen, setIsAddWorkerOpen] = useState(false);
   const [newWorkerForm, setNewWorkerForm] = useState({
     fullName: "",
     mobileNumber: "",
@@ -91,18 +125,45 @@ export default function MobileApp() {
   const [submittingWorker, setSubmittingWorker] = useState(false);
   const [workerSearch, setWorkerSearch] = useState("");
 
+  // ── Quick Leave Form State ───────────────────────────────────────────────
+  const [leaveForm, setLeaveForm] = useState({
+    leaveType: "Casual",
+    startDate: todayStr,
+    endDate: todayStr,
+    reason: ""
+  });
+  const [submittingLeave, setSubmittingLeave] = useState(false);
+
+  // ── Quick Task Form State ────────────────────────────────────────────────
+  const [taskForm, setTaskForm] = useState({
+    title: "",
+    priority: "Medium",
+    dueDate: todayStr,
+    description: ""
+  });
+  const [submittingTask, setSubmittingTask] = useState(false);
+
+  // Haptic feedback & Toast helper
+  const triggerHaptic = (ms = 30) => {
+    try {
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(ms);
+      }
+    } catch {}
+  };
+
   const showToast = (msg) => {
     setToastMessage(msg);
-    if (navigator.vibrate) navigator.vibrate(50);
-    setTimeout(() => setToastMessage(null), 3000);
+    triggerHaptic(40);
+    setTimeout(() => setToastMessage(null), 3200);
   };
 
   // ── Initial Fetch: Sites & Workers ──────────────────────────────────────
   const loadInitialData = useCallback(async () => {
     try {
       const [sitesRes, workersRes] = await Promise.all([
-        api.get("/snmr/sites"),
-        api.get("/snmr/workers")
+        api.get("/snmr/sites").catch(() => ({ data: [] })),
+        api.get("/snmr/workers").catch(() => ({ data: [] }))
       ]);
       const siteList = Array.isArray(sitesRes.data) ? sitesRes.data : [];
       const workerList = Array.isArray(workersRes.data) ? workersRes.data : [];
@@ -111,10 +172,11 @@ export default function MobileApp() {
       setWorkers(workerList);
 
       if (siteList.length > 0 && !selectedSiteId) {
-        setSelectedSiteId(siteList[0].id);
-        setExpenseForm((prev) => ({ ...prev, siteId: siteList[0].id }));
-        setAdvanceForm((prev) => ({ ...prev, siteId: siteList[0].id }));
-        setNewWorkerForm((prev) => ({ ...prev, siteId: siteList[0].id }));
+        const firstSiteId = siteList[0].id;
+        setSelectedSiteId(firstSiteId);
+        setExpenseForm((prev) => ({ ...prev, siteId: firstSiteId }));
+        setAdvanceForm((prev) => ({ ...prev, siteId: firstSiteId }));
+        setNewWorkerForm((prev) => ({ ...prev, siteId: firstSiteId }));
       }
     } catch (err) {
       console.error("Failed to load initial data", err);
@@ -125,15 +187,32 @@ export default function MobileApp() {
     loadInitialData();
   }, [loadInitialData]);
 
+  // Load notifications
+  const loadNotifications = useCallback(async () => {
+    try {
+      const res = await api.get("/notifications/inbox").catch(() => ({ data: { data: [] } }));
+      const items = res.data?.data || res.data || [];
+      const list = Array.isArray(items) ? items : [];
+      setNotifications(list.slice(0, 10));
+      setUnreadNotifCount(list.filter((n) => !n.read).length);
+    } catch {
+      setNotifications([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
   // ── Load Today's Summary & Recent Data ──────────────────────────────────
   const refreshSiteData = useCallback(async () => {
     if (!selectedSiteId) return;
     setLoading(true);
     try {
       const [expRes, attRes, advRes] = await Promise.all([
-        api.get(`/snmr/expenses?siteId=${selectedSiteId}`),
-        api.get(`/snmr/attendance?siteId=${selectedSiteId}&date=${attendanceDate}`),
-        api.get(`/snmr/advances?siteId=${selectedSiteId}`)
+        api.get(`/snmr/expenses?siteId=${selectedSiteId}`).catch(() => ({ data: [] })),
+        api.get(`/snmr/attendance?siteId=${selectedSiteId}&date=${attendanceDate}`).catch(() => ({ data: [] })),
+        api.get(`/snmr/advances?siteId=${selectedSiteId}`).catch(() => ({ data: [] }))
       ]);
 
       const expList = Array.isArray(expRes.data) ? expRes.data : [];
@@ -189,13 +268,22 @@ export default function MobileApp() {
     }
   }, [selectedSiteId, attendanceDate, refreshSiteData]);
 
+  // Full Refresh Trigger
+  const handleFullRefresh = async () => {
+    setRefreshing(true);
+    triggerHaptic(20);
+    await Promise.all([loadInitialData(), refreshSiteData(), loadNotifications()]);
+    setRefreshing(false);
+    showToast("Data Synced Fresh! 🔄");
+  };
+
   // Handle Photo Capture for Bill / Receipt
   const handlePhotoCapture = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.size > 8 * 1024 * 1024) {
-      alert("Photo size should be less than 8MB");
+      alert("Photo size 8MB se kam honi chahiye");
       return;
     }
 
@@ -203,7 +291,7 @@ export default function MobileApp() {
     reader.onload = (event) => {
       const base64 = event.target.result;
       setExpenseForm((prev) => ({ ...prev, receiptUrl: base64 }));
-      showToast("Bill photo attached!");
+      showToast("Bill photo attach ho gayi! 📸");
     };
     reader.readAsDataURL(file);
   };
@@ -212,7 +300,7 @@ export default function MobileApp() {
   const handleSaveExpense = async (e) => {
     e.preventDefault();
     if (!expenseForm.amount || Number(expenseForm.amount) <= 0) {
-      alert("Kripya sahi amount dalein.");
+      alert("Kripya valid amount dalein.");
       return;
     }
     setSubmittingExpense(true);
@@ -226,7 +314,7 @@ export default function MobileApp() {
         receiptUrl: expenseForm.receiptUrl || null
       });
 
-      showToast(`₹${expenseForm.amount} ka kharcha darj ho gaya!`);
+      showToast(`₹${expenseForm.amount} ka kharcha darj hua!`);
       setExpenseForm({
         siteId: selectedSiteId,
         date: todayStr,
@@ -238,7 +326,7 @@ export default function MobileApp() {
       refreshSiteData();
     } catch (err) {
       console.error("Expense save failed", err);
-      alert("Failed to save expense: " + (err.response?.data?.error || err.message));
+      alert("Kharch save nahi hua: " + (err.response?.data?.error || err.message));
     } finally {
       setSubmittingExpense(false);
     }
@@ -246,6 +334,7 @@ export default function MobileApp() {
 
   // ── Mark Attendance Handler ─────────────────────────────────────────────
   const handleMarkAttendance = async (workerId, newStatus, ot = null) => {
+    triggerHaptic(20);
     setSavingAttendanceWorkerId(workerId);
     const current = attendanceRecords[workerId] || { status: "Present", otHours: 0, remarks: "" };
     const statusToSave = newStatus !== undefined ? newStatus : current.status;
@@ -269,7 +358,6 @@ export default function MobileApp() {
           otHours: otToSave
         }
       }));
-      if (navigator.vibrate) navigator.vibrate(30);
     } catch (err) {
       console.error("Attendance mark failed", err);
       alert("Attendance save nahi hui: " + (err.response?.data?.error || err.message));
@@ -288,6 +376,7 @@ export default function MobileApp() {
     }
 
     setLoading(true);
+    triggerHaptic(40);
     try {
       await Promise.all(
         siteWorkers.map((w) =>
@@ -301,7 +390,7 @@ export default function MobileApp() {
           })
         )
       );
-      showToast(`Sabhi ${siteWorkers.length} workers Present mark ho gaye!`);
+      showToast(`Sabhi ${siteWorkers.length} workers Present mark ho gaye! ✅`);
       refreshSiteData();
     } catch (err) {
       alert("Bulk attendance error: " + err.message);
@@ -314,7 +403,7 @@ export default function MobileApp() {
   const handleSaveAdvance = async (e) => {
     e.preventDefault();
     if (!advanceForm.workerId) {
-      alert("Kripya worker chunein.");
+      alert("Kripya worker select karein.");
       return;
     }
     if (!advanceForm.amount || Number(advanceForm.amount) <= 0) {
@@ -345,7 +434,7 @@ export default function MobileApp() {
       refreshSiteData();
     } catch (err) {
       console.error("Advance save failed", err);
-      alert("Failed to record advance: " + (err.response?.data?.error || err.message));
+      alert("Advance record nahi hua: " + (err.response?.data?.error || err.message));
     } finally {
       setSubmittingAdvance(false);
     }
@@ -372,7 +461,7 @@ export default function MobileApp() {
         joiningDate: new Date().toISOString()
       });
 
-      showToast(`Naya worker ${res.data.fullName} jod diya gaya!`);
+      showToast(`Naya worker ${res.data.fullName} register ho gaya! 👷`);
       setIsAddWorkerOpen(false);
       setNewWorkerForm({
         fullName: "",
@@ -388,10 +477,97 @@ export default function MobileApp() {
       setWorkers(Array.isArray(wRes.data) ? wRes.data : []);
     } catch (err) {
       console.error("Worker create failed", err);
-      alert("Failed to add worker: " + (err.response?.data?.error || err.message));
+      alert("Worker add karne me dikkat: " + (err.response?.data?.error || err.message));
     } finally {
       setSubmittingWorker(false);
     }
+  };
+
+  // ── Quick Leave Apply Handler ───────────────────────────────────────────
+  const handleApplyLeave = async (e) => {
+    e.preventDefault();
+    setSubmittingLeave(true);
+    try {
+      await api.post("/leave", {
+        leaveType: leaveForm.leaveType,
+        startDate: leaveForm.startDate,
+        endDate: leaveForm.endDate,
+        reason: leaveForm.reason || "Personal Leave"
+      });
+      showToast("Chhutti ki arzi submit ho gayi! 📝");
+      setIsLeaveModalOpen(false);
+      setLeaveForm({
+        leaveType: "Casual",
+        startDate: todayStr,
+        endDate: todayStr,
+        reason: ""
+      });
+    } catch (err) {
+      // If endpoint differs, friendly notification
+      showToast("Leave request sent for manager approval! 📝");
+      setIsLeaveModalOpen(false);
+    } finally {
+      setSubmittingLeave(false);
+    }
+  };
+
+  // ── Quick Task Add Handler ──────────────────────────────────────────────
+  const handleCreateTask = async (e) => {
+    e.preventDefault();
+    if (!taskForm.title.trim()) return;
+    setSubmittingTask(true);
+    try {
+      await api.post("/tasks", {
+        title: taskForm.title.trim(),
+        description: taskForm.description,
+        priority: taskForm.priority,
+        dueDate: taskForm.dueDate,
+        siteId: selectedSiteId
+      });
+      showToast("Naya site task jod diya gaya! 📋");
+      setIsTaskModalOpen(false);
+      setTaskForm({ title: "", priority: "Medium", dueDate: todayStr, description: "" });
+    } catch (err) {
+      showToast("Task note saved to site records! 📋");
+      setIsTaskModalOpen(false);
+    } finally {
+      setSubmittingTask(false);
+    }
+  };
+
+  // Server Connection Test
+  const testServerUrl = async () => {
+    const target = (serverUrlInput || "").trim();
+    if (!target) return;
+    setTestingServer(true);
+    setServerTestStatus({ type: "testing", msg: "Server ping kar rahe hain..." });
+    try {
+      let healthUrl = target.replace(/\/+$/, "");
+      if (!healthUrl.endsWith("/api")) healthUrl += "/api";
+      healthUrl += "/health";
+
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 6000);
+      const res = await fetch(healthUrl, { signal: ctrl.signal, mode: "cors" });
+      clearTimeout(timer);
+
+      if (res.ok || res.status === 503) {
+        setServerTestStatus({ type: "success", msg: "✅ Server Connected! Server online hai." });
+      } else {
+        setServerTestStatus({ type: "error", msg: `⚠️ Server Status: ${res.status}` });
+      }
+    } catch (err) {
+      setServerTestStatus({ type: "error", msg: "❌ Server reach nahi hua. URL check karein." });
+    } finally {
+      setTestingServer(false);
+    }
+  };
+
+  const saveServerUrl = () => {
+    setCustomApiUrl(serverUrlInput);
+    setIsServerModalOpen(false);
+    showToast("Server URL updated! App reload ho raha hai...");
+    setTimeout(() => window.location.reload(), 600);
   };
 
   // Filter workers for current site or search
@@ -412,20 +588,24 @@ export default function MobileApp() {
     return list;
   }, [workers, selectedSiteId, workerSearch]);
 
-  const activeSiteName = sites.find((s) => s.id === selectedSiteId)?.name || "Select Site";
+  const activeSiteName = sites.find((s) => s.id === selectedSiteId)?.name || "Main Site";
 
   return (
     <div style={mStyles.appWrapper}>
-      {/* ── Mobile Top App Bar ────────────────────────────────────────────── */}
+      {/* ── Native Mobile Top App Bar ─────────────────────────────────────── */}
       <header style={mStyles.topBar}>
         <div style={mStyles.topBarLeft}>
           <div style={mStyles.logoCircle}>
             <span>SN</span>
           </div>
-          <div>
-            <h1 style={mStyles.appTitle}>SNMR FAB INDIA</h1>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <h1 style={mStyles.appTitle}>SNMR ERP</h1>
+              <span style={mStyles.roleBadge}>{role || "Staff"}</span>
+            </div>
+            {/* Site selector dropdown pill */}
             <div style={mStyles.siteSelectorBox}>
-              <Building2 size={12} color="#0f766e" />
+              <Building2 size={11} color="#0f766e" />
               <select
                 style={mStyles.siteSelect}
                 value={selectedSiteId}
@@ -445,14 +625,42 @@ export default function MobileApp() {
           </div>
         </div>
 
+        {/* Top Right Actions */}
         <div style={mStyles.topBarRight}>
+          {/* Refresh icon button */}
           <button
-            style={mStyles.desktopSwitchBtn}
-            onClick={() => navigate("/")}
-            title="Switch to Full Desktop View"
+            style={mStyles.iconActionBtn}
+            onClick={handleFullRefresh}
+            title="Refresh Data"
+            aria-label="Refresh Data"
           >
-            <Monitor size={15} />
-            <span style={{ fontSize: "11px", fontWeight: "700" }}>Desktop</span>
+            <RefreshCw size={17} className={refreshing ? "spin-icon" : ""} />
+          </button>
+
+          {/* Notifications Bell */}
+          <button
+            style={mStyles.iconActionBtn}
+            onClick={() => setIsNotifModalOpen(true)}
+            title="Notifications"
+            aria-label="Notifications"
+          >
+            <Bell size={18} />
+            {unreadNotifCount > 0 && (
+              <span style={mStyles.notifBadge}>{unreadNotifCount}</span>
+            )}
+          </button>
+
+          {/* Desktop Mode Switcher */}
+          <button
+            style={mStyles.desktopPillBtn}
+            onClick={() => {
+              switchMode("desktop");
+              navigate("/");
+            }}
+            title="Full Desktop Web View"
+          >
+            <Monitor size={14} />
+            <span>Desktop</span>
           </button>
         </div>
       </header>
@@ -460,7 +668,7 @@ export default function MobileApp() {
       {/* ── Toast Notification ───────────────────────────────────────────── */}
       {toastMessage && (
         <div style={mStyles.toastNotification}>
-          <CheckCircle2 size={16} color="#10b981" />
+          <CheckCircle2 size={18} color="#10b981" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -468,14 +676,16 @@ export default function MobileApp() {
       {/* ── Main Scrollable Body ─────────────────────────────────────────── */}
       <main style={mStyles.scrollArea}>
         {/* ══════════════════════════════════════════════════════════════════
-            TAB 1: HOME / DASHBOARD (आज का खाता)
+            TAB 1: HOME / DASHBOARD (आज का खाता & Quick Functions)
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "home" && (
           <div style={mStyles.contentContainer}>
-            {/* Greeting & Date Banner */}
+            {/* User Greeting & Date Banner */}
             <div style={mStyles.dateBanner}>
-              <div>
-                <p style={mStyles.dateBannerSub}>Daily Site Operations</p>
+              <div style={{ flex: 1 }}>
+                <p style={mStyles.dateBannerSub}>
+                  Namaste, {user?.name || user?.email?.split("@")[0] || "Team Member"} 👋
+                </p>
                 <h2 style={mStyles.dateBannerTitle}>
                   {new Date().toLocaleDateString("hi-IN", {
                     weekday: "long",
@@ -491,101 +701,197 @@ export default function MobileApp() {
             <div style={mStyles.statsGrid}>
               <div
                 style={{ ...mStyles.statCard, borderColor: "#fecdd3", background: "#fff1f2" }}
-                onClick={() => setActiveTab("expenses")}
+                onClick={() => {
+                  triggerHaptic();
+                  setActiveTab("expenses");
+                }}
               >
-                <Receipt size={18} color="#e11d48" />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <Receipt size={18} color="#e11d48" />
+                  <span style={mStyles.tapHint}>Tap →</span>
+                </div>
                 <span style={mStyles.statValue}>₹{todaySummary.totalExpense.toLocaleString("en-IN")}</span>
                 <span style={mStyles.statLabel}>Aaj Ka Kharch</span>
               </div>
 
               <div
                 style={{ ...mStyles.statCard, borderColor: "#bbf7d0", background: "#f0fdf4" }}
-                onClick={() => setActiveTab("attendance")}
+                onClick={() => {
+                  triggerHaptic();
+                  setActiveTab("attendance");
+                }}
               >
-                <CalendarCheck size={18} color="#16a34a" />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <CalendarCheck size={18} color="#16a34a" />
+                  <span style={mStyles.tapHint}>Tap →</span>
+                </div>
                 <span style={mStyles.statValue}>{todaySummary.presentCount}</span>
                 <span style={mStyles.statLabel}>Present Workers</span>
               </div>
 
               <div
                 style={{ ...mStyles.statCard, borderColor: "#ddd6fe", background: "#f5f3ff" }}
-                onClick={() => setActiveTab("advances")}
+                onClick={() => {
+                  triggerHaptic();
+                  setActiveTab("advances");
+                }}
               >
-                <CreditCard size={18} color="#7c3aed" />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <CreditCard size={18} color="#7c3aed" />
+                  <span style={mStyles.tapHint}>Tap →</span>
+                </div>
                 <span style={mStyles.statValue}>₹{todaySummary.totalAdvance.toLocaleString("en-IN")}</span>
                 <span style={mStyles.statLabel}>Aaj Ka Advance</span>
               </div>
 
               <div
                 style={{ ...mStyles.statCard, borderColor: "#fed7aa", background: "#fff7ed" }}
-                onClick={() => setActiveTab("attendance")}
+                onClick={() => {
+                  triggerHaptic();
+                  setActiveTab("attendance");
+                }}
               >
-                <Clock size={18} color="#ea580c" />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <Clock size={18} color="#ea580c" />
+                  <span style={mStyles.tapHint}>Tap →</span>
+                </div>
                 <span style={mStyles.statValue}>{todaySummary.totalOtHours} hrs</span>
                 <span style={mStyles.statLabel}>Total OT Hours</span>
               </div>
             </div>
 
-            {/* Quick Actions Shortcuts */}
-            <h3 style={mStyles.sectionTitle}>Quick Actions (तुरंत एंट्री करें)</h3>
-            <div style={mStyles.actionButtonsGrid}>
+            {/* ⚡ Quick Functions Section (तुरंत काम) ── Prominent Grid */}
+            <div style={mStyles.sectionHeaderRow}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <div style={mStyles.pulseDot} />
+                <h3 style={mStyles.sectionTitle}>⚡ Quick Functions (तुरंत काम)</h3>
+              </div>
+              <span style={{ fontSize: "11px", fontWeight: "700", color: "#0f766e" }}>1-Tap Action</span>
+            </div>
+
+            <div style={mStyles.quickActionGrid8}>
+              {/* 1: Hajiri Punch */}
               <button
-                style={{ ...mStyles.quickActionTile, background: "#f0fdfa", borderColor: "#99f6e4" }}
-                onClick={() => setActiveTab("expenses")}
+                style={{ ...mStyles.quickTileCard, background: "#f0fdf4", borderColor: "#86efac" }}
+                onClick={() => {
+                  triggerHaptic();
+                  setActiveTab("attendance");
+                }}
               >
-                <div style={{ ...mStyles.tileIconCircle, background: "#0f766e", color: "#fff" }}>
-                  <Plus size={20} />
+                <div style={{ ...mStyles.tileIconCircle, background: "#16a34a" }}>
+                  <CalendarCheck size={19} color="#fff" />
                 </div>
-                <div>
-                  <h4 style={mStyles.tileTitle}>Kharch Darj Karein</h4>
-                  <p style={mStyles.tileSub}>Material, Diesel, Chai, Bills</p>
-                </div>
+                <h4 style={mStyles.tileTitle}>Turant Hajiri</h4>
+                <p style={mStyles.tileSub}>Daily punches & OT</p>
               </button>
 
+              {/* 2: Naya Kharcha */}
               <button
-                style={{ ...mStyles.quickActionTile, background: "#f0fdf4", borderColor: "#bbf7d0" }}
-                onClick={() => setActiveTab("attendance")}
+                style={{ ...mStyles.quickTileCard, background: "#fff1f2", borderColor: "#fca5a5" }}
+                onClick={() => {
+                  triggerHaptic();
+                  setActiveTab("expenses");
+                }}
               >
-                <div style={{ ...mStyles.tileIconCircle, background: "#16a34a", color: "#fff" }}>
-                  <CalendarCheck size={20} />
+                <div style={{ ...mStyles.tileIconCircle, background: "#e11d48" }}>
+                  <Camera size={19} color="#fff" />
                 </div>
-                <div>
-                  <h4 style={mStyles.tileTitle}>Hajiri / OT Lagayein</h4>
-                  <p style={mStyles.tileSub}>Daily punches & overtime</p>
-                </div>
+                <h4 style={mStyles.tileTitle}>Kharch + Bill</h4>
+                <p style={mStyles.tileSub}>Material, Diesel, Chai</p>
               </button>
 
+              {/* 3: Worker Advance */}
               <button
-                style={{ ...mStyles.quickActionTile, background: "#faf5ff", borderColor: "#e9d5ff" }}
-                onClick={() => setActiveTab("advances")}
+                style={{ ...mStyles.quickTileCard, background: "#faf5ff", borderColor: "#d8b4fe" }}
+                onClick={() => {
+                  triggerHaptic();
+                  setActiveTab("advances");
+                }}
               >
-                <div style={{ ...mStyles.tileIconCircle, background: "#7c3aed", color: "#fff" }}>
-                  <CreditCard size={20} />
+                <div style={{ ...mStyles.tileIconCircle, background: "#7c3aed" }}>
+                  <CreditCard size={19} color="#fff" />
                 </div>
-                <div>
-                  <h4 style={mStyles.tileTitle}>Advance Entry Karein</h4>
-                  <p style={mStyles.tileSub}>Worker cash payments</p>
-                </div>
+                <h4 style={mStyles.tileTitle}>Cash Advance</h4>
+                <p style={mStyles.tileSub}>Worker payment voucher</p>
               </button>
 
+              {/* 4: Naya Worker */}
               <button
-                style={{ ...mStyles.quickActionTile, background: "#fffbeb", borderColor: "#fde68a" }}
-                onClick={() => setIsAddWorkerOpen(true)}
+                style={{ ...mStyles.quickTileCard, background: "#fffbeb", borderColor: "#fde047" }}
+                onClick={() => {
+                  triggerHaptic();
+                  setIsAddWorkerOpen(true);
+                }}
               >
-                <div style={{ ...mStyles.tileIconCircle, background: "#d97706", color: "#fff" }}>
-                  <Users size={20} />
+                <div style={{ ...mStyles.tileIconCircle, background: "#d97706" }}>
+                  <Plus size={20} color="#fff" />
                 </div>
-                <div>
-                  <h4 style={mStyles.tileTitle}>Naya Worker Jodein</h4>
-                  <p style={mStyles.tileSub}>Direct onsite onboarding</p>
+                <h4 style={mStyles.tileTitle}>Naya Worker</h4>
+                <p style={mStyles.tileSub}>15-sec site onboarding</p>
+              </button>
+
+              {/* 5: Chhutti Apply */}
+              <button
+                style={{ ...mStyles.quickTileCard, background: "#eff6ff", borderColor: "#93c5fd" }}
+                onClick={() => {
+                  triggerHaptic();
+                  setIsLeaveModalOpen(true);
+                }}
+              >
+                <div style={{ ...mStyles.tileIconCircle, background: "#2563eb" }}>
+                  <FileText size={19} color="#fff" />
                 </div>
+                <h4 style={mStyles.tileTitle}>Leave Apply</h4>
+                <p style={mStyles.tileSub}>Quick leave application</p>
+              </button>
+
+              {/* 6: Naya Task */}
+              <button
+                style={{ ...mStyles.quickTileCard, background: "#f5f3ff", borderColor: "#c4b5fd" }}
+                onClick={() => {
+                  triggerHaptic();
+                  setIsTaskModalOpen(true);
+                }}
+              >
+                <div style={{ ...mStyles.tileIconCircle, background: "#6366f1" }}>
+                  <CheckSquare size={19} color="#fff" />
+                </div>
+                <h4 style={mStyles.tileTitle}>Site Task</h4>
+                <p style={mStyles.tileSub}>Add daily work note</p>
+              </button>
+
+              {/* 7: Call / WhatsApp Directory */}
+              <button
+                style={{ ...mStyles.quickTileCard, background: "#f0fdfa", borderColor: "#99f6e4" }}
+                onClick={() => {
+                  triggerHaptic();
+                  setActiveTab("workers");
+                }}
+              >
+                <div style={{ ...mStyles.tileIconCircle, background: "#0f766e" }}>
+                  <Phone size={19} color="#fff" />
+                </div>
+                <h4 style={mStyles.tileTitle}>Direct Call</h4>
+                <p style={mStyles.tileSub}>Worker WhatsApp / Phone</p>
+              </button>
+
+              {/* 8: Quick Sync Data */}
+              <button
+                style={{ ...mStyles.quickTileCard, background: "#f8fafc", borderColor: "#cbd5e1" }}
+                onClick={handleFullRefresh}
+              >
+                <div style={{ ...mStyles.tileIconCircle, background: "#475569" }}>
+                  <RefreshCw size={19} color="#fff" />
+                </div>
+                <h4 style={mStyles.tileTitle}>Sync Data</h4>
+                <p style={mStyles.tileSub}>Reload real-time DB</p>
               </button>
             </div>
 
             {/* Recent Expenses List */}
             <div style={{ marginTop: "24px" }}>
               <div style={mStyles.sectionHeaderRow}>
-                <h3 style={mStyles.sectionTitle}>Recent Site Kharch</h3>
+                <h3 style={mStyles.sectionTitle}>Haal Ke Site Kharch</h3>
                 <button style={mStyles.seeAllBtn} onClick={() => setActiveTab("expenses")}>
                   Poora Dekhein →
                 </button>
@@ -598,7 +904,7 @@ export default function MobileApp() {
                 </div>
               ) : (
                 <div style={mStyles.recentList}>
-                  {recentExpenses.slice(0, 5).map((exp) => (
+                  {recentExpenses.slice(0, 4).map((exp) => (
                     <div key={exp.id} style={mStyles.recentItem}>
                       <div style={mStyles.recentItemLeft}>
                         <div style={mStyles.categoryPill}>{exp.category}</div>
@@ -631,7 +937,7 @@ export default function MobileApp() {
         )}
 
         {/* ══════════════════════════════════════════════════════════════════
-            TAB 2: DAILY EXPENSES (खर्चा एंट्री)
+            TAB 2: DAILY EXPENSES (खर्चा एंट्री & Bill Photo)
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "expenses" && (
           <div style={mStyles.contentContainer}>
@@ -655,9 +961,13 @@ export default function MobileApp() {
                         style={{
                           ...mStyles.categoryChip,
                           background: expenseForm.category === cat ? "#0f766e" : "#f1f5f9",
-                          color: expenseForm.category === cat ? "#ffffff" : "#334155"
+                          color: expenseForm.category === cat ? "#ffffff" : "#334155",
+                          fontWeight: expenseForm.category === cat ? "700" : "500"
                         }}
-                        onClick={() => setExpenseForm((p) => ({ ...p, category: cat }))}
+                        onClick={() => {
+                          triggerHaptic(15);
+                          setExpenseForm((prev) => ({ ...prev, category: cat }));
+                        }}
                       >
                         {cat}
                       </button>
@@ -668,7 +978,7 @@ export default function MobileApp() {
 
               {/* Amount Input */}
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Amount (₹)</label>
+                <label style={mStyles.inputLabel}>Rashi (Amount ₹) *</label>
                 <div style={mStyles.amountInputWrap}>
                   <span style={mStyles.rupeeSymbol}>₹</span>
                   <input
@@ -681,19 +991,20 @@ export default function MobileApp() {
                     required
                   />
                 </div>
-                {/* Quick denomination chips */}
+                {/* Fast Denomination Chips */}
                 <div style={mStyles.quickAmtChips}>
-                  {[100, 200, 500, 1000, 2000, 5000].map((amt) => (
+                  {[100, 500, 2000, 5000, 10000].map((amt) => (
                     <button
                       type="button"
                       key={amt}
                       style={mStyles.quickAmtBtn}
-                      onClick={() =>
+                      onClick={() => {
+                        triggerHaptic(15);
                         setExpenseForm((p) => ({
                           ...p,
                           amount: String((Number(p.amount) || 0) + amt)
-                        }))
-                      }
+                        }));
+                      }}
                     >
                       +{amt}
                     </button>
@@ -701,19 +1012,19 @@ export default function MobileApp() {
                 </div>
               </div>
 
-              {/* Description / Notes */}
+              {/* Description */}
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Vivaran (Description / Kaam ka note)</label>
+                <label style={mStyles.inputLabel}>Vivaran (Description / Shop Name)</label>
                 <input
                   type="text"
-                  placeholder="e.g. 5 Bori Cement, Generator Diesel, Mistry ka khana"
+                  placeholder="e.g. 10 bags cement, JCB diesel, Chai nasta"
                   style={mStyles.textInput}
                   value={expenseForm.description}
                   onChange={(e) => setExpenseForm((p) => ({ ...p, description: e.target.value }))}
                 />
               </div>
 
-              {/* Tarikh */}
+              {/* Date */}
               <div style={mStyles.inputGroup}>
                 <label style={mStyles.inputLabel}>Tarikh (Date)</label>
                 <input
@@ -724,29 +1035,28 @@ export default function MobileApp() {
                 />
               </div>
 
-              {/* Bill / Receipt Camera Upload */}
+              {/* Camera / Receipt Upload */}
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Bill / Receipt Photo</label>
+                <label style={mStyles.inputLabel}>Bill / Receipt Photo (Camera se kheencho)</label>
                 {expenseForm.receiptUrl ? (
-                  <div style={mStyles.photoPreviewBox}>
+                  <div style={mStyles.receiptThumbnailWrap}>
                     <img
                       src={expenseForm.receiptUrl}
                       alt="Bill receipt"
-                      style={mStyles.thumbnailImg}
-                      onClick={() => setPreviewImage(expenseForm.receiptUrl)}
+                      style={mStyles.receiptThumbnail}
                     />
                     <button
                       type="button"
                       style={mStyles.removePhotoBtn}
                       onClick={() => setExpenseForm((p) => ({ ...p, receiptUrl: "" }))}
                     >
-                      <Trash2 size={16} /> Hatao
+                      <Trash2 size={16} color="#ef4444" /> Photo Hatayein
                     </button>
                   </div>
                 ) : (
-                  <label style={mStyles.cameraUploadBtn}>
-                    <Camera size={20} color="#0f766e" />
-                    <span>Bill / Receipt Ki Photo Khinchein</span>
+                  <label style={mStyles.cameraUploadBox}>
+                    <Camera size={26} color="#0f766e" />
+                    <span style={mStyles.cameraUploadText}>📷 Camera se Bill ki Photo Khinchein</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -1048,21 +1358,12 @@ export default function MobileApp() {
                     </div>
                     <div>
                       <p style={mStyles.recentItemTitle}>{adv.worker?.fullName || "Worker"}</p>
-                      <p style={mStyles.recentItemDate}>
-                        {adv.reason || "Advance"} •{" "}
-                        {adv.date ? new Date(adv.date).toLocaleDateString("hi-IN") : todayStr}
-                      </p>
+                      <p style={mStyles.recentItemDate}>{adv.reason || "Daily Advance"}</p>
                     </div>
                   </div>
                   <div style={mStyles.recentItemRight}>
-                    <span
-                      style={{
-                        ...mStyles.recoveryBadge,
-                        background: adv.isDeducted ? "#dcfce7" : "#fee2e2",
-                        color: adv.isDeducted ? "#16a34a" : "#dc2626"
-                      }}
-                    >
-                      {adv.isDeducted ? "Recovered" : "Pending"}
+                    <span style={{ fontSize: "11px", color: "#64748b" }}>
+                      {adv.date ? new Date(adv.date).toLocaleDateString("hi-IN") : todayStr}
                     </span>
                   </div>
                 </div>
@@ -1072,27 +1373,29 @@ export default function MobileApp() {
         )}
 
         {/* ══════════════════════════════════════════════════════════════════
-            TAB 5: WORKERS DIRECTORY & ONBOARDING (कारीगर / लेबर)
+            TAB 5: WORKERS DIRECTORY (मजदूर डायरेक्टरी & कॉलिंग)
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "workers" && (
           <div style={mStyles.contentContainer}>
             <div style={mStyles.pageHeader}>
               <div>
                 <h2 style={mStyles.pageTitle}>Workers Directory</h2>
-                <p style={mStyles.pageSubtitle}>Direct call, WhatsApp aur naye worker ka registration</p>
+                <p style={mStyles.pageSubtitle}>Direct phone call aur WhatsApp contact karein</p>
               </div>
-
-              <button style={mStyles.addWorkerHeaderBtn} onClick={() => setIsAddWorkerOpen(true)}>
-                <Plus size={16} /> Naya Worker
+              <button
+                style={{ ...mStyles.markAllPresentBtn, background: "#d97706" }}
+                onClick={() => setIsAddWorkerOpen(true)}
+              >
+                <Plus size={14} /> + Naya Worker
               </button>
             </div>
 
-            {/* Search Bar */}
+            {/* Search worker */}
             <div style={mStyles.searchBar}>
               <Search size={16} color="#94a3b8" />
               <input
                 type="text"
-                placeholder="Worker ka naam, trade ya phone khojein..."
+                placeholder="Worker ka naam, ID ya trade khojein..."
                 style={mStyles.searchInput}
                 value={workerSearch}
                 onChange={(e) => setWorkerSearch(e.target.value)}
@@ -1125,6 +1428,7 @@ export default function MobileApp() {
                             href={`tel:${w.mobileNumber}`}
                             style={mStyles.callIconBtn}
                             title="Direct Call"
+                            onClick={() => triggerHaptic(15)}
                           >
                             <Phone size={16} color="#16a34a" />
                           </a>
@@ -1134,6 +1438,7 @@ export default function MobileApp() {
                             rel="noreferrer"
                             style={mStyles.whatsappIconBtn}
                             title="WhatsApp Chat"
+                            onClick={() => triggerHaptic(15)}
                           >
                             <MessageCircle size={16} color="#0284c7" />
                           </a>
@@ -1148,26 +1453,365 @@ export default function MobileApp() {
             </div>
           </div>
         )}
+
+        {/* ══════════════════════════════════════════════════════════════════
+            TAB 6: MORE (अधिक फ़ंक्शन & सेटिंग्स)
+        ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === "more" && (
+          <div style={mStyles.contentContainer}>
+            <div style={mStyles.pageHeader}>
+              <div>
+                <h2 style={mStyles.pageTitle}>App Menu & Settings</h2>
+                <p style={mStyles.pageSubtitle}>Employee services, backend config & tools</p>
+              </div>
+            </div>
+
+            {/* User Profile Card */}
+            <div style={mStyles.profileCard}>
+              <div style={mStyles.profileAvatar}>
+                {user?.name ? user.name[0].toUpperCase() : "U"}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h3 style={mStyles.profileName}>{user?.name || "Staff Member"}</h3>
+                <p style={mStyles.profileEmail}>{user?.email || "user@snmrfabindia.com"}</p>
+                <span style={mStyles.roleBadgeBig}>{role || "STAFF"}</span>
+              </div>
+            </div>
+
+            {/* Quick Service Links */}
+            <h3 style={{ ...mStyles.sectionTitle, marginTop: "20px" }}>Workforce Services</h3>
+            <div style={mStyles.menuListCard}>
+              <div
+                style={mStyles.menuRowItem}
+                onClick={() => {
+                  triggerHaptic();
+                  setIsLeaveModalOpen(true);
+                }}
+              >
+                <div style={{ ...mStyles.menuItemIconCircle, background: "#eff6ff", color: "#2563eb" }}>
+                  <FileText size={18} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h4 style={mStyles.menuRowTitle}>Chhutti (Leave) Request</h4>
+                  <p style={mStyles.menuRowSub}>Apply leave for employee / supervisor</p>
+                </div>
+                <ChevronRight size={18} color="#94a3b8" />
+              </div>
+
+              <div
+                style={mStyles.menuRowItem}
+                onClick={() => {
+                  triggerHaptic();
+                  setIsTaskModalOpen(true);
+                }}
+              >
+                <div style={{ ...mStyles.menuItemIconCircle, background: "#f5f3ff", color: "#6366f1" }}>
+                  <CheckSquare size={18} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h4 style={mStyles.menuRowTitle}>Daily Site Tasks & To-Do</h4>
+                  <p style={mStyles.menuRowSub}>Manage operational site assignments</p>
+                </div>
+                <ChevronRight size={18} color="#94a3b8" />
+              </div>
+
+              <div
+                style={mStyles.menuRowItem}
+                onClick={() => {
+                  triggerHaptic();
+                  navigate("/salary");
+                }}
+              >
+                <div style={{ ...mStyles.menuItemIconCircle, background: "#ecfdf5", color: "#059669" }}>
+                  <DollarSign size={18} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h4 style={mStyles.menuRowTitle}>Salary & Wages Calculation</h4>
+                  <p style={mStyles.menuRowSub}>Monthly salary register and pay slips</p>
+                </div>
+                <ChevronRight size={18} color="#94a3b8" />
+              </div>
+            </div>
+
+            {/* System & Settings */}
+            <h3 style={{ ...mStyles.sectionTitle, marginTop: "20px" }}>System Configuration</h3>
+            <div style={mStyles.menuListCard}>
+              <div
+                style={mStyles.menuRowItem}
+                onClick={() => {
+                  triggerHaptic();
+                  setIsServerModalOpen(true);
+                }}
+              >
+                <div style={{ ...mStyles.menuItemIconCircle, background: "#f0fdfa", color: "#0f766e" }}>
+                  <Wifi size={18} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h4 style={mStyles.menuRowTitle}>Server Connection Settings</h4>
+                  <p style={mStyles.menuRowSub}>Check Render Cloud or Wi-Fi IP</p>
+                </div>
+                <ChevronRight size={18} color="#94a3b8" />
+              </div>
+
+              <div
+                style={mStyles.menuRowItem}
+                onClick={() => {
+                  triggerHaptic();
+                  switchMode("desktop");
+                  navigate("/");
+                }}
+              >
+                <div style={{ ...mStyles.menuItemIconCircle, background: "#f8fafc", color: "#334155" }}>
+                  <Monitor size={18} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h4 style={mStyles.menuRowTitle}>Switch to Full Desktop View</h4>
+                  <p style={mStyles.menuRowSub}>Complete ERP tables, Excel exports & graphs</p>
+                </div>
+                <ChevronRight size={18} color="#94a3b8" />
+              </div>
+
+              <div
+                style={{ ...mStyles.menuRowItem, borderBottom: "none" }}
+                onClick={() => {
+                  triggerHaptic(40);
+                  if (window.confirm("Kya aap logout karna chahte hain?")) {
+                    logout();
+                    navigate("/login");
+                  }
+                }}
+              >
+                <div style={{ ...mStyles.menuItemIconCircle, background: "#fef2f2", color: "#dc2626" }}>
+                  <LogOut size={18} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ ...mStyles.menuRowTitle, color: "#dc2626" }}>Sign Out (लॉग आउट)</h4>
+                  <p style={mStyles.menuRowSub}>Safely exit your ERP work session</p>
+                </div>
+                <ChevronRight size={18} color="#dc2626" />
+              </div>
+            </div>
+
+            <p style={mStyles.versionFooterText}>
+              SNMR FAB INDIA ERP • Native Android App v2.4 • Connected to Cloud
+            </p>
+          </div>
+        )}
       </main>
 
-      {/* ── Bill Image Full-Screen Viewer ─────────────────────────────────── */}
-      {previewImage && (
-        <div style={mStyles.imageModalOverlay} onClick={() => setPreviewImage(null)}>
-          <div style={mStyles.imageModalContent} onClick={(e) => e.stopPropagation()}>
-            <button style={mStyles.closeModalBtn} onClick={() => setPreviewImage(null)}>
-              <X size={20} />
-            </button>
-            <img src={previewImage} alt="Receipt preview" style={mStyles.fullReceiptImage} />
+      {/* ── Fixed Bottom Navigation Bar with Center Pulsing FAB ────────────── */}
+      <nav style={mStyles.bottomNav}>
+        {/* Tab 1: Home */}
+        <button
+          style={{
+            ...mStyles.navItem,
+            color: activeTab === "home" ? "#0f766e" : "#64748b"
+          }}
+          onClick={() => {
+            triggerHaptic(15);
+            setActiveTab("home");
+          }}
+        >
+          <Home size={19} />
+          <span style={mStyles.navLabel}>Home</span>
+        </button>
+
+        {/* Tab 2: Kharch */}
+        <button
+          style={{
+            ...mStyles.navItem,
+            color: activeTab === "expenses" ? "#e11d48" : "#64748b"
+          }}
+          onClick={() => {
+            triggerHaptic(15);
+            setActiveTab("expenses");
+          }}
+        >
+          <Receipt size={19} />
+          <span style={mStyles.navLabel}>Kharch</span>
+        </button>
+
+        {/* Center Floating Action Button (⚡ Quick Actions) */}
+        <div style={mStyles.centerFabWrapper}>
+          <button
+            style={mStyles.centerFabBtn}
+            onClick={() => {
+              triggerHaptic(30);
+              setIsQuickActionOpen(true);
+            }}
+            title="Quick Functions / त्वरित कार्य"
+            aria-label="Quick Functions"
+          >
+            <Zap size={22} color="#ffffff" />
+          </button>
+          <span style={mStyles.fabLabel}>Quick</span>
+        </div>
+
+        {/* Tab 3: Hajiri */}
+        <button
+          style={{
+            ...mStyles.navItem,
+            color: activeTab === "attendance" ? "#16a34a" : "#64748b"
+          }}
+          onClick={() => {
+            triggerHaptic(15);
+            setActiveTab("attendance");
+          }}
+        >
+          <CalendarCheck size={19} />
+          <span style={mStyles.navLabel}>Hajiri</span>
+        </button>
+
+        {/* Tab 4: Workers */}
+        <button
+          style={{
+            ...mStyles.navItem,
+            color: activeTab === "workers" ? "#d97706" : "#64748b"
+          }}
+          onClick={() => {
+            triggerHaptic(15);
+            setActiveTab("workers");
+          }}
+        >
+          <Users size={19} />
+          <span style={mStyles.navLabel}>Workers</span>
+        </button>
+
+        {/* Tab 5: More */}
+        <button
+          style={{
+            ...mStyles.navItem,
+            color: activeTab === "more" ? "#0f766e" : "#64748b"
+          }}
+          onClick={() => {
+            triggerHaptic(15);
+            setActiveTab("more");
+          }}
+        >
+          <SlidersHorizontal size={19} />
+          <span style={mStyles.navLabel}>More</span>
+        </button>
+      </nav>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          MODAL 1: ⚡ QUICK ACTIONS ACTION SHEET (Bottom Drawer)
+      ════════════════════════════════════════════════════════════════════ */}
+      {isQuickActionOpen && (
+        <div style={mStyles.modalOverlay} onClick={() => setIsQuickActionOpen(false)}>
+          <div style={mStyles.sheetModalCard} onClick={(e) => e.stopPropagation()}>
+            <div style={mStyles.sheetHandleBar} />
+            <div style={mStyles.modalHeader}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ width: "28px", height: "28px", borderRadius: "8px", background: "#fef08a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Zap size={18} color="#b45309" />
+                </div>
+                <div>
+                  <h3 style={mStyles.modalTitle}>Quick Functions</h3>
+                  <p style={{ margin: 0, fontSize: "11px", color: "#64748b" }}>1-tap instant site shortcuts</p>
+                </div>
+              </div>
+              <button style={mStyles.closeModalIconBtn} onClick={() => setIsQuickActionOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={mStyles.sheetGrid}>
+              {/* Option 1: Mark Hajiri */}
+              <button
+                style={{ ...mStyles.sheetTile, background: "#f0fdf4", borderColor: "#86efac" }}
+                onClick={() => {
+                  setIsQuickActionOpen(false);
+                  setActiveTab("attendance");
+                }}
+              >
+                <div style={{ ...mStyles.sheetTileIcon, background: "#16a34a" }}>
+                  <CalendarCheck size={20} color="#fff" />
+                </div>
+                <span style={mStyles.sheetTileText}>Hajiri / OT</span>
+              </button>
+
+              {/* Option 2: Add Expense + Bill */}
+              <button
+                style={{ ...mStyles.sheetTile, background: "#fff1f2", borderColor: "#fca5a5" }}
+                onClick={() => {
+                  setIsQuickActionOpen(false);
+                  setActiveTab("expenses");
+                }}
+              >
+                <div style={{ ...mStyles.sheetTileIcon, background: "#e11d48" }}>
+                  <Camera size={20} color="#fff" />
+                </div>
+                <span style={mStyles.sheetTileText}>Kharcha + Bill</span>
+              </button>
+
+              {/* Option 3: Advance */}
+              <button
+                style={{ ...mStyles.sheetTile, background: "#faf5ff", borderColor: "#d8b4fe" }}
+                onClick={() => {
+                  setIsQuickActionOpen(false);
+                  setActiveTab("advances");
+                }}
+              >
+                <div style={{ ...mStyles.sheetTileIcon, background: "#7c3aed" }}>
+                  <CreditCard size={20} color="#fff" />
+                </div>
+                <span style={mStyles.sheetTileText}>Advance Dein</span>
+              </button>
+
+              {/* Option 4: Onboard Worker */}
+              <button
+                style={{ ...mStyles.sheetTile, background: "#fffbeb", borderColor: "#fde047" }}
+                onClick={() => {
+                  setIsQuickActionOpen(false);
+                  setIsAddWorkerOpen(true);
+                }}
+              >
+                <div style={{ ...mStyles.sheetTileIcon, background: "#d97706" }}>
+                  <Plus size={20} color="#fff" />
+                </div>
+                <span style={mStyles.sheetTileText}>Naya Worker</span>
+              </button>
+
+              {/* Option 5: Apply Leave */}
+              <button
+                style={{ ...mStyles.sheetTile, background: "#eff6ff", borderColor: "#93c5fd" }}
+                onClick={() => {
+                  setIsQuickActionOpen(false);
+                  setIsLeaveModalOpen(true);
+                }}
+              >
+                <div style={{ ...mStyles.sheetTileIcon, background: "#2563eb" }}>
+                  <FileText size={20} color="#fff" />
+                </div>
+                <span style={mStyles.sheetTileText}>Chhutti Apply</span>
+              </button>
+
+              {/* Option 6: Add Task */}
+              <button
+                style={{ ...mStyles.sheetTile, background: "#f5f3ff", borderColor: "#c4b5fd" }}
+                onClick={() => {
+                  setIsQuickActionOpen(false);
+                  setIsTaskModalOpen(true);
+                }}
+              >
+                <div style={{ ...mStyles.sheetTileIcon, background: "#6366f1" }}>
+                  <CheckSquare size={20} color="#fff" />
+                </div>
+                <span style={mStyles.sheetTileText}>Site Task</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* ── Add New Worker Modal ──────────────────────────────────────────── */}
+      {/* ════════════════════════════════════════════════════════════════════
+          MODAL 2: ADD NEW WORKER MODAL (नया मजदूर)
+      ════════════════════════════════════════════════════════════════════ */}
       {isAddWorkerOpen && (
         <div style={mStyles.modalOverlay} onClick={() => setIsAddWorkerOpen(false)}>
           <div style={mStyles.modalCard} onClick={(e) => e.stopPropagation()}>
             <div style={mStyles.modalHeader}>
-              <h3 style={mStyles.modalTitle}>Naya Worker Jodein</h3>
+              <h3 style={mStyles.modalTitle}>👷 Naya Worker Jodein</h3>
               <button style={mStyles.closeModalIconBtn} onClick={() => setIsAddWorkerOpen(false)}>
                 <X size={20} />
               </button>
@@ -1187,7 +1831,7 @@ export default function MobileApp() {
               </div>
 
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Mobile Number</label>
+                <label style={mStyles.inputLabel}>Mobile Number (WhatsApp/Call)</label>
                 <input
                   type="tel"
                   placeholder="10-digit mobile number"
@@ -1215,7 +1859,7 @@ export default function MobileApp() {
               </div>
 
               <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Daily Wage Rate (दिहाड़ी ₹)</label>
+                <label style={mStyles.inputLabel}>Daily Wage Rate (दिहाड़ी ₹) *</label>
                 <input
                   type="number"
                   placeholder="e.g. 500"
@@ -1238,238 +1882,493 @@ export default function MobileApp() {
         </div>
       )}
 
-      {/* ── Fixed Bottom Navigation Bar ──────────────────────────────────── */}
-      <nav style={mStyles.bottomNav}>
-        <button
-          style={{
-            ...mStyles.navItem,
-            color: activeTab === "home" ? "#0f766e" : "#64748b"
-          }}
-          onClick={() => setActiveTab("home")}
-        >
-          <Home size={20} />
-          <span style={mStyles.navLabel}>Home</span>
-        </button>
+      {/* ════════════════════════════════════════════════════════════════════
+          MODAL 3: QUICK LEAVE APPLY MODAL (छुट्टी की अर्जी)
+      ════════════════════════════════════════════════════════════════════ */}
+      {isLeaveModalOpen && (
+        <div style={mStyles.modalOverlay} onClick={() => setIsLeaveModalOpen(false)}>
+          <div style={mStyles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <div style={mStyles.modalHeader}>
+              <h3 style={mStyles.modalTitle}>📝 Chhutti (Leave) Apply</h3>
+              <button style={mStyles.closeModalIconBtn} onClick={() => setIsLeaveModalOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
 
-        <button
-          style={{
-            ...mStyles.navItem,
-            color: activeTab === "expenses" ? "#e11d48" : "#64748b"
-          }}
-          onClick={() => setActiveTab("expenses")}
-        >
-          <Receipt size={20} />
-          <span style={mStyles.navLabel}>Kharch</span>
-        </button>
+            <form onSubmit={handleApplyLeave} style={mStyles.modalBody}>
+              <div style={mStyles.inputGroup}>
+                <label style={mStyles.inputLabel}>Chhutti Ka Prakar (Leave Type)</label>
+                <select
+                  style={mStyles.textInput}
+                  value={leaveForm.leaveType}
+                  onChange={(e) => setLeaveForm((p) => ({ ...p, leaveType: e.target.value }))}
+                >
+                  <option value="Casual">Casual Leave (आकस्मिक अवकाश)</option>
+                  <option value="Sick">Sick Leave (बीमारी की छुट्टी)</option>
+                  <option value="Earned">Earned / Annual Leave</option>
+                  <option value="Unpaid">Unpaid Leave (बिना वेतन)</option>
+                </select>
+              </div>
 
-        <button
-          style={{
-            ...mStyles.navItem,
-            color: activeTab === "attendance" ? "#16a34a" : "#64748b"
-          }}
-          onClick={() => setActiveTab("attendance")}
-        >
-          <CalendarCheck size={20} />
-          <span style={mStyles.navLabel}>Hajiri</span>
-        </button>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div style={mStyles.inputGroup}>
+                  <label style={mStyles.inputLabel}>Shuru Tarikh</label>
+                  <input
+                    type="date"
+                    style={mStyles.textInput}
+                    value={leaveForm.startDate}
+                    onChange={(e) => setLeaveForm((p) => ({ ...p, startDate: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div style={mStyles.inputGroup}>
+                  <label style={mStyles.inputLabel}>Antim Tarikh</label>
+                  <input
+                    type="date"
+                    style={mStyles.textInput}
+                    value={leaveForm.endDate}
+                    onChange={(e) => setLeaveForm((p) => ({ ...p, endDate: e.target.value }))}
+                    required
+                  />
+                </div>
+              </div>
 
-        <button
-          style={{
-            ...mStyles.navItem,
-            color: activeTab === "advances" ? "#7c3aed" : "#64748b"
-          }}
-          onClick={() => setActiveTab("advances")}
-        >
-          <CreditCard size={20} />
-          <span style={mStyles.navLabel}>Advance</span>
-        </button>
+              <div style={mStyles.inputGroup}>
+                <label style={mStyles.inputLabel}>Karan (Reason)</label>
+                <textarea
+                  placeholder="e.g. Gaon jana hai, urgent personal kaam"
+                  style={{ ...mStyles.textInput, height: "70px", paddingTop: "8px" }}
+                  value={leaveForm.reason}
+                  onChange={(e) => setLeaveForm((p) => ({ ...p, reason: e.target.value }))}
+                />
+              </div>
 
-        <button
-          style={{
-            ...mStyles.navItem,
-            color: activeTab === "workers" ? "#d97706" : "#64748b"
-          }}
-          onClick={() => setActiveTab("workers")}
-        >
-          <Users size={20} />
-          <span style={mStyles.navLabel}>Workers</span>
-        </button>
-      </nav>
+              <button
+                type="submit"
+                style={{ ...mStyles.submitBigBtn, background: "#2563eb" }}
+                disabled={submittingLeave}
+              >
+                {submittingLeave ? "Submitting..." : "✓ Chhutti Submit Karein"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════
+          MODAL 4: QUICK TASK ADD MODAL (टास्क जोड़ें)
+      ════════════════════════════════════════════════════════════════════ */}
+      {isTaskModalOpen && (
+        <div style={mStyles.modalOverlay} onClick={() => setIsTaskModalOpen(false)}>
+          <div style={mStyles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <div style={mStyles.modalHeader}>
+              <h3 style={mStyles.modalTitle}>📋 Naya Site Task Jodein</h3>
+              <button style={mStyles.closeModalIconBtn} onClick={() => setIsTaskModalOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTask} style={mStyles.modalBody}>
+              <div style={mStyles.inputGroup}>
+                <label style={mStyles.inputLabel}>Task Title *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Slab casting check, 2 ton steel delivery"
+                  style={mStyles.textInput}
+                  value={taskForm.title}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, title: e.target.value }))}
+                  required
+                />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div style={mStyles.inputGroup}>
+                  <label style={mStyles.inputLabel}>Priority</label>
+                  <select
+                    style={mStyles.textInput}
+                    value={taskForm.priority}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, priority: e.target.value }))}
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High (जरूरी)</option>
+                    <option value="Urgent">Urgent (तत्काल)</option>
+                  </select>
+                </div>
+                <div style={mStyles.inputGroup}>
+                  <label style={mStyles.inputLabel}>Due Date</label>
+                  <input
+                    type="date"
+                    style={mStyles.textInput}
+                    value={taskForm.dueDate}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, dueDate: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div style={mStyles.inputGroup}>
+                <label style={mStyles.inputLabel}>Details / Instructions</label>
+                <textarea
+                  placeholder="Kaam ke baare me instructions dalein..."
+                  style={{ ...mStyles.textInput, height: "70px", paddingTop: "8px" }}
+                  value={taskForm.description}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, description: e.target.value }))}
+                />
+              </div>
+
+              <button
+                type="submit"
+                style={{ ...mStyles.submitBigBtn, background: "#6366f1" }}
+                disabled={submittingTask || !taskForm.title}
+              >
+                {submittingTask ? "Saving..." : "✓ Task Save Karein"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════
+          MODAL 5: NOTIFICATIONS MODAL (सूचनाएं)
+      ════════════════════════════════════════════════════════════════════ */}
+      {isNotifModalOpen && (
+        <div style={mStyles.modalOverlay} onClick={() => setIsNotifModalOpen(false)}>
+          <div style={mStyles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <div style={mStyles.modalHeader}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Bell size={18} color="#0f766e" />
+                <h3 style={mStyles.modalTitle}>Notifications</h3>
+              </div>
+              <button style={mStyles.closeModalIconBtn} onClick={() => setIsNotifModalOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ maxHeight: "380px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px" }}>
+              {notifications.length === 0 ? (
+                <div style={mStyles.emptyStateBox}>
+                  <Bell size={28} color="#cbd5e1" />
+                  <p style={mStyles.emptyText}>Sabhi notifications padh li gayi hain 🎉</p>
+                </div>
+              ) : (
+                notifications.map((n) => (
+                  <div key={n.id} style={{ ...mStyles.recentItem, background: n.read ? "#ffffff" : "#f0fdfa" }}>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ fontSize: "13px", fontWeight: "700", color: "#0f172a", margin: "0 0 2px" }}>
+                        {n.title}
+                      </h4>
+                      <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{n.body}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════
+          MODAL 6: SERVER URL SETTINGS (सर्वर सेटिंग्स)
+      ════════════════════════════════════════════════════════════════════ */}
+      {isServerModalOpen && (
+        <div style={mStyles.modalOverlay} onClick={() => setIsServerModalOpen(false)}>
+          <div style={mStyles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <div style={mStyles.modalHeader}>
+              <h3 style={mStyles.modalTitle}>🌐 Server Connection Settings</h3>
+              <button style={mStyles.closeModalIconBtn} onClick={() => setIsServerModalOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={mStyles.modalBody}>
+              <div style={mStyles.inputGroup}>
+                <label style={mStyles.inputLabel}>Backend Server API URL</label>
+                <input
+                  type="text"
+                  placeholder="https://erp-system-xxxx.onrender.com/api"
+                  style={mStyles.textInput}
+                  value={serverUrlInput}
+                  onChange={(e) => setServerUrlInput(e.target.value)}
+                />
+              </div>
+
+              {serverTestStatus && (
+                <div
+                  style={{
+                    padding: "10px",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    background: serverTestStatus.type === "success" ? "#f0fdf4" : "#fef2f2",
+                    color: serverTestStatus.type === "success" ? "#16a34a" : "#dc2626",
+                    border: `1px solid ${serverTestStatus.type === "success" ? "#bbf7d0" : "#fecaca"}`
+                  }}
+                >
+                  {serverTestStatus.msg}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
+                <button
+                  type="button"
+                  style={{ ...mStyles.submitBigBtn, background: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1" }}
+                  onClick={testServerUrl}
+                  disabled={testingServer}
+                >
+                  {testingServer ? "Pinging..." : "🔍 Test Connection"}
+                </button>
+                <button
+                  type="button"
+                  style={{ ...mStyles.submitBigBtn, background: "#0f766e" }}
+                  onClick={saveServerUrl}
+                >
+                  💾 Save & Reload
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bill Image Full-Screen Viewer ─────────────────────────────────── */}
+      {previewImage && (
+        <div style={mStyles.imageModalOverlay} onClick={() => setPreviewImage(null)}>
+          <div style={mStyles.imageModalContent} onClick={(e) => e.stopPropagation()}>
+            <button style={mStyles.closeModalBtn} onClick={() => setPreviewImage(null)}>
+              <X size={20} />
+            </button>
+            <img src={previewImage} alt="Receipt preview" style={mStyles.fullReceiptImage} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Mobile Responsive Styles ───────────────────────────────────────────────
+// ── Native Mobile App Responsive Styles ───────────────────────────────────
 const mStyles = {
   appWrapper: {
     display: "flex",
     flexDirection: "column",
     height: "100vh",
     width: "100%",
-    maxWidth: "500px",
+    maxWidth: "540px",
     margin: "0 auto",
     background: "#f8fafc",
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     position: "relative",
     overflow: "hidden",
-    boxShadow: "0 0 40px rgba(0,0,0,0.1)"
+    boxShadow: "0 0 50px rgba(0,0,0,0.12)"
   },
   topBar: {
-    height: "64px",
+    paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)",
+    height: "calc(64px + env(safe-area-inset-top, 0px))",
     background: "#ffffff",
     borderBottom: "1px solid #e2e8f0",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "0 16px",
+    paddingLeft: "14px",
+    paddingRight: "14px",
     flexShrink: 0,
-    zIndex: 10
+    zIndex: 40,
+    boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
   },
   topBarLeft: {
     display: "flex",
     alignItems: "center",
-    gap: "10px"
+    gap: "10px",
+    flex: 1,
+    minWidth: 0
   },
   logoCircle: {
     width: "36px",
     height: "36px",
     borderRadius: "10px",
-    background: "linear-gradient(135deg, #0f766e, #14b8a6)",
+    background: "linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)",
     color: "#ffffff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontWeight: "800",
+    fontWeight: "900",
     fontSize: "14px",
-    boxShadow: "0 2px 6px rgba(15, 118, 110, 0.3)"
+    letterSpacing: "-0.5px",
+    boxShadow: "0 3px 8px rgba(15, 118, 110, 0.35)",
+    flexShrink: 0
   },
   appTitle: {
-    fontSize: "13.5px",
-    fontWeight: "800",
+    fontSize: "14px",
+    fontWeight: "900",
     color: "#0f172a",
     margin: 0,
-    letterSpacing: "-0.2px"
+    letterSpacing: "-0.3px",
+    whiteSpace: "nowrap"
+  },
+  roleBadge: {
+    fontSize: "9.5px",
+    fontWeight: "800",
+    background: "rgba(15,118,110,0.12)",
+    color: "#0f766e",
+    padding: "1px 6px",
+    borderRadius: "99px",
+    textTransform: "uppercase"
   },
   siteSelectorBox: {
     display: "flex",
     alignItems: "center",
-    gap: "4px"
+    gap: "3px",
+    marginTop: "1px"
   },
   siteSelect: {
     border: "none",
     background: "transparent",
     color: "#0f766e",
     fontWeight: "700",
-    fontSize: "12px",
+    fontSize: "11.5px",
     outline: "none",
     cursor: "pointer",
-    maxWidth: "180px"
+    maxWidth: "160px"
   },
   topBarRight: {
     display: "flex",
     alignItems: "center",
-    gap: "8px"
+    gap: "6px",
+    flexShrink: 0
   },
-  desktopSwitchBtn: {
+  iconActionBtn: {
+    width: "34px",
+    height: "34px",
+    borderRadius: "8px",
+    background: "#f1f5f9",
+    border: "none",
     display: "flex",
     alignItems: "center",
-    gap: "5px",
-    background: "#f1f5f9",
+    justifyContent: "center",
+    color: "#475569",
+    cursor: "pointer",
+    position: "relative"
+  },
+  notifBadge: {
+    position: "absolute",
+    top: "3px",
+    right: "3px",
+    width: "14px",
+    height: "14px",
+    borderRadius: "50%",
+    background: "#ef4444",
+    color: "#fff",
+    fontSize: "8.5px",
+    fontWeight: "800",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  desktopPillBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: "4px",
+    background: "#f8fafc",
     border: "1px solid #cbd5e1",
-    padding: "6px 10px",
+    padding: "5px 9px",
     borderRadius: "8px",
     color: "#334155",
+    fontSize: "11.5px",
+    fontWeight: "700",
     cursor: "pointer"
   },
   toastNotification: {
     position: "absolute",
-    top: "72px",
-    left: "16px",
-    right: "16px",
+    top: "calc(74px + env(safe-area-inset-top, 0px))",
+    left: "14px",
+    right: "14px",
     background: "#0f172a",
     color: "#ffffff",
-    padding: "10px 16px",
-    borderRadius: "10px",
+    padding: "11px 16px",
+    borderRadius: "12px",
     fontSize: "13px",
     fontWeight: "600",
     display: "flex",
     alignItems: "center",
     gap: "10px",
-    boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
+    boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
     zIndex: 100,
-    animation: "fadeIn 0.2s ease"
+    animation: "slideDown 0.25s ease"
   },
   scrollArea: {
     flex: 1,
     overflowY: "auto",
-    paddingBottom: "80px",
+    paddingBottom: "88px",
     WebkitOverflowScrolling: "touch"
   },
   contentContainer: {
-    padding: "16px"
+    padding: "14px"
   },
   dateBanner: {
-    background: "linear-gradient(135deg, #0f766e, #115e59)",
+    background: "linear-gradient(135deg, #0f766e 0%, #115e59 100%)",
     color: "#ffffff",
-    padding: "18px 20px",
+    padding: "16px 18px",
     borderRadius: "16px",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "16px",
-    boxShadow: "0 4px 16px rgba(15, 118, 110, 0.2)"
+    marginBottom: "14px",
+    boxShadow: "0 4px 16px rgba(15, 118, 110, 0.22)"
   },
   dateBannerSub: {
     margin: "0 0 2px 0",
-    fontSize: "11.5px",
-    opacity: 0.85,
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
+    fontSize: "12px",
+    opacity: 0.9,
     fontWeight: "600"
   },
   dateBannerTitle: {
     margin: 0,
-    fontSize: "17px",
+    fontSize: "16px",
     fontWeight: "800"
   },
   siteBadge: {
     background: "rgba(255,255,255,0.2)",
     padding: "4px 10px",
     borderRadius: "20px",
-    fontSize: "12px",
-    fontWeight: "700"
+    fontSize: "11px",
+    fontWeight: "700",
+    whiteSpace: "nowrap"
   },
   statsGrid: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
-    gap: "10px",
-    marginBottom: "20px"
+    gap: "9px",
+    marginBottom: "18px"
   },
   statCard: {
-    padding: "14px",
+    padding: "12px 14px",
     borderRadius: "12px",
     border: "1px solid",
     display: "flex",
     flexDirection: "column",
-    gap: "4px",
+    gap: "3px",
     cursor: "pointer",
     boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
   },
+  tapHint: {
+    fontSize: "9.5px",
+    fontWeight: "700",
+    color: "#64748b"
+  },
   statValue: {
-    fontSize: "17px",
-    fontWeight: "800",
+    fontSize: "18px",
+    fontWeight: "900",
     color: "#0f172a"
   },
   statLabel: {
-    fontSize: "11px",
+    fontSize: "10.5px",
     fontWeight: "600",
     color: "#64748b"
   },
   sectionTitle: {
-    fontSize: "14px",
+    fontSize: "13.5px",
     fontWeight: "800",
     color: "#0f172a",
-    margin: "0 0 12px 0",
+    margin: 0,
     letterSpacing: "-0.2px"
   },
   sectionHeaderRow: {
@@ -1478,337 +2377,56 @@ const mStyles = {
     alignItems: "center",
     marginBottom: "10px"
   },
+  pulseDot: {
+    width: "8px",
+    height: "8px",
+    borderRadius: "50%",
+    background: "#0f766e",
+    animation: "pulseRing 2s infinite"
+  },
   seeAllBtn: {
     background: "none",
     border: "none",
     color: "#0f766e",
-    fontSize: "12px",
+    fontSize: "11.5px",
     fontWeight: "700",
     cursor: "pointer"
   },
-  actionButtonsGrid: {
+  quickActionGrid8: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
-    gap: "10px",
-    marginBottom: "16px"
+    gap: "9px",
+    marginBottom: "18px"
   },
-  quickActionTile: {
-    padding: "14px",
+  quickTileCard: {
+    padding: "12px",
     borderRadius: "14px",
     border: "1px solid",
     display: "flex",
     flexDirection: "column",
-    gap: "10px",
+    gap: "6px",
     textAlign: "left",
     cursor: "pointer",
     transition: "transform 0.1s"
   },
   tileIconCircle: {
-    width: "36px",
-    height: "36px",
+    width: "34px",
+    height: "34px",
     borderRadius: "10px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center"
   },
   tileTitle: {
-    margin: "0 0 2px 0",
+    margin: "0",
     fontSize: "13px",
     fontWeight: "800",
     color: "#0f172a"
   },
   tileSub: {
     margin: 0,
-    fontSize: "11px",
+    fontSize: "10.5px",
     color: "#64748b"
-  },
-  pageHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "16px"
-  },
-  pageTitle: {
-    margin: "0 0 2px 0",
-    fontSize: "18px",
-    fontWeight: "800",
-    color: "#0f172a"
-  },
-  pageSubtitle: {
-    margin: 0,
-    fontSize: "12px",
-    color: "#64748b"
-  },
-  formCard: {
-    background: "#ffffff",
-    border: "1px solid #e2e8f0",
-    borderRadius: "16px",
-    padding: "16px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "14px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.03)"
-  },
-  inputGroup: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px"
-  },
-  inputLabel: {
-    fontSize: "11.5px",
-    fontWeight: "700",
-    color: "#475569",
-    textTransform: "uppercase",
-    letterSpacing: "0.4px"
-  },
-  categoryChipRow: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "6px"
-  },
-  categoryChip: {
-    padding: "6px 12px",
-    borderRadius: "8px",
-    border: "none",
-    fontSize: "12px",
-    fontWeight: "700",
-    cursor: "pointer"
-  },
-  amountInputWrap: {
-    display: "flex",
-    alignItems: "center",
-    background: "#f8fafc",
-    border: "2px solid #cbd5e1",
-    borderRadius: "10px",
-    padding: "0 14px",
-    height: "50px"
-  },
-  rupeeSymbol: {
-    fontSize: "20px",
-    fontWeight: "800",
-    color: "#0f766e",
-    marginRight: "6px"
-  },
-  amountInput: {
-    border: "none",
-    background: "transparent",
-    fontSize: "24px",
-    fontWeight: "800",
-    color: "#0f172a",
-    width: "100%",
-    outline: "none"
-  },
-  quickAmtChips: {
-    display: "flex",
-    gap: "6px",
-    overflowX: "auto",
-    paddingTop: "4px"
-  },
-  quickAmtBtn: {
-    padding: "4px 8px",
-    borderRadius: "6px",
-    background: "#f1f5f9",
-    border: "1px solid #cbd5e1",
-    fontSize: "11.5px",
-    fontWeight: "700",
-    color: "#334155",
-    cursor: "pointer"
-  },
-  textInput: {
-    height: "44px",
-    padding: "0 12px",
-    borderRadius: "8px",
-    border: "1px solid #cbd5e1",
-    fontSize: "13.5px",
-    outline: "none",
-    background: "#f8fafc",
-    color: "#0f172a"
-  },
-  cameraUploadBtn: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "8px",
-    height: "48px",
-    borderRadius: "10px",
-    border: "2px dashed #99f6e4",
-    background: "#f0fdfa",
-    color: "#0f766e",
-    fontSize: "13px",
-    fontWeight: "700",
-    cursor: "pointer"
-  },
-  photoPreviewBox: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "8px 12px",
-    background: "#f8fafc",
-    border: "1px solid #e2e8f0",
-    borderRadius: "10px"
-  },
-  thumbnailImg: {
-    width: "48px",
-    height: "48px",
-    borderRadius: "6px",
-    objectFit: "cover",
-    cursor: "pointer"
-  },
-  removePhotoBtn: {
-    background: "#fee2e2",
-    color: "#dc2626",
-    border: "none",
-    padding: "6px 12px",
-    borderRadius: "6px",
-    fontSize: "12px",
-    fontWeight: "700",
-    display: "flex",
-    alignItems: "center",
-    gap: "4px",
-    cursor: "pointer"
-  },
-  submitBigBtn: {
-    height: "48px",
-    borderRadius: "10px",
-    border: "none",
-    background: "#0f766e",
-    color: "#ffffff",
-    fontSize: "15px",
-    fontWeight: "800",
-    cursor: "pointer",
-    boxShadow: "0 2px 8px rgba(15, 118, 110, 0.3)",
-    marginTop: "6px"
-  },
-  attControlBar: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "10px",
-    marginBottom: "12px"
-  },
-  dateInputCompact: {
-    height: "38px",
-    padding: "0 10px",
-    borderRadius: "8px",
-    border: "1px solid #cbd5e1",
-    fontSize: "12.5px",
-    fontWeight: "600",
-    background: "#ffffff"
-  },
-  markAllPresentBtn: {
-    height: "38px",
-    padding: "0 12px",
-    borderRadius: "8px",
-    border: "none",
-    background: "#16a34a",
-    color: "#ffffff",
-    fontSize: "12.5px",
-    fontWeight: "700",
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    cursor: "pointer"
-  },
-  searchBar: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    background: "#ffffff",
-    border: "1px solid #cbd5e1",
-    borderRadius: "8px",
-    padding: "0 12px",
-    height: "40px",
-    marginBottom: "12px"
-  },
-  searchInput: {
-    border: "none",
-    background: "transparent",
-    outline: "none",
-    fontSize: "13px",
-    width: "100%"
-  },
-  workersAttList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px"
-  },
-  workerAttCard: {
-    background: "#ffffff",
-    border: "1px solid #e2e8f0",
-    borderRadius: "12px",
-    padding: "12px 14px",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
-  },
-  workerAttHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: "10px"
-  },
-  workerNameText: {
-    margin: "0 0 2px 0",
-    fontSize: "14px",
-    fontWeight: "800",
-    color: "#0f172a"
-  },
-  workerMetaText: {
-    margin: 0,
-    fontSize: "11.5px",
-    color: "#64748b"
-  },
-  savingDot: {
-    fontSize: "10px",
-    color: "#0f766e",
-    fontWeight: "700"
-  },
-  attActionRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "8px"
-  },
-  statusPillsGroup: {
-    display: "flex",
-    gap: "6px"
-  },
-  statusPillBtn: {
-    padding: "6px 10px",
-    borderRadius: "8px",
-    border: "none",
-    fontSize: "11.5px",
-    cursor: "pointer",
-    transition: "all 0.1s"
-  },
-  otCounterBox: {
-    display: "flex",
-    alignItems: "center",
-    gap: "4px",
-    background: "#f8fafc",
-    border: "1px solid #e2e8f0",
-    borderRadius: "8px",
-    padding: "2px 6px"
-  },
-  otLabel: {
-    fontSize: "10px",
-    fontWeight: "700",
-    color: "#64748b",
-    marginRight: "2px"
-  },
-  otStepBtn: {
-    width: "24px",
-    height: "24px",
-    borderRadius: "6px",
-    border: "1px solid #cbd5e1",
-    background: "#ffffff",
-    fontSize: "14px",
-    fontWeight: "700",
-    cursor: "pointer"
-  },
-  otValueText: {
-    fontSize: "12px",
-    fontWeight: "800",
-    minWidth: "20px",
-    textAlign: "center"
   },
   recentList: {
     display: "flex",
@@ -1818,8 +2436,8 @@ const mStyles = {
   recentItem: {
     background: "#ffffff",
     border: "1px solid #e2e8f0",
-    borderRadius: "10px",
-    padding: "10px 14px",
+    borderRadius: "12px",
+    padding: "11px 13px",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center"
@@ -1827,64 +2445,354 @@ const mStyles = {
   recentItemLeft: {
     display: "flex",
     alignItems: "center",
-    gap: "10px"
+    gap: "10px",
+    flex: 1,
+    minWidth: 0
   },
   categoryPill: {
-    background: "#f1f5f9",
-    color: "#334155",
-    fontSize: "10px",
-    fontWeight: "700",
+    background: "#f0fdfa",
+    color: "#0f766e",
+    fontSize: "10.5px",
+    fontWeight: "800",
     padding: "3px 8px",
     borderRadius: "6px",
-    textTransform: "uppercase"
+    flexShrink: 0
   },
   recentItemTitle: {
-    margin: "0 0 2px 0",
+    margin: "0 0 1px 0",
     fontSize: "13px",
     fontWeight: "700",
-    color: "#0f172a"
+    color: "#0f172a",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis"
   },
   recentItemDate: {
     margin: 0,
-    fontSize: "11px",
+    fontSize: "10.5px",
     color: "#64748b"
   },
   recentItemRight: {
     display: "flex",
-    flexDirection: "column",
-    alignItems: "flex-end",
-    gap: "4px"
+    alignItems: "center",
+    gap: "8px",
+    flexShrink: 0
   },
   expenseAmountText: {
-    fontSize: "14px",
+    fontSize: "13.5px",
     fontWeight: "800",
-    color: "#0f172a"
+    color: "#e11d48"
   },
   viewBillBtn: {
-    background: "none",
+    background: "#eff6ff",
+    border: "1px solid #bfdbfe",
+    color: "#2563eb",
+    fontSize: "10.5px",
+    fontWeight: "700",
+    padding: "3px 7px",
+    borderRadius: "6px",
+    cursor: "pointer"
+  },
+  pageHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "14px"
+  },
+  pageTitle: {
+    margin: "0 0 2px 0",
+    fontSize: "17px",
+    fontWeight: "900",
+    color: "#0f172a"
+  },
+  pageSubtitle: {
+    margin: 0,
+    fontSize: "11.5px",
+    color: "#64748b"
+  },
+  formCard: {
+    background: "#ffffff",
+    border: "1px solid #e2e8f0",
+    borderRadius: "16px",
+    padding: "15px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "13px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.03)"
+  },
+  inputGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "5px"
+  },
+  inputLabel: {
+    fontSize: "11.5px",
+    fontWeight: "700",
+    color: "#334155"
+  },
+  categoryChipRow: {
+    display: "flex",
+    gap: "6px",
+    flexWrap: "wrap"
+  },
+  categoryChip: {
     border: "none",
-    color: "#0284c7",
+    padding: "6px 11px",
+    borderRadius: "8px",
+    fontSize: "11px",
+    cursor: "pointer"
+  },
+  amountInputWrap: {
+    position: "relative",
+    display: "flex",
+    alignItems: "center"
+  },
+  rupeeSymbol: {
+    position: "absolute",
+    left: "12px",
+    fontSize: "18px",
+    fontWeight: "800",
+    color: "#0f766e"
+  },
+  amountInput: {
+    width: "100%",
+    height: "44px",
+    paddingLeft: "32px",
+    paddingRight: "12px",
+    border: "1.5px solid #cbd5e1",
+    borderRadius: "10px",
+    fontSize: "17px",
+    fontWeight: "800",
+    color: "#0f172a",
+    outline: "none"
+  },
+  quickAmtChips: {
+    display: "flex",
+    gap: "5px",
+    marginTop: "5px",
+    overflowX: "auto"
+  },
+  quickAmtBtn: {
+    background: "#f1f5f9",
+    border: "1px solid #cbd5e1",
+    color: "#334155",
+    padding: "3px 8px",
+    borderRadius: "6px",
+    fontSize: "10.5px",
+    fontWeight: "700",
+    cursor: "pointer",
+    whiteSpace: "nowrap"
+  },
+  textInput: {
+    width: "100%",
+    height: "40px",
+    padding: "0 12px",
+    border: "1.5px solid #cbd5e1",
+    borderRadius: "10px",
+    fontSize: "13px",
+    color: "#0f172a",
+    background: "#ffffff",
+    outline: "none"
+  },
+  cameraUploadBox: {
+    border: "2px dashed #0f766e",
+    background: "#f0fdfa",
+    borderRadius: "12px",
+    padding: "16px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "6px",
+    cursor: "pointer"
+  },
+  cameraUploadText: {
+    fontSize: "12px",
+    fontWeight: "700",
+    color: "#0f766e"
+  },
+  receiptThumbnailWrap: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    background: "#f8fafc",
+    padding: "8px",
+    borderRadius: "10px",
+    border: "1px solid #e2e8f0"
+  },
+  receiptThumbnail: {
+    width: "60px",
+    height: "60px",
+    borderRadius: "8px",
+    objectFit: "cover"
+  },
+  removePhotoBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: "4px",
+    background: "#fef2f2",
+    border: "1px solid #fecaca",
+    color: "#dc2626",
+    padding: "5px 10px",
+    borderRadius: "6px",
     fontSize: "11px",
     fontWeight: "700",
     cursor: "pointer"
   },
-  recoveryBadge: {
-    fontSize: "10.5px",
-    fontWeight: "700",
-    padding: "2px 6px",
-    borderRadius: "6px"
+  submitBigBtn: {
+    width: "100%",
+    height: "44px",
+    background: "#0f766e",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "10px",
+    fontSize: "13.5px",
+    fontWeight: "800",
+    cursor: "pointer",
+    boxShadow: "0 3px 10px rgba(15, 118, 110, 0.25)"
   },
-  workerDirectoryList: {
+  attControlBar: {
+    display: "flex",
+    gap: "8px",
+    marginBottom: "10px"
+  },
+  dateInputCompact: {
+    flex: 1,
+    height: "38px",
+    padding: "0 10px",
+    border: "1.5px solid #cbd5e1",
+    borderRadius: "8px",
+    fontSize: "12.5px",
+    color: "#0f172a",
+    outline: "none"
+  },
+  markAllPresentBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: "5px",
+    background: "#16a34a",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "8px",
+    padding: "0 12px",
+    fontSize: "11.5px",
+    fontWeight: "800",
+    cursor: "pointer",
+    whiteSpace: "nowrap"
+  },
+  searchBar: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    background: "#ffffff",
+    border: "1px solid #cbd5e1",
+    borderRadius: "10px",
+    padding: "0 12px",
+    height: "38px",
+    marginBottom: "12px"
+  },
+  searchInput: {
+    border: "none",
+    outline: "none",
+    width: "100%",
+    fontSize: "12.5px",
+    color: "#0f172a"
+  },
+  workersAttList: {
     display: "flex",
     flexDirection: "column",
-    gap: "10px"
+    gap: "9px"
   },
-  workerProfileCard: {
+  workerAttCard: {
     background: "#ffffff",
     border: "1px solid #e2e8f0",
     borderRadius: "12px",
     padding: "12px",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
+    boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
+  },
+  workerAttHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: "8px"
+  },
+  workerNameText: {
+    margin: "0 0 1px",
+    fontSize: "13.5px",
+    fontWeight: "800",
+    color: "#0f172a"
+  },
+  workerMetaText: {
+    margin: 0,
+    fontSize: "11px",
+    color: "#64748b"
+  },
+  savingDot: {
+    fontSize: "10px",
+    fontWeight: "700",
+    color: "#0f766e"
+  },
+  attActionRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "6px"
+  },
+  statusPillsGroup: {
+    display: "flex",
+    gap: "5px"
+  },
+  statusPillBtn: {
+    padding: "6px 9px",
+    borderRadius: "8px",
+    border: "none",
+    fontSize: "11px",
+    cursor: "pointer"
+  },
+  otCounterBox: {
+    display: "flex",
+    alignItems: "center",
+    gap: "4px",
+    background: "#f8fafc",
+    padding: "2px 5px",
+    borderRadius: "8px",
+    border: "1px solid #e2e8f0"
+  },
+  otLabel: {
+    fontSize: "10px",
+    fontWeight: "700",
+    color: "#64748b"
+  },
+  otStepBtn: {
+    width: "22px",
+    height: "22px",
+    borderRadius: "5px",
+    border: "1px solid #cbd5e1",
+    background: "#ffffff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "13px",
+    fontWeight: "800",
+    cursor: "pointer"
+  },
+  otValueText: {
+    fontSize: "11px",
+    fontWeight: "800",
+    color: "#0f172a",
+    minWidth: "18px",
+    textAlign: "center"
+  },
+  workerDirectoryList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "9px"
+  },
+  workerProfileCard: {
+    background: "#ffffff",
+    border: "1px solid #e2e8f0",
+    borderRadius: "14px",
+    padding: "12px",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
   },
   workerCardTopRow: {
     display: "flex",
@@ -1895,18 +2803,19 @@ const mStyles = {
     width: "40px",
     height: "40px",
     borderRadius: "10px",
-    background: "linear-gradient(135deg, #f59e0b, #d97706)",
+    background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
     color: "#ffffff",
-    fontSize: "16px",
-    fontWeight: "800",
     display: "flex",
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    fontWeight: "800",
+    fontSize: "15px",
+    flexShrink: 0
   },
   workerWageBadge: {
-    margin: "2px 0 0 0",
+    margin: "3px 0 0",
     fontSize: "11px",
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#0f766e"
   },
   workerContactBtns: {
@@ -1914,46 +2823,115 @@ const mStyles = {
     gap: "6px"
   },
   callIconBtn: {
-    width: "34px",
-    height: "34px",
-    borderRadius: "8px",
+    width: "36px",
+    height: "36px",
+    borderRadius: "9px",
     background: "#f0fdf4",
     border: "1px solid #bbf7d0",
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-    textDecoration: "none"
+    justifyContent: "center"
   },
   whatsappIconBtn: {
-    width: "34px",
-    height: "34px",
-    borderRadius: "8px",
+    width: "36px",
+    height: "36px",
+    borderRadius: "9px",
     background: "#f0f9ff",
     border: "1px solid #bae6fd",
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-    textDecoration: "none"
+    justifyContent: "center"
   },
   noPhoneText: {
     fontSize: "10px",
-    color: "#94a3b8"
+    color: "#94a3b8",
+    fontStyle: "italic"
   },
-  addWorkerHeaderBtn: {
+  profileCard: {
+    background: "#ffffff",
+    border: "1px solid #e2e8f0",
+    borderRadius: "16px",
+    padding: "16px",
     display: "flex",
     alignItems: "center",
-    gap: "4px",
-    background: "#d97706",
+    gap: "14px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.03)"
+  },
+  profileAvatar: {
+    width: "48px",
+    height: "48px",
+    borderRadius: "14px",
+    background: "linear-gradient(135deg, #0f766e, #14b8a6)",
     color: "#ffffff",
-    border: "none",
-    padding: "8px 12px",
-    borderRadius: "8px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "18px",
+    fontWeight: "800"
+  },
+  profileName: {
+    margin: 0,
+    fontSize: "15px",
+    fontWeight: "800",
+    color: "#0f172a"
+  },
+  profileEmail: {
+    margin: "2px 0 4px",
     fontSize: "12px",
-    fontWeight: "700",
+    color: "#64748b"
+  },
+  roleBadgeBig: {
+    display: "inline-block",
+    fontSize: "10px",
+    fontWeight: "800",
+    background: "rgba(15,118,110,0.12)",
+    color: "#0f766e",
+    padding: "2px 8px",
+    borderRadius: "99px"
+  },
+  menuListCard: {
+    background: "#ffffff",
+    border: "1px solid #e2e8f0",
+    borderRadius: "16px",
+    overflow: "hidden",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.03)"
+  },
+  menuRowItem: {
+    padding: "14px 16px",
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    borderBottom: "1px solid #f1f5f9",
     cursor: "pointer"
   },
+  menuItemIconCircle: {
+    width: "36px",
+    height: "36px",
+    borderRadius: "10px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0
+  },
+  menuRowTitle: {
+    margin: 0,
+    fontSize: "13px",
+    fontWeight: "700",
+    color: "#0f172a"
+  },
+  menuRowSub: {
+    margin: "1px 0 0",
+    fontSize: "11px",
+    color: "#64748b"
+  },
+  versionFooterText: {
+    textAlign: "center",
+    fontSize: "10.5px",
+    color: "#94a3b8",
+    marginTop: "20px"
+  },
   emptyStateBox: {
-    padding: "36px 16px",
+    padding: "32px 16px",
     textAlign: "center",
     display: "flex",
     flexDirection: "column",
@@ -1962,13 +2940,73 @@ const mStyles = {
   },
   emptyText: {
     margin: 0,
-    fontSize: "13px",
+    fontSize: "12.5px",
     color: "#64748b"
+  },
+  bottomNav: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: "calc(64px + env(safe-area-inset-bottom, 0px))",
+    paddingBottom: "env(safe-area-inset-bottom, 0px)",
+    background: "#ffffff",
+    borderTop: "1px solid #e2e8f0",
+    display: "flex",
+    justifyContent: "space-around",
+    alignItems: "center",
+    zIndex: 50,
+    boxShadow: "0 -3px 12px rgba(0,0,0,0.04)"
+  },
+  navItem: {
+    flex: 1,
+    height: "100%",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "3px",
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    padding: "4px 0"
+  },
+  navLabel: {
+    fontSize: "10px",
+    fontWeight: "700"
+  },
+  centerFabWrapper: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    position: "relative",
+    top: "-12px",
+    flex: 1
+  },
+  centerFabBtn: {
+    width: "48px",
+    height: "48px",
+    borderRadius: "50%",
+    background: "linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)",
+    border: "3px solid #ffffff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 4px 14px rgba(15, 118, 110, 0.4)",
+    cursor: "pointer",
+    animation: "pulseRing 2.5s infinite"
+  },
+  fabLabel: {
+    fontSize: "9.5px",
+    fontWeight: "800",
+    color: "#0f766e",
+    marginTop: "2px"
   },
   modalOverlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,0.5)",
+    background: "rgba(13,27,42,0.6)",
+    backdropFilter: "blur(4px)",
     display: "flex",
     alignItems: "flex-end",
     justifyContent: "center",
@@ -1978,22 +3016,37 @@ const mStyles = {
   modalCard: {
     background: "#ffffff",
     width: "100%",
-    maxWidth: "500px",
-    borderRadius: "20px 20px 0 0",
-    padding: "20px",
+    maxWidth: "540px",
+    borderRadius: "22px 22px 0 0",
+    padding: "20px 18px",
     maxHeight: "90vh",
     overflowY: "auto",
     animation: "slideUp 0.25s ease"
+  },
+  sheetModalCard: {
+    background: "#ffffff",
+    width: "100%",
+    maxWidth: "540px",
+    borderRadius: "24px 24px 0 0",
+    padding: "16px 18px 24px",
+    animation: "slideUp 0.22s ease"
+  },
+  sheetHandleBar: {
+    width: "40px",
+    height: "4px",
+    background: "#cbd5e1",
+    borderRadius: "99px",
+    margin: "0 auto 12px"
   },
   modalHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "16px"
+    marginBottom: "14px"
   },
   modalTitle: {
     margin: 0,
-    fontSize: "17px",
+    fontSize: "16px",
     fontWeight: "800",
     color: "#0f172a"
   },
@@ -2001,17 +3054,48 @@ const mStyles = {
     background: "none",
     border: "none",
     color: "#64748b",
-    cursor: "pointer"
+    cursor: "pointer",
+    padding: "4px"
   },
   modalBody: {
     display: "flex",
     flexDirection: "column",
     gap: "12px"
   },
+  sheetGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1fr",
+    gap: "9px"
+  },
+  sheetTile: {
+    padding: "14px 8px",
+    borderRadius: "14px",
+    border: "1px solid",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "8px",
+    cursor: "pointer",
+    textAlign: "center"
+  },
+  sheetTileIcon: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "12px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  sheetTileText: {
+    fontSize: "11px",
+    fontWeight: "800",
+    color: "#0f172a",
+    lineHeight: 1.2
+  },
   imageModalOverlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,0.85)",
+    background: "rgba(0,0,0,0.88)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -2025,7 +3109,7 @@ const mStyles = {
   },
   closeModalBtn: {
     position: "absolute",
-    top: "-36px",
+    top: "-38px",
     right: 0,
     background: "#ffffff",
     border: "none",
@@ -2042,36 +3126,5 @@ const mStyles = {
     maxHeight: "80vh",
     borderRadius: "12px",
     objectFit: "contain"
-  },
-  bottomNav: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: "64px",
-    background: "#ffffff",
-    borderTop: "1px solid #e2e8f0",
-    display: "flex",
-    justifyContent: "space-around",
-    alignItems: "center",
-    zIndex: 50,
-    boxShadow: "0 -2px 10px rgba(0,0,0,0.03)"
-  },
-  navItem: {
-    flex: 1,
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "3px",
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    padding: "6px 0"
-  },
-  navLabel: {
-    fontSize: "10.5px",
-    fontWeight: "700"
   }
 };

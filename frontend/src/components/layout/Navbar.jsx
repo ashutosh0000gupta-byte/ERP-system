@@ -9,12 +9,13 @@
 
 import {
   Bell, Search, ChevronDown, X, LogOut, UserRound,
-  CheckCheck, Settings, PanelLeftClose, PanelLeftOpen,
+  CheckCheck, Settings, PanelLeftClose, PanelLeftOpen, Smartphone,
 } from "lucide-react";
 import { useRef, useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSearch } from "../../context/SearchContext";
 import { useAuth } from "../../context/AuthContext";
+import { useAppMode } from "../../hooks/useAppMode";
 import { getInboxNotifications, markAllRead as markAllNotificationsRead, markAsRead } from "../../services/notificationService";
 
 /* ─── Constants ──────────────────────────────────────── */
@@ -41,6 +42,7 @@ function timeAgo(iso) {
 export default function Navbar({ onToggleSidebar, sidebarOpen }) {
   const { query, setQuery, results, isOpen, setIsOpen, clear } = useSearch();
   const { user, logout } = useAuth();
+  const { switchMode } = useAppMode();
   const navigate = useNavigate();
   const inputRef = useRef(null);
   const dropRef  = useRef(null);
@@ -258,7 +260,33 @@ export default function Navbar({ onToggleSidebar, sidebarOpen }) {
       </div>
 
       {/* ── Right: notifications + divider + user ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+
+        {/* Mobile App View Button */}
+        <button
+          onClick={() => {
+            switchMode("app");
+            navigate("/mobile");
+          }}
+          title="Switch to Mobile App View"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "5px",
+            background: "rgba(15,118,110,0.08)",
+            color: "var(--primary)",
+            border: "1px solid rgba(15,118,110,0.2)",
+            borderRadius: "var(--radius-sm)",
+            padding: "5px 9px",
+            fontSize: "12px",
+            fontWeight: "700",
+            cursor: "pointer",
+            transition: "all 0.15s ease"
+          }}
+        >
+          <Smartphone size={15} />
+          <span>App Mode</span>
+        </button>
 
         {/* Notification bell */}
         <div ref={notifRef} style={{ position: "relative" }}>

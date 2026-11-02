@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MainLayout
  * Wraps every authenticated page with Sidebar + Navbar.
  *
@@ -13,10 +13,13 @@
 import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
+import { useAppMode } from "../../hooks/useAppMode";
 
 const SIDEBAR_STORAGE_KEY = "proteccio_sidebar_open";
 
 export default function MainLayout({ children }) {
+  const { isMobile: isDeviceMobile, switchMode } = useAppMode();
+
   // Load sidebar open state from localStorage, default to true on desktop
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window === "undefined") return true;
@@ -87,10 +90,50 @@ export default function MainLayout({ children }) {
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
         <Navbar onToggleSidebar={toggleSidebar} sidebarOpen={sidebarOpen} />
 
+        {/* ── Quick Switch Banner on Mobile Screens ── */}
+        {(isMobile || isDeviceMobile) && (
+          <div style={{
+            background: "linear-gradient(90deg, #0f766e, #0d9488)",
+            color: "#ffffff",
+            padding: "8px 16px",
+            fontSize: "12px",
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
+            zIndex: 30,
+            flexShrink: 0
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span>🖥️ Desktop Mode (फ़ुल स्क्रीन)</span>
+            </div>
+            <button
+              onClick={() => {
+                switchMode("app");
+                window.location.href = "/";
+              }}
+              style={{
+                background: "#ffffff",
+                color: "#0f766e",
+                border: "none",
+                borderRadius: "6px",
+                padding: "4px 10px",
+                fontSize: "11px",
+                fontWeight: "800",
+                cursor: "pointer",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
+              }}
+            >
+              📱 Switch to App Mode ⚡
+            </button>
+          </div>
+        )}
+
         <main style={{
           flex: 1,
           background: "var(--background)",
-          padding: "28px 32px",
+          padding: isMobile ? "14px 16px" : "28px 32px",
           overflowY: "auto",
         }}>
           {children}
