@@ -1650,25 +1650,75 @@ export const uploadDocument = async (data: any) => {
 
 export const getSystemUsers = async () => {
   return prisma.user.findMany({
-    include: { role: true },
+    include: { role: true, employee: true },
     orderBy: { createdAt: 'desc' }
   });
 };
 
 export const createSystemUser = async (data: any) => {
-  const role = await prisma.role.findFirst({ where: { name: data.roleName || 'SUPERVISOR' } });
-  if (!role) throw new Error('Role not found');
-  
+  const email = String(data.email || '').trim().toLowerCase();
+  if (!email) {
+    throw new Error('Email address is required');
+  }
+
+  // Check if user already exists
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    throw new Error(`User with email "${email}" already exists`);
+  }
+
+  // Auto-provision role if it doesn't exist in the database
+  const roleName = String(data.roleName || 'SUPERVISOR').trim().toUpperCase();
+  let role = await prisma.role.findFirst({ where: { name: roleName } });
+  if (!role) {
+    role = await prisma.role.create({
+      data: {
+        name: roleName,
+        description: roleName === 'SUPERVISOR' ? 'Site Supervisor (Limited Access)' : `${roleName} Role`
+      }
+    });
+
+    if (roleName === 'SUPERVISOR') {
+      const p1 = await prisma.permission.findFirst({ where: { code: 'attendance:write' } });
+      const p2 = await prisma.permission.findFirst({ where: { code: 'dashboard:read' } });
+      if (p1) await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: p1.id } }).catch(() => {});
+      if (p2) await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: p2.id } }).catch(() => {});
+    }
+  }
+
   const rawPassword = data.password || data.passwordHash || 'Password@123';
   const hashed = await hashPassword(rawPassword);
 
+  // Generate unique employee code
+  const count = await prisma.employee.count();
+  const prefix = roleName === 'ADMIN' ? 'ADM' : 'SUP';
+  let candidate = `${prefix}${String(count + 1).padStart(3, '0')}`;
+  let attempt = count + 1;
+  while (await prisma.employee.findUnique({ where: { employeeCode: candidate } })) {
+    attempt++;
+    candidate = `${prefix}${String(attempt).padStart(3, '0')}`;
+  }
+
+  const firstName = data.firstName || (roleName === 'SUPERVISOR' ? 'Site' : 'System');
+  const lastName = data.lastName || (roleName === 'SUPERVISOR' ? 'Supervisor' : 'Admin');
+
   return prisma.user.create({
     data: {
-      email: data.email,
+      email,
       passwordHash: hashed,
-      roleId: role.id
+      roleId: role.id,
+      employee: {
+        create: {
+          employeeCode: candidate,
+          firstName,
+          lastName,
+          employmentType: 'Full-Time',
+          dateOfJoining: new Date(),
+          status: 'Active'
+        }
+      }
     },
-    include: { role: true }
+    include: { role: true, employee: true }
   });
 };
 

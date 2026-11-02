@@ -21,7 +21,8 @@ export default function UsersList() {
     try {
       setLoading(true);
       const res = await api.get("/snmr/users");
-      setUsers(res.data.data || []);
+      const list = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      setUsers(list);
     } catch (err) {
       console.error(err);
     } finally {
@@ -32,13 +33,13 @@ export default function UsersList() {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      // Send dummy hash for demo, real implementation uses bcrypt on backend
-      await api.post("/snmr/users", { ...formData, passwordHash: formData.password });
+      await api.post("/snmr/users", { ...formData, password: formData.password });
       setShowModal(false);
       setFormData({ email: "", password: "", roleName: "SUPERVISOR" });
       fetchUsers();
     } catch (err) {
-      alert(err.response?.data?.message || err.message);
+      const msg = err.response?.data?.message || err.response?.data?.error || err.message;
+      alert(msg);
     }
   };
 
@@ -98,7 +99,7 @@ export default function UsersList() {
                         <span style={{ color: "#94a3b8", fontWeight: "600", fontSize: "13px" }}>● Inactive</span>
                       )}
                     </td>
-                    <td style={styles.td} style={{ color: "#64748b", fontSize: "13px" }}>
+                    <td style={{ ...styles.td, color: "#64748b", fontSize: "13px" }}>
                       {new Date(user.createdAt).toLocaleDateString()}
                     </td>
                     <td style={styles.td}>

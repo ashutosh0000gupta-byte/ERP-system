@@ -219,7 +219,7 @@ export const createSystemUser = async (req: Request, res: Response) => {
     const user = await snmrService.createSystemUser(req.body);
     res.json(user);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ message: err.message, error: err.message });
   }
 };
 
