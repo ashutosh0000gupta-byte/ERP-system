@@ -829,22 +829,7 @@ export default function MobileApp() {
                 <p style={mStyles.tileSub}>Fast site registration</p>
               </button>
 
-              {/* 5: Apply Leave */}
-              <button
-                style={{ ...mStyles.quickTileCard, background: "#eff6ff", borderColor: "#93c5fd" }}
-                onClick={() => {
-                  triggerHaptic();
-                  setIsLeaveModalOpen(true);
-                }}
-              >
-                <div style={{ ...mStyles.tileIconCircle, background: "#2563eb" }}>
-                  <FileText size={19} color="#fff" />
-                </div>
-                <h4 style={mStyles.tileTitle}>Apply Leave</h4>
-                <p style={mStyles.tileSub}>Staff leave request</p>
-              </button>
-
-              {/* 6: Add Task */}
+              {/* 5: Add Task */}
               <button
                 style={{ ...mStyles.quickTileCard, background: "#f5f3ff", borderColor: "#c4b5fd" }}
                 onClick={() => {
@@ -1484,23 +1469,6 @@ export default function MobileApp() {
                 style={mStyles.menuRowItem}
                 onClick={() => {
                   triggerHaptic();
-                  setIsLeaveModalOpen(true);
-                }}
-              >
-                <div style={{ ...mStyles.menuItemIconCircle, background: "#eff6ff", color: "#2563eb" }}>
-                  <FileText size={18} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <h4 style={mStyles.menuRowTitle}>Leave Applications</h4>
-                  <p style={mStyles.menuRowSub}>Apply leave for employee or supervisor</p>
-                </div>
-                <ChevronRight size={18} color="#94a3b8" />
-              </div>
-
-              <div
-                style={mStyles.menuRowItem}
-                onClick={() => {
-                  triggerHaptic();
                   setIsTaskModalOpen(true);
                 }}
               >
@@ -1771,21 +1739,7 @@ export default function MobileApp() {
                 <span style={mStyles.sheetTileText}>Add Worker</span>
               </button>
 
-              {/* Option 5: Apply Leave */}
-              <button
-                style={{ ...mStyles.sheetTile, background: "#eff6ff", borderColor: "#93c5fd" }}
-                onClick={() => {
-                  setIsQuickActionOpen(false);
-                  setIsLeaveModalOpen(true);
-                }}
-              >
-                <div style={{ ...mStyles.sheetTileIcon, background: "#2563eb" }}>
-                  <FileText size={20} color="#fff" />
-                </div>
-                <span style={mStyles.sheetTileText}>Apply Leave</span>
-              </button>
-
-              {/* Option 6: Add Task */}
+              {/* Option 5: Add Task */}
               <button
                 style={{ ...mStyles.sheetTile, background: "#f5f3ff", borderColor: "#c4b5fd" }}
                 onClick={() => {
@@ -1881,78 +1835,6 @@ export default function MobileApp() {
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════════════════════
-          MODAL 3: QUICK LEAVE APPLY MODAL
-      ════════════════════════════════════════════════════════════════════ */}
-      {isLeaveModalOpen && (
-        <div style={mStyles.modalOverlay} onClick={() => setIsLeaveModalOpen(false)}>
-          <div style={mStyles.modalCard} onClick={(e) => e.stopPropagation()}>
-            <div style={mStyles.modalHeader}>
-              <h3 style={mStyles.modalTitle}>📝 Apply for Leave</h3>
-              <button style={mStyles.closeModalIconBtn} onClick={() => setIsLeaveModalOpen(false)}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleApplyLeave} style={mStyles.modalBody}>
-              <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Leave Type</label>
-                <select
-                  style={mStyles.textInput}
-                  value={leaveForm.leaveType}
-                  onChange={(e) => setLeaveForm((p) => ({ ...p, leaveType: e.target.value }))}
-                >
-                  <option value="Casual">Casual Leave</option>
-                  <option value="Sick">Sick Leave</option>
-                  <option value="Earned">Earned / Annual Leave</option>
-                  <option value="Unpaid">Unpaid Leave</option>
-                </select>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <div style={mStyles.inputGroup}>
-                  <label style={mStyles.inputLabel}>Start Date</label>
-                  <input
-                    type="date"
-                    style={mStyles.textInput}
-                    value={leaveForm.startDate}
-                    onChange={(e) => setLeaveForm((p) => ({ ...p, startDate: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div style={mStyles.inputGroup}>
-                  <label style={mStyles.inputLabel}>End Date</label>
-                  <input
-                    type="date"
-                    style={mStyles.textInput}
-                    value={leaveForm.endDate}
-                    onChange={(e) => setLeaveForm((p) => ({ ...p, endDate: e.target.value }))}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div style={mStyles.inputGroup}>
-                <label style={mStyles.inputLabel}>Reason / Purpose</label>
-                <textarea
-                  placeholder="e.g. Family function, personal urgent work"
-                  style={{ ...mStyles.textInput, height: "70px", paddingTop: "8px" }}
-                  value={leaveForm.reason}
-                  onChange={(e) => setLeaveForm((p) => ({ ...p, reason: e.target.value }))}
-                />
-              </div>
-
-              <button
-                type="submit"
-                style={{ ...mStyles.submitBigBtn, background: "#2563eb" }}
-                disabled={submittingLeave}
-              >
-                {submittingLeave ? "Submitting..." : "✓ Submit Leave Request"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* ════════════════════════════════════════════════════════════════════
           MODAL 4: QUICK TASK ADD MODAL
