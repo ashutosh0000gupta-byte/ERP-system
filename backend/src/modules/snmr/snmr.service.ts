@@ -1683,6 +1683,22 @@ export const createSystemUser = async (data: any) => {
       const p2 = await prisma.permission.findFirst({ where: { code: 'dashboard:read' } });
       if (p1) await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: p1.id } }).catch(() => {});
       if (p2) await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: p2.id } }).catch(() => {});
+    } else if (roleName === 'HR') {
+      const hrPerms = await prisma.permission.findMany({
+        where: {
+          code: {
+            in: [
+              "dashboard:read", "employees:read", "employees:write",
+              "attendance:read", "attendance:write", "leave:read", "leave:write", "leave:approve",
+              "payroll:read", "payroll:write", "payroll:approve", "reports:read", "reports:export",
+              "compliance:read", "policies:read"
+            ]
+          }
+        }
+      });
+      for (const p of hrPerms) {
+        await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: p.id } }).catch(() => {});
+      }
     }
   }
 
@@ -1691,7 +1707,7 @@ export const createSystemUser = async (data: any) => {
 
   // Generate unique employee code
   const count = await prisma.employee.count();
-  const prefix = roleName === 'ADMIN' ? 'ADM' : 'SUP';
+  const prefix = roleName === 'ADMIN' ? 'ADM' : (roleName === 'HR' ? 'EMP' : 'SUP');
   let candidate = `${prefix}${String(count + 1).padStart(3, '0')}`;
   let attempt = count + 1;
   while (await prisma.employee.findUnique({ where: { employeeCode: candidate } })) {
@@ -1699,8 +1715,8 @@ export const createSystemUser = async (data: any) => {
     candidate = `${prefix}${String(attempt).padStart(3, '0')}`;
   }
 
-  const firstName = data.firstName || (roleName === 'SUPERVISOR' ? 'Site' : 'System');
-  const lastName = data.lastName || (roleName === 'SUPERVISOR' ? 'Supervisor' : 'Admin');
+  const firstName = data.firstName || (roleName === 'SUPERVISOR' ? 'Site' : (roleName === 'HR' ? 'HR' : 'System'));
+  const lastName = data.lastName || (roleName === 'SUPERVISOR' ? 'Supervisor' : (roleName === 'HR' ? 'Manager' : 'Admin'));
 
   return prisma.user.create({
     data: {

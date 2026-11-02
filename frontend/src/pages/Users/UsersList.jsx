@@ -145,8 +145,8 @@ export default function UsersList() {
                     <td style={styles.td}>
                       <span style={{
                         ...styles.roleBadge,
-                        background: user.role?.name === "ADMIN" ? "#fee2e2" : "#f0f9ff",
-                        color: user.role?.name === "ADMIN" ? "#991b1b" : "#0369a1"
+                        background: user.role?.name === "ADMIN" ? "#fee2e2" : user.role?.name === "HR" ? "#fef3c7" : "#f0f9ff",
+                        color: user.role?.name === "ADMIN" ? "#991b1b" : user.role?.name === "HR" ? "#92400e" : "#0369a1"
                       }}>
                         {user.role?.name || "SUPERVISOR"}
                       </span>
@@ -235,6 +235,7 @@ export default function UsersList() {
                     onChange={e => setFormData({...formData, roleName: e.target.value})}
                   >
                     <option value="SUPERVISOR">Site Supervisor (Limited Access)</option>
+                    <option value="HR">HR Manager (HR & Payroll Access)</option>
                     <option value="ADMIN">Admin (Full Access)</option>
                   </select>
                 </div>
