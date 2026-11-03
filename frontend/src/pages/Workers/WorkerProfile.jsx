@@ -86,7 +86,11 @@ export default function WorkerProfile() {
     e.preventDefault();
     setIsSaving(true);
     try {
-      await api.put(`/snmr/workers/${id}`, editData);
+      const payload = { ...editData };
+      if (payload.joiningDate) {
+        payload.joiningDate = new Date(payload.joiningDate).toISOString();
+      }
+      await api.put(`/snmr/workers/${id}`, payload);
       fetchWorker();
       setIsEditModalOpen(false);
     } catch (err) {
@@ -103,6 +107,7 @@ export default function WorkerProfile() {
       category: worker.category || "Worker",
       skillTrade: worker.skillTrade || "",
       mobileNumber: worker.mobileNumber || "",
+      joiningDate: worker.joiningDate ? new Date(worker.joiningDate).toISOString().split('T')[0] : "",
       currentAddress: worker.currentAddress || "",
       siteId: worker.siteId || "",
       salaryType: worker.salaryType || "Daily",
@@ -620,10 +625,19 @@ export default function WorkerProfile() {
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div>
                     <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>Phone Number</label>
                     <input style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1" }} value={editData.mobileNumber} onChange={e => setEditData({...editData, mobileNumber: e.target.value})} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "6px" }}>Joining Date *</label>
+                    <input 
+                      type="date"
+                      style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1" }} 
+                      value={editData.joiningDate || ""} 
+                      onChange={e => setEditData({...editData, joiningDate: e.target.value})} 
+                    />
                   </div>
                 </div>
 

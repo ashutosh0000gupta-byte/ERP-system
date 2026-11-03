@@ -184,7 +184,7 @@ export default function Workers() {
     reader.onload = async (event) => {
       try {
         const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
@@ -210,6 +210,56 @@ export default function Workers() {
             }
           }
           return "";
+        };
+
+        const getRawVal = (row, aliases) => {
+          const keys = Object.keys(row);
+          for (const alias of aliases) {
+            const cleanAlias = alias.toLowerCase().replace(/[^a-z0-9]/g, '');
+            for (const key of keys) {
+              const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+              if (cleanKey === cleanAlias) {
+                const val = row[key];
+                if (val !== undefined && val !== null && val !== "") {
+                  return val;
+                }
+              }
+            }
+          }
+          return null;
+        };
+
+        const parseExcelDate = (val) => {
+          if (!val) return null;
+          if (val instanceof Date) {
+            return isNaN(val.getTime()) ? null : val.toISOString();
+          }
+          const num = Number(val);
+          if (!isNaN(num) && num > 1000 && num < 100000) {
+            const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+            return isNaN(date.getTime()) ? null : date.toISOString();
+          }
+          const str = String(val).trim();
+          if (!str || ['NA','N/A','NULL','UNDEFINED'].includes(str.toUpperCase())) return null;
+
+          const dmy = str.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+          if (dmy) {
+            const day = parseInt(dmy[1], 10);
+            const month = parseInt(dmy[2], 10) - 1;
+            const year = parseInt(dmy[3], 10);
+            const d = new Date(Date.UTC(year, month, day));
+            return isNaN(d.getTime()) ? null : d.toISOString();
+          }
+          const ymd = str.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+          if (ymd) {
+            const year = parseInt(ymd[1], 10);
+            const month = parseInt(ymd[2], 10) - 1;
+            const day = parseInt(ymd[3], 10);
+            const d = new Date(Date.UTC(year, month, day));
+            return isNaN(d.getTime()) ? null : d.toISOString();
+          }
+          const parsed = new Date(str);
+          return isNaN(parsed.getTime()) ? null : parsed.toISOString();
         };
 
         const parsedWorkers = [];
@@ -239,6 +289,13 @@ export default function Workers() {
           const paymentMethod = getVal(row, ["Payment Mode", "Payment Method", "PaymentMode"]) || "Bank Transfer";
           const rawOtRate = getVal(row, ["OT Rate", "Overtime Rate", "OTRate"]);
           const otRatePerHour = parseFloat(rawOtRate.replace(/[^0-9.]/g, '') || "0") || 0;
+
+          const rawJoiningDate = getRawVal(row, [
+            "Joining Date", "Date of Joining", "DOJ", "JoiningDate", "Join Date",
+            "Start Date", "joining_date", "doj", "date_of_joining"
+          ]);
+          const parsedJoiningDate = parseExcelDate(rawJoiningDate);
+          const joiningDate = parsedJoiningDate || new Date().toISOString();
           
           if (!name) continue;
           
@@ -270,7 +327,7 @@ export default function Workers() {
             aadhaar: aadhaar || null,
             uan: uan || null,
             esiNumber: esiNumber || null,
-            joiningDate: new Date().toISOString(),
+            joiningDate,
             status: "Active"
           });
         }
@@ -309,16 +366,17 @@ export default function Workers() {
       const exportData = workers.map((w) => ({
         "Worker ID": w.workerId || "",
         "Name": w.fullName || "",
+        "Father Name": w.fatherName || "",
+        "Role": w.category || (/supervisor|incharge|in-charge|engineer/i.test(w.skillTrade) ? "Supervisor" : "Worker"),
+        "Trade": w.skillTrade || "",
         "Site": w.site?.name || "Unassigned",
+        "Joining Date": w.joiningDate ? new Date(w.joiningDate).toISOString().split("T")[0] : "",
         "Daily Wage": w.dailyWage || w.wageRate || 0,
         "Salary Type": w.salaryType || "Daily",
         "Pay Frequency": w.paymentFrequency || "Weekly",
         "Payment Mode": w.paymentMethod || "Bank Transfer",
         "OT Rate": w.otRatePerHour || 0,
         "Mobile": w.mobileNumber || "",
-        "Trade": w.skillTrade || "",
-        "Category": w.category || (/supervisor|incharge|in-charge|engineer/i.test(w.skillTrade) ? "Supervisor" : "Worker"),
-        "Father Name": w.fatherName || "",
         "Address": w.currentAddress || w.permanentAddress || "",
         "Bank Name": w.bankName || "",
         "Bank Account": w.bankAccount || "",
@@ -335,16 +393,17 @@ export default function Workers() {
       const colWidths = [
         { wch: 14 }, // Worker ID
         { wch: 22 }, // Name
+        { wch: 18 }, // Father Name
+        { wch: 14 }, // Role
+        { wch: 18 }, // Trade
         { wch: 18 }, // Site
+        { wch: 14 }, // Joining Date
         { wch: 12 }, // Daily Wage
         { wch: 12 }, // Salary Type
         { wch: 14 }, // Pay Frequency
         { wch: 16 }, // Payment Mode
         { wch: 10 }, // OT Rate
         { wch: 14 }, // Mobile
-        { wch: 18 }, // Trade
-        { wch: 14 }, // Category
-        { wch: 18 }, // Father Name
         { wch: 24 }, // Address
         { wch: 22 }, // Bank Name
         { wch: 18 }, // Bank Account
@@ -395,6 +454,7 @@ export default function Workers() {
       "Role",
       "Trade",
       "Site",
+      "Joining Date",
       "Daily Wage",
       "Salary Type",
       "Pay Frequency",
@@ -423,6 +483,7 @@ export default function Workers() {
           "Supervisor",
           "SITE INCHARGE",
           defaultSiteName,
+          new Date().toISOString().split("T")[0],
           1200,
           "Daily",
           "Weekly",
@@ -451,6 +512,7 @@ export default function Workers() {
       { wch: 16 }, // Role
       { wch: 18 }, // Trade
       { wch: 18 }, // Site
+      { wch: 14 }, // Joining Date
       { wch: 14 }, // Daily Wage
       { wch: 14 }, // Salary Type
       { wch: 16 }, // Pay Frequency
@@ -478,6 +540,7 @@ export default function Workers() {
       ["Role", "Optional", "Worker role / category: Worker, Supervisor, Foreman, Incharge, Helper, Skilled, etc. (Default: Worker)", "Worker"],
       ["Trade", "Optional", "Skill trade / designation (e.g., Fitter, Welder, Rigger, Helper, Supervisor)", "Fitter"],
       ["Site", "Optional", "Site or project name. Defaults to Unassigned if empty", defaultSiteName],
+      ["Joining Date", "Optional", "Worker joining date in YYYY-MM-DD or DD/MM/YYYY format (Default: Today)", new Date().toISOString().split("T")[0]],
       ["Daily Wage", "Required", "Daily wage rate or wage amount in ₹", "600"],
       ["Salary Type", "Optional", "Daily, Monthly, Weekly, Hourly, Contract (Default: Daily)", "Daily"],
       ["Pay Frequency", "Optional", "Weekly, Monthly, Bi-weekly (Default: Weekly)", "Weekly"],
@@ -830,6 +893,11 @@ export default function Workers() {
                               </div>
                             )}
                             {w.mobileNumber && <div style={{ fontSize: "12px", color: "#64748b" }}>{w.mobileNumber}</div>}
+                            {w.joiningDate && (
+                              <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>
+                                DOJ: <strong style={{ color: "#334155" }}>{new Date(w.joiningDate).toLocaleDateString("en-GB")}</strong>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>

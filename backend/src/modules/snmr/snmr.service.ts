@@ -112,6 +112,39 @@ export const createWorker = async (data: any) => {
   return prisma.worker.create({ data: { ...data, workerId } });
 };
 
+export const parseWorkerDate = (val: any): Date => {
+  if (!val) return new Date();
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? new Date() : val;
+  }
+  const num = Number(val);
+  if (!isNaN(num) && num > 1000 && num < 100000) {
+    const d = new Date(Math.round((num - 25569) * 86400 * 1000));
+    if (!isNaN(d.getTime())) return d;
+  }
+  const str = String(val).trim();
+  if (!str || ['NA', 'N/A', 'NULL', 'UNDEFINED'].includes(str.toUpperCase())) return new Date();
+
+  const dmy = str.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+  if (dmy) {
+    const day = parseInt(dmy[1], 10);
+    const month = parseInt(dmy[2], 10) - 1;
+    const year = parseInt(dmy[3], 10);
+    const d = new Date(Date.UTC(year, month, day));
+    if (!isNaN(d.getTime())) return d;
+  }
+  const ymd = str.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+  if (ymd) {
+    const year = parseInt(ymd[1], 10);
+    const month = parseInt(ymd[2], 10) - 1;
+    const day = parseInt(ymd[3], 10);
+    const d = new Date(Date.UTC(year, month, day));
+    if (!isNaN(d.getTime())) return d;
+  }
+  const parsed = new Date(str);
+  return isNaN(parsed.getTime()) ? new Date() : parsed;
+};
+
 export const importWorkers = async (workers: any[]) => {
   if (!Array.isArray(workers)) {
     throw new Error("Invalid request: 'workers' array is required.");
@@ -196,13 +229,7 @@ export const importWorkers = async (workers: any[]) => {
       const category = w.category || (isStaff ? "Supervisor" : "Worker");
 
       // Parse joining date safely into Date object
-      let joiningDate = new Date();
-      if (w.joiningDate) {
-        const parsed = new Date(w.joiningDate);
-        if (!isNaN(parsed.getTime())) {
-          joiningDate = parsed;
-        }
-      }
+      const joiningDate = parseWorkerDate(w.joiningDate);
 
       // Parse numerical fields safely
       const rawDw = String(w.dailyWage !== undefined && w.dailyWage !== null ? w.dailyWage : 0).replace(/[^0-9.]/g, '');
@@ -1818,6 +1845,9 @@ export const deleteDocument = async (id: string) => {
 
 export const updateWorker = async (id: string, data: any) => {
   const { id: _id, site: _site, createdAt: _c, updatedAt: _u, attendances: _a, advances: _ad, salaries: _s, payments: _p, documents: _d, ...cleanData } = data || {};
+  if (cleanData.joiningDate !== undefined && cleanData.joiningDate !== null) {
+    cleanData.joiningDate = parseWorkerDate(cleanData.joiningDate);
+  }
   return prisma.worker.update({
     where: { id },
     data: cleanData
