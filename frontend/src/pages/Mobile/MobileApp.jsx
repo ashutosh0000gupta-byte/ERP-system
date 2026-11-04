@@ -363,13 +363,13 @@ export default function MobileApp() {
 
       // Instant user confirmation toast
       if (newStatus === "Present") {
-        showToast(`✅ ${workerName || "Worker"}: Present lag gaya!`);
+        showToast(`✅ ${workerName || "Worker"}: Marked Present`);
       } else if (newStatus === "Half Day") {
-        showToast(`⚠️ ${workerName || "Worker"}: Half Day mark hua`);
+        showToast(`⚠️ ${workerName || "Worker"}: Marked Half Day`);
       } else if (newStatus === "Absent") {
-        showToast(`❌ ${workerName || "Worker"}: Absent mark hua`);
+        showToast(`❌ ${workerName || "Worker"}: Marked Absent`);
       } else if (ot !== null) {
-        showToast(`⏱️ ${workerName || "Worker"}: OT ${otToSave}h save hua`);
+        showToast(`⏱️ ${workerName || "Worker"}: Overtime saved (${otToSave}h)`);
       }
     } catch (err) {
       console.error("Attendance mark failed", err);
@@ -1201,7 +1201,7 @@ export default function MobileApp() {
               </div>
 
               <button style={mStyles.markAllPresentBtn} onClick={handleMarkAllPresent}>
-                <Check size={14} /> Sabhi Present
+                <Check size={14} /> Mark All Present
               </button>
             </div>
 
@@ -1277,7 +1277,7 @@ export default function MobileApp() {
                 }}
               >
                 <div style={{ fontSize: "16px", fontWeight: "900" }}>{attStats.pending}</div>
-                <div style={{ fontSize: "10px", fontWeight: "800" }}>⏳ Baaki</div>
+                <div style={{ fontSize: "10px", fontWeight: "800" }}>⏳ Pending</div>
               </div>
             </div>
 
@@ -1298,7 +1298,7 @@ export default function MobileApp() {
                 }}
                 onClick={() => setAttFilter("all")}
               >
-                Sabhi ({attStats.total})
+                All ({attStats.total})
               </button>
               <button
                 type="button"
@@ -1332,7 +1332,7 @@ export default function MobileApp() {
                 }}
                 onClick={() => setAttFilter("pending")}
               >
-                ⏳ Haziri Baaki ({attStats.pending})
+                ⏳ Pending ({attStats.pending})
               </button>
               <button
                 type="button"
@@ -1391,8 +1391,8 @@ export default function MobileApp() {
                   <Users size={32} color="#cbd5e1" />
                   <p style={mStyles.emptyText}>
                     {attFilter === "pending"
-                      ? "Badhai ho! Sabhi workers ki haziri lag chuki hai 🎉"
-                      : "Koi worker nahi mila."}
+                      ? "All workers have been marked for today! 🎉"
+                      : "No workers found."}
                   </p>
                   {attFilter !== "all" && (
                     <button
@@ -1410,7 +1410,7 @@ export default function MobileApp() {
                       }}
                       onClick={() => setAttFilter("all")}
                     >
-                      Sabhi Workers Dekhein
+                      View All Workers
                     </button>
                   )}
                 </div>
@@ -1526,7 +1526,7 @@ export default function MobileApp() {
                               }}
                             >
                               <Check size={13} strokeWidth={3} />
-                              <span>PRESENT LAGA HAI</span>
+                              <span>PRESENT</span>
                             </div>
                           ) : currentStatus === "Half Day" ? (
                             <div
@@ -1580,7 +1580,7 @@ export default function MobileApp() {
                               }}
                             >
                               <AlertCircle size={12} color="#ca8a04" />
-                              <span>HAZIRI BAAKI</span>
+                              <span>PENDING</span>
                             </div>
                           )}
                         </div>
