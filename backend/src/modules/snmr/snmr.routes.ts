@@ -23,6 +23,7 @@ import {
   deleteWorker,
   getSiteExpenses,
   createSiteExpense,
+  deleteSiteExpense,
   getDocuments,
   uploadDocument,
   deleteDocument,
@@ -97,6 +98,7 @@ router.post("/salaries/notify", notifyWorkerSalaries);
 // Expenses
 router.get("/expenses", getSiteExpenses);
 router.post("/expenses", createSiteExpense);
+router.delete("/expenses/:id", deleteSiteExpense);
 
 // Documents
 router.get("/documents", getDocuments);

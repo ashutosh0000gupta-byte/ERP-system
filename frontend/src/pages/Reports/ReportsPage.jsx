@@ -19,8 +19,12 @@ import {
   AlertCircle,
   ArrowDownToLine,
   Building2,
-  FileText
+  FileText,
+  Eye,
+  X,
+  ExternalLink
 } from "lucide-react";
+import { getFileUrl } from "../../utils/uploadFileUrl";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -35,6 +39,7 @@ export default function ReportsPage() {
   const [selectedSite, setSelectedSite] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewingReceipt, setViewingReceipt] = useState(null);
 
   const [sites, setSites] = useState([]);
   const [reportData, setReportData] = useState([]);
@@ -833,6 +838,7 @@ export default function ReportsPage() {
                         <th style={styles.th}>Site / Project</th>
                         <th style={styles.th}>Category</th>
                         <th style={styles.thNum}>Amount</th>
+                        <th style={{ ...styles.th, textAlign: "center" }}>Bill Receipt</th>
                         <th style={styles.th}>Description</th>
                         <th style={styles.th}>Recorded By</th>
                       </>
@@ -941,6 +947,32 @@ export default function ReportsPage() {
                           <td style={{ ...styles.tdNum, fontWeight: 700, color: "#e11d48" }}>
                             ₹{Number(row.amount || 0).toLocaleString("en-IN")}
                           </td>
+                          <td style={{ ...styles.td, textAlign: "center" }}>
+                            {row.receiptUrl ? (
+                              <button
+                                type="button"
+                                onClick={() => setViewingReceipt(row)}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "5px",
+                                  background: "#f0fdf4",
+                                  border: "1px solid #86efac",
+                                  color: "#15803d",
+                                  padding: "3px 8px",
+                                  borderRadius: "6px",
+                                  fontSize: "12px",
+                                  fontWeight: "700",
+                                  cursor: "pointer"
+                                }}
+                                title="Click to view attached receipt"
+                              >
+                                <Eye size={12} /> View Bill
+                              </button>
+                            ) : (
+                              <span style={{ color: "#94a3b8", fontSize: "11px" }}>—</span>
+                            )}
+                          </td>
                           <td style={styles.td}>{row.description || "-"}</td>
                           <td style={styles.tdDim}>{row.recordedBy || "-"}</td>
                         </>
@@ -1010,6 +1042,156 @@ export default function ReportsPage() {
           )}
         </div>
       </div>
+
+      {/* ── Modal: Bill Receipt Viewer ───────────────────────────────────── */}
+      {viewingReceipt && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.7)",
+            backdropFilter: "blur(5px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: "20px"
+          }}
+          onClick={() => setViewingReceipt(null)}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              width: "100%",
+              maxWidth: "760px",
+              borderRadius: "20px",
+              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.35)",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              maxHeight: "90vh"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: "16px 20px",
+                borderBottom: "1px solid #e2e8f0",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                background: "#f8fafc"
+              }}
+            >
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span
+                    style={{
+                      background: "#0f766e",
+                      color: "#fff",
+                      padding: "2px 8px",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      fontWeight: "700"
+                    }}
+                  >
+                    {viewingReceipt.category}
+                  </span>
+                  <span style={{ fontSize: "17px", fontWeight: "800", color: "#e11d48" }}>
+                    ₹{Number(viewingReceipt.amount || 0).toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div style={{ fontSize: "12px", color: "#64748b", marginTop: "3px" }}>
+                  📍 {viewingReceipt.site?.name || "Site"} • 📅 {viewingReceipt.date ? new Date(viewingReceipt.date).toLocaleDateString("en-GB") : ""} • 👤 {viewingReceipt.recordedBy || "Staff"}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <a
+                  href={getFileUrl(viewingReceipt.receiptUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    background: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    color: "#0f172a",
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    textDecoration: "none"
+                  }}
+                >
+                  <ExternalLink size={14} /> Open Full
+                </a>
+                <button
+                  type="button"
+                  style={{
+                    background: "#f1f5f9",
+                    border: "none",
+                    color: "#64748b",
+                    cursor: "pointer",
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                  onClick={() => setViewingReceipt(null)}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                padding: "20px",
+                background: "#0f172a",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: "340px"
+              }}
+            >
+              <img
+                src={getFileUrl(viewingReceipt.receiptUrl)}
+                alt="Bill Receipt"
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "65vh",
+                  objectFit: "contain",
+                  borderRadius: "8px",
+                  boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
+                }}
+              />
+            </div>
+
+            {viewingReceipt.description && (
+              <div
+                style={{
+                  padding: "12px 20px",
+                  background: "#f8fafc",
+                  borderTop: "1px solid #e2e8f0",
+                  fontSize: "13px",
+                  color: "#334155"
+                }}
+              >
+                <strong>Description:</strong> {viewingReceipt.description}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </MainLayout>
   );
 }

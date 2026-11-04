@@ -178,6 +178,15 @@ export const createSiteExpense = async (req: Request, res: Response) => {
   }
 };
 
+export const deleteSiteExpense = async (req: Request, res: Response) => {
+  try {
+    await snmrService.deleteSiteExpense(req.params.id as string);
+    res.json({ success: true, message: "Site expense deleted successfully" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 export const getDocuments = async (req: Request, res: Response) => {
   try {
     const documents = await snmrService.getDocuments(req.query.entityType as string, req.query.entityId as string);

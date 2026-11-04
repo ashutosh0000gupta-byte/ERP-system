@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import api, { getDefaultApiUrl, setCustomApiUrl } from "../../services/api";
+import { getFileUrl } from "../../utils/uploadFileUrl";
 import { useAuth } from "../../context/AuthContext";
 import { useAppMode } from "../../hooks/useAppMode";
 import {
@@ -1085,7 +1086,7 @@ export default function MobileApp() {
                 {expenseForm.receiptUrl ? (
                   <div style={mStyles.receiptThumbnailWrap}>
                     <img
-                      src={expenseForm.receiptUrl}
+                      src={getFileUrl(expenseForm.receiptUrl)}
                       alt="Bill receipt"
                       style={mStyles.receiptThumbnail}
                     />
@@ -2485,7 +2486,7 @@ export default function MobileApp() {
             <button style={mStyles.closeModalBtn} onClick={() => setPreviewImage(null)}>
               <X size={20} />
             </button>
-            <img src={previewImage} alt="Receipt preview" style={mStyles.fullReceiptImage} />
+            <img src={getFileUrl(previewImage)} alt="Receipt preview" style={mStyles.fullReceiptImage} />
           </div>
         </div>
       )}

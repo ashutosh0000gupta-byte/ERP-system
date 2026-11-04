@@ -1652,6 +1652,12 @@ export const createSiteExpense = async (data: any) => {
   });
 };
 
+export const deleteSiteExpense = async (id: string) => {
+  return prisma.siteExpense.delete({
+    where: { id }
+  });
+};
+
 export const getDocuments = async (entityType?: string, entityId?: string) => {
   const where: any = {};
   if (entityType) where.entityType = entityType;
