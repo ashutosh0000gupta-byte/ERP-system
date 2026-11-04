@@ -13,6 +13,7 @@ import {
   Camera,
   Trash2,
   CheckCircle2,
+  XCircle,
   Phone,
   MessageCircle,
   Clock,
@@ -101,6 +102,7 @@ export default function MobileApp() {
   const [attendanceDate, setAttendanceDate] = useState(todayStr);
   const [attendanceRecords, setAttendanceRecords] = useState({});
   const [savingAttendanceWorkerId, setSavingAttendanceWorkerId] = useState(null);
+  const [attFilter, setAttFilter] = useState("all"); // 'all' | 'present' | 'half' | 'absent' | 'pending'
 
   // ── Advance Form State ───────────────────────────────────────────────────
   const [advanceForm, setAdvanceForm] = useState({
@@ -333,11 +335,11 @@ export default function MobileApp() {
   };
 
   // ── Mark Attendance Handler ─────────────────────────────────────────────
-  const handleMarkAttendance = async (workerId, newStatus, ot = null) => {
+  const handleMarkAttendance = async (workerId, newStatus, ot = null, workerName = "") => {
     triggerHaptic(20);
     setSavingAttendanceWorkerId(workerId);
     const current = attendanceRecords[workerId] || { status: "Present", otHours: 0, remarks: "" };
-    const statusToSave = newStatus !== undefined ? newStatus : current.status;
+    const statusToSave = newStatus !== undefined ? newStatus : (current.status || "Present");
     const otToSave = ot !== null ? Number(ot) : Number(current.otHours || 0);
 
     try {
@@ -358,6 +360,17 @@ export default function MobileApp() {
           otHours: otToSave
         }
       }));
+
+      // Instant user confirmation toast
+      if (newStatus === "Present") {
+        showToast(`✅ ${workerName || "Worker"}: Present lag gaya!`);
+      } else if (newStatus === "Half Day") {
+        showToast(`⚠️ ${workerName || "Worker"}: Half Day mark hua`);
+      } else if (newStatus === "Absent") {
+        showToast(`❌ ${workerName || "Worker"}: Absent mark hua`);
+      } else if (ot !== null) {
+        showToast(`⏱️ ${workerName || "Worker"}: OT ${otToSave}h save hua`);
+      }
     } catch (err) {
       console.error("Attendance mark failed", err);
       alert("Failed to save attendance: " + (err.response?.data?.error || err.message));
@@ -586,6 +599,51 @@ export default function MobileApp() {
     }
     return list;
   }, [workers, selectedSiteId, workerSearch]);
+
+  // Live Attendance Summary Stats
+  const attStats = useMemo(() => {
+    let present = 0;
+    let half = 0;
+    let absent = 0;
+    let pending = 0;
+
+    filteredWorkers.forEach((w) => {
+      const rec = attendanceRecords[w.id];
+      if (!rec || !rec.status) {
+        pending++;
+      } else if (rec.status === "Present") {
+        present++;
+      } else if (rec.status === "Half Day") {
+        half++;
+      } else if (rec.status === "Absent") {
+        absent++;
+      } else {
+        pending++;
+      }
+    });
+
+    return {
+      total: filteredWorkers.length,
+      present,
+      half,
+      absent,
+      pending
+    };
+  }, [filteredWorkers, attendanceRecords]);
+
+  // Filtered workers list for Attendance tab
+  const displayedAttWorkers = useMemo(() => {
+    if (attFilter === "all") return filteredWorkers;
+    return filteredWorkers.filter((w) => {
+      const rec = attendanceRecords[w.id];
+      const status = rec?.status;
+      if (attFilter === "present") return status === "Present";
+      if (attFilter === "half") return status === "Half Day";
+      if (attFilter === "absent") return status === "Absent";
+      if (attFilter === "pending") return !rec || !status;
+      return true;
+    });
+  }, [filteredWorkers, attendanceRecords, attFilter]);
 
   const activeSiteName = sites.find((s) => s.id === selectedSiteId)?.name || "Main Site";
 
@@ -917,6 +975,8 @@ export default function MobileApp() {
                 </div>
               )}
             </div>
+            {/* Bottom spacer for Home */}
+            <div style={{ height: "48px", width: "100%", flexShrink: 0 }} />
           </div>
         )}
 
@@ -1092,6 +1152,8 @@ export default function MobileApp() {
                 </div>
               ))}
             </div>
+            {/* Bottom spacer for Expenses */}
+            <div style={{ height: "48px", width: "100%", flexShrink: 0 }} />
           </div>
         )}
 
@@ -1109,16 +1171,205 @@ export default function MobileApp() {
 
             {/* Control Bar: Date & Bulk Present */}
             <div style={mStyles.attControlBar}>
-              <input
-                type="date"
-                style={mStyles.dateInputCompact}
-                value={attendanceDate}
-                onChange={(e) => setAttendanceDate(e.target.value)}
-              />
+              <div style={{ display: "flex", gap: "6px", flex: 1, alignItems: "center" }}>
+                <input
+                  type="date"
+                  style={mStyles.dateInputCompact}
+                  value={attendanceDate}
+                  onChange={(e) => setAttendanceDate(e.target.value)}
+                />
+                {attendanceDate !== todayStr && (
+                  <button
+                    type="button"
+                    style={{
+                      height: "38px",
+                      padding: "0 10px",
+                      borderRadius: "8px",
+                      background: "#f0fdfa",
+                      border: "1.5px solid #0f766e",
+                      color: "#0f766e",
+                      fontSize: "11px",
+                      fontWeight: "800",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap"
+                    }}
+                    onClick={() => setAttendanceDate(todayStr)}
+                  >
+                    Today
+                  </button>
+                )}
+              </div>
 
               <button style={mStyles.markAllPresentBtn} onClick={handleMarkAllPresent}>
-                <Check size={14} /> Mark All Present
+                <Check size={14} /> Sabhi Present
               </button>
+            </div>
+
+            {/* Interactive Live Attendance Counters */}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: "6px",
+              marginBottom: "10px"
+            }}>
+              <div
+                onClick={() => { triggerHaptic(); setAttFilter("all"); }}
+                style={{
+                  background: attFilter === "all" ? "#0f172a" : "#ffffff",
+                  color: attFilter === "all" ? "#ffffff" : "#0f172a",
+                  border: attFilter === "all" ? "1.5px solid #0f172a" : "1px solid #e2e8f0",
+                  borderRadius: "10px",
+                  padding: "8px 4px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.03)"
+                }}
+              >
+                <div style={{ fontSize: "16px", fontWeight: "900" }}>{attStats.total}</div>
+                <div style={{ fontSize: "10px", fontWeight: "700", opacity: 0.85 }}>Total</div>
+              </div>
+
+              <div
+                onClick={() => { triggerHaptic(); setAttFilter("present"); }}
+                style={{
+                  background: attFilter === "present" ? "#16a34a" : "#f0fdf4",
+                  color: attFilter === "present" ? "#ffffff" : "#15803d",
+                  border: attFilter === "present" ? "1.5px solid #15803d" : "1.5px solid #86efac",
+                  borderRadius: "10px",
+                  padding: "8px 4px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  boxShadow: "0 1px 3px rgba(34,197,94,0.12)"
+                }}
+              >
+                <div style={{ fontSize: "16px", fontWeight: "900" }}>{attStats.present}</div>
+                <div style={{ fontSize: "10px", fontWeight: "800" }}>✓ Present</div>
+              </div>
+
+              <div
+                onClick={() => { triggerHaptic(); setAttFilter("absent"); }}
+                style={{
+                  background: attFilter === "absent" ? "#dc2626" : "#fef2f2",
+                  color: attFilter === "absent" ? "#ffffff" : "#b91c1c",
+                  border: attFilter === "absent" ? "1.5px solid #b91c1c" : "1.5px solid #fca5a5",
+                  borderRadius: "10px",
+                  padding: "8px 4px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  boxShadow: "0 1px 3px rgba(220,38,38,0.12)"
+                }}
+              >
+                <div style={{ fontSize: "16px", fontWeight: "900" }}>{attStats.absent}</div>
+                <div style={{ fontSize: "10px", fontWeight: "800" }}>✕ Absent</div>
+              </div>
+
+              <div
+                onClick={() => { triggerHaptic(); setAttFilter("pending"); }}
+                style={{
+                  background: attFilter === "pending" ? "#ca8a04" : "#fefce8",
+                  color: attFilter === "pending" ? "#ffffff" : "#854d0e",
+                  border: attFilter === "pending" ? "1.5px solid #a16207" : "1.5px solid #fde047",
+                  borderRadius: "10px",
+                  padding: "8px 4px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  boxShadow: "0 1px 3px rgba(202,138,4,0.12)"
+                }}
+              >
+                <div style={{ fontSize: "16px", fontWeight: "900" }}>{attStats.pending}</div>
+                <div style={{ fontSize: "10px", fontWeight: "800" }}>⏳ Baaki</div>
+              </div>
+            </div>
+
+            {/* Quick Filter Pills Row */}
+            <div style={{ display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "4px", marginBottom: "10px" }}>
+              <button
+                type="button"
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: "20px",
+                  fontSize: "11px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  border: "none",
+                  whiteSpace: "nowrap",
+                  background: attFilter === "all" ? "#0f766e" : "#f1f5f9",
+                  color: attFilter === "all" ? "#ffffff" : "#475569"
+                }}
+                onClick={() => setAttFilter("all")}
+              >
+                Sabhi ({attStats.total})
+              </button>
+              <button
+                type="button"
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: "20px",
+                  fontSize: "11px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  border: "none",
+                  whiteSpace: "nowrap",
+                  background: attFilter === "present" ? "#16a34a" : "#f1f5f9",
+                  color: attFilter === "present" ? "#ffffff" : "#15803d"
+                }}
+                onClick={() => setAttFilter("present")}
+              >
+                ✅ Present ({attStats.present})
+              </button>
+              <button
+                type="button"
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: "20px",
+                  fontSize: "11px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  border: "none",
+                  whiteSpace: "nowrap",
+                  background: attFilter === "pending" ? "#ca8a04" : "#f1f5f9",
+                  color: attFilter === "pending" ? "#ffffff" : "#854d0e"
+                }}
+                onClick={() => setAttFilter("pending")}
+              >
+                ⏳ Haziri Baaki ({attStats.pending})
+              </button>
+              <button
+                type="button"
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: "20px",
+                  fontSize: "11px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  border: "none",
+                  whiteSpace: "nowrap",
+                  background: attFilter === "absent" ? "#dc2626" : "#f1f5f9",
+                  color: attFilter === "absent" ? "#ffffff" : "#b91c1c"
+                }}
+                onClick={() => setAttFilter("absent")}
+              >
+                ❌ Absent ({attStats.absent})
+              </button>
+              {attStats.half > 0 && (
+                <button
+                  type="button"
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: "20px",
+                    fontSize: "11px",
+                    fontWeight: "700",
+                    cursor: "pointer",
+                    border: "none",
+                    whiteSpace: "nowrap",
+                    background: attFilter === "half" ? "#ea580c" : "#f1f5f9",
+                    color: attFilter === "half" ? "#ffffff" : "#b45309"
+                  }}
+                  onClick={() => setAttFilter("half")}
+                >
+                  ⚠️ Half Day ({attStats.half})
+                </button>
+              )}
             </div>
 
             {/* Search worker */}
@@ -1135,90 +1386,298 @@ export default function MobileApp() {
 
             {/* Workers Attendance List */}
             <div style={mStyles.workersAttList}>
-              {filteredWorkers.length === 0 ? (
+              {displayedAttWorkers.length === 0 ? (
                 <div style={mStyles.emptyStateBox}>
                   <Users size={32} color="#cbd5e1" />
-                  <p style={mStyles.emptyText}>No workers found for this site.</p>
+                  <p style={mStyles.emptyText}>
+                    {attFilter === "pending"
+                      ? "Badhai ho! Sabhi workers ki haziri lag chuki hai 🎉"
+                      : "Koi worker nahi mila."}
+                  </p>
+                  {attFilter !== "all" && (
+                    <button
+                      type="button"
+                      style={{
+                        marginTop: "8px",
+                        background: "#0f766e",
+                        color: "#fff",
+                        border: "none",
+                        padding: "6px 14px",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                        fontWeight: "700",
+                        cursor: "pointer"
+                      }}
+                      onClick={() => setAttFilter("all")}
+                    >
+                      Sabhi Workers Dekhein
+                    </button>
+                  )}
                 </div>
               ) : (
-                filteredWorkers.map((w) => {
-                  const rec = attendanceRecords[w.id] || { status: "Present", otHours: 0 };
+                displayedAttWorkers.map((w) => {
+                  const attRecord = attendanceRecords[w.id];
+                  const isMarked = !!attRecord && !!attRecord.status;
+                  const currentStatus = isMarked ? attRecord.status : null;
+                  const otHours = attRecord ? Number(attRecord.otHours || 0) : 0;
                   const isSaving = savingAttendanceWorkerId === w.id;
 
+                  // Card border and background style
+                  const cardBg =
+                    currentStatus === "Present"
+                      ? "linear-gradient(180deg, #f0fdf4 0%, #ffffff 45%)"
+                      : currentStatus === "Half Day"
+                      ? "linear-gradient(180deg, #fffbeb 0%, #ffffff 45%)"
+                      : currentStatus === "Absent"
+                      ? "linear-gradient(180deg, #fef2f2 0%, #ffffff 45%)"
+                      : "#ffffff";
+
+                  const cardBorder =
+                    currentStatus === "Present"
+                      ? "2px solid #16a34a"
+                      : currentStatus === "Half Day"
+                      ? "2px solid #ea580c"
+                      : currentStatus === "Absent"
+                      ? "2px solid #dc2626"
+                      : "1.5px dashed #cbd5e1";
+
+                  const cardShadow =
+                    currentStatus === "Present"
+                      ? "0 3px 10px rgba(22, 163, 74, 0.15)"
+                      : currentStatus === "Half Day"
+                      ? "0 3px 10px rgba(234, 88, 12, 0.15)"
+                      : currentStatus === "Absent"
+                      ? "0 3px 10px rgba(220, 38, 38, 0.15)"
+                      : "0 1px 3px rgba(0,0,0,0.02)";
+
                   return (
-                    <div key={w.id} style={mStyles.workerAttCard}>
+                    <div
+                      key={w.id}
+                      style={{
+                        ...mStyles.workerAttCard,
+                        background: cardBg,
+                        border: cardBorder,
+                        boxShadow: cardShadow,
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      {/* Top Row: Avatar + Name/Details + Status Badge */}
                       <div style={mStyles.workerAttHeader}>
-                        <div>
-                          <h4 style={mStyles.workerNameText}>{w.fullName}</h4>
-                          <p style={mStyles.workerMetaText}>
-                            {w.workerId || "ID-Pending"} • {w.skillTrade || "General"} • ₹
-                            {Number(w.dailyWage || w.wageRate || 0)}/day
-                          </p>
+                        <div style={{ display: "flex", alignItems: "center", gap: "9px", flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              width: "34px",
+                              height: "34px",
+                              borderRadius: "10px",
+                              background:
+                                currentStatus === "Present"
+                                  ? "#dcfce7"
+                                  : currentStatus === "Half Day"
+                                  ? "#fef3c7"
+                                  : currentStatus === "Absent"
+                                  ? "#fee2e2"
+                                  : "#f1f5f9",
+                              color:
+                                currentStatus === "Present"
+                                  ? "#15803d"
+                                  : currentStatus === "Half Day"
+                                  ? "#b45309"
+                                  : currentStatus === "Absent"
+                                  ? "#b91c1c"
+                                  : "#64748b",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontWeight: "900",
+                              fontSize: "13px",
+                              flexShrink: 0
+                            }}
+                          >
+                            {(w.fullName || "W").charAt(0).toUpperCase()}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <h4 style={{ ...mStyles.workerNameText, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {w.fullName}
+                            </h4>
+                            <p style={mStyles.workerMetaText}>
+                              {w.workerId || "ID-Pending"} • {w.skillTrade || "General"} • ₹
+                              {Number(w.dailyWage || w.wageRate || 0)}/day
+                            </p>
+                          </div>
                         </div>
-                        {isSaving && <span style={mStyles.savingDot}>Saving...</span>}
+
+                        {/* Prominent Clear Status Badge */}
+                        <div style={{ flexShrink: 0 }}>
+                          {isSaving ? (
+                            <span style={mStyles.savingDot}>Saving...</span>
+                          ) : currentStatus === "Present" ? (
+                            <div
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                background: "#16a34a",
+                                color: "#ffffff",
+                                padding: "4px 10px",
+                                borderRadius: "20px",
+                                fontSize: "11px",
+                                fontWeight: "800",
+                                boxShadow: "0 2px 6px rgba(22, 163, 74, 0.3)"
+                              }}
+                            >
+                              <Check size={13} strokeWidth={3} />
+                              <span>PRESENT LAGA HAI</span>
+                            </div>
+                          ) : currentStatus === "Half Day" ? (
+                            <div
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                background: "#ea580c",
+                                color: "#ffffff",
+                                padding: "4px 10px",
+                                borderRadius: "20px",
+                                fontSize: "11px",
+                                fontWeight: "800",
+                                boxShadow: "0 2px 6px rgba(234, 88, 12, 0.3)"
+                              }}
+                            >
+                              <Clock size={12} strokeWidth={2.5} />
+                              <span>HALF DAY (½)</span>
+                            </div>
+                          ) : currentStatus === "Absent" ? (
+                            <div
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                background: "#dc2626",
+                                color: "#ffffff",
+                                padding: "4px 10px",
+                                borderRadius: "20px",
+                                fontSize: "11px",
+                                fontWeight: "800",
+                                boxShadow: "0 2px 6px rgba(220, 38, 38, 0.3)"
+                              }}
+                            >
+                              <X size={12} strokeWidth={3} />
+                              <span>ABSENT</span>
+                            </div>
+                          ) : (
+                            <div
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                background: "#fefce8",
+                                color: "#854d0e",
+                                border: "1px dashed #facc15",
+                                padding: "4px 8px",
+                                borderRadius: "20px",
+                                fontSize: "10.5px",
+                                fontWeight: "800"
+                              }}
+                            >
+                              <AlertCircle size={12} color="#ca8a04" />
+                              <span>HAZIRI BAAKI</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Status Buttons: P, HD, A */}
+                      {/* Status Buttons & OT Counter */}
                       <div style={mStyles.attActionRow}>
                         <div style={mStyles.statusPillsGroup}>
+                          {/* Present Button */}
                           <button
                             type="button"
                             style={{
                               ...mStyles.statusPillBtn,
-                              background: rec.status === "Present" ? "#16a34a" : "#f1f5f9",
-                              color: rec.status === "Present" ? "#ffffff" : "#475569",
-                              fontWeight: rec.status === "Present" ? "800" : "600"
+                              background: currentStatus === "Present" ? "#16a34a" : "#f8fafc",
+                              color: currentStatus === "Present" ? "#ffffff" : "#1e293b",
+                              border: currentStatus === "Present" ? "2px solid #15803d" : "1.5px solid #cbd5e1",
+                              fontWeight: currentStatus === "Present" ? "800" : "600",
+                              boxShadow: currentStatus === "Present" ? "0 2px 6px rgba(22, 163, 74, 0.35)" : "none",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px"
                             }}
-                            onClick={() => handleMarkAttendance(w.id, "Present")}
+                            onClick={() => handleMarkAttendance(w.id, "Present", null, w.fullName)}
                           >
-                            P (Present)
+                            {currentStatus === "Present" && <Check size={13} strokeWidth={3} />}
+                            <span>Present</span>
                           </button>
 
+                          {/* Half Day Button */}
                           <button
                             type="button"
                             style={{
                               ...mStyles.statusPillBtn,
-                              background: rec.status === "Half Day" ? "#ea580c" : "#f1f5f9",
-                              color: rec.status === "Half Day" ? "#ffffff" : "#475569",
-                              fontWeight: rec.status === "Half Day" ? "800" : "600"
+                              background: currentStatus === "Half Day" ? "#ea580c" : "#f8fafc",
+                              color: currentStatus === "Half Day" ? "#ffffff" : "#1e293b",
+                              border: currentStatus === "Half Day" ? "2px solid #c2410c" : "1.5px solid #cbd5e1",
+                              fontWeight: currentStatus === "Half Day" ? "800" : "600",
+                              boxShadow: currentStatus === "Half Day" ? "0 2px 6px rgba(234, 88, 12, 0.35)" : "none",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px"
                             }}
-                            onClick={() => handleMarkAttendance(w.id, "Half Day")}
+                            onClick={() => handleMarkAttendance(w.id, "Half Day", null, w.fullName)}
                           >
-                            HD (Half)
+                            {currentStatus === "Half Day" && <Clock size={12} strokeWidth={2.5} />}
+                            <span>Half Day</span>
                           </button>
 
+                          {/* Absent Button */}
                           <button
                             type="button"
                             style={{
                               ...mStyles.statusPillBtn,
-                              background: rec.status === "Absent" ? "#dc2626" : "#f1f5f9",
-                              color: rec.status === "Absent" ? "#ffffff" : "#475569",
-                              fontWeight: rec.status === "Absent" ? "800" : "600"
+                              background: currentStatus === "Absent" ? "#dc2626" : "#f8fafc",
+                              color: currentStatus === "Absent" ? "#ffffff" : "#1e293b",
+                              border: currentStatus === "Absent" ? "2px solid #b91c1c" : "1.5px solid #cbd5e1",
+                              fontWeight: currentStatus === "Absent" ? "800" : "600",
+                              boxShadow: currentStatus === "Absent" ? "0 2px 6px rgba(220, 38, 38, 0.35)" : "none",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px"
                             }}
-                            onClick={() => handleMarkAttendance(w.id, "Absent")}
+                            onClick={() => handleMarkAttendance(w.id, "Absent", null, w.fullName)}
                           >
-                            A (Absent)
+                            {currentStatus === "Absent" && <X size={12} strokeWidth={3} />}
+                            <span>Absent</span>
                           </button>
                         </div>
 
                         {/* Overtime Counter */}
-                        <div style={mStyles.otCounterBox}>
-                          <span style={mStyles.otLabel}>OT</span>
+                        <div
+                          style={{
+                            ...mStyles.otCounterBox,
+                            borderColor: otHours > 0 ? "#14b8a6" : "#e2e8f0",
+                            background: otHours > 0 ? "#f0fdfa" : "#f8fafc"
+                          }}
+                        >
+                          <span style={{ ...mStyles.otLabel, color: otHours > 0 ? "#0f766e" : "#64748b", fontWeight: "800" }}>
+                            OT
+                          </span>
                           <button
                             type="button"
                             style={mStyles.otStepBtn}
                             onClick={() =>
-                              handleMarkAttendance(w.id, undefined, Math.max(0, rec.otHours - 1))
+                              handleMarkAttendance(w.id, undefined, Math.max(0, otHours - 1), w.fullName)
                             }
                           >
                             -
                           </button>
-                          <span style={mStyles.otValueText}>{rec.otHours}h</span>
+                          <span style={{ ...mStyles.otValueText, color: otHours > 0 ? "#0f766e" : "#0f172a", fontWeight: "800" }}>
+                            {otHours}h
+                          </span>
                           <button
                             type="button"
                             style={mStyles.otStepBtn}
                             onClick={() =>
-                              handleMarkAttendance(w.id, undefined, rec.otHours + 1)
+                              handleMarkAttendance(w.id, undefined, otHours + 1, w.fullName)
                             }
                           >
                             +
@@ -1230,6 +1689,8 @@ export default function MobileApp() {
                 })
               )}
             </div>
+            {/* Bottom spacer for Attendance */}
+            <div style={{ height: "48px", width: "100%", flexShrink: 0 }} />
           </div>
         )}
 
@@ -1353,6 +1814,8 @@ export default function MobileApp() {
                 </div>
               ))}
             </div>
+            {/* Bottom spacer for Expenses */}
+            <div style={{ height: "48px", width: "100%", flexShrink: 0 }} />
           </div>
         )}
 
@@ -1435,6 +1898,8 @@ export default function MobileApp() {
                 </div>
               ))}
             </div>
+            {/* Bottom spacer for Expenses */}
+            <div style={{ height: "48px", width: "100%", flexShrink: 0 }} />
           </div>
         )}
 
@@ -1562,6 +2027,8 @@ export default function MobileApp() {
             <p style={mStyles.versionFooterText}>
               SNMR FAB INDIA ERP • Native Mobile App v2.4 • Connected to Cloud
             </p>
+            {/* Bottom spacer for More */}
+            <div style={{ height: "48px", width: "100%", flexShrink: 0 }} />
           </div>
         )}
       </main>
@@ -2031,7 +2498,9 @@ const mStyles = {
   appWrapper: {
     display: "flex",
     flexDirection: "column",
-    height: "100vh",
+    height: "100dvh",
+    minHeight: "-webkit-fill-available",
+    maxHeight: "100dvh",
     width: "100%",
     maxWidth: "540px",
     margin: "0 auto",
@@ -2178,7 +2647,8 @@ const mStyles = {
   scrollArea: {
     flex: 1,
     overflowY: "auto",
-    paddingBottom: "88px",
+    overscrollBehaviorY: "contain",
+    paddingBottom: "calc(130px + env(safe-area-inset-bottom, 24px))",
     WebkitOverflowScrolling: "touch"
   },
   contentContainer: {
@@ -2831,13 +3301,15 @@ const mStyles = {
     right: 0,
     height: "calc(64px + env(safe-area-inset-bottom, 0px))",
     paddingBottom: "env(safe-area-inset-bottom, 0px)",
-    background: "#ffffff",
+    background: "rgba(255, 255, 255, 0.98)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
     borderTop: "1px solid #e2e8f0",
     display: "flex",
     justifyContent: "space-around",
     alignItems: "center",
     zIndex: 50,
-    boxShadow: "0 -3px 12px rgba(0,0,0,0.04)"
+    boxShadow: "0 -4px 16px rgba(0,0,0,0.06)"
   },
   navItem: {
     flex: 1,
@@ -2900,7 +3372,8 @@ const mStyles = {
     maxWidth: "540px",
     borderRadius: "22px 22px 0 0",
     padding: "20px 18px",
-    maxHeight: "90vh",
+    paddingBottom: "calc(32px + env(safe-area-inset-bottom, 20px))",
+    maxHeight: "90dvh",
     overflowY: "auto",
     animation: "slideUp 0.25s ease"
   },
@@ -2909,7 +3382,8 @@ const mStyles = {
     width: "100%",
     maxWidth: "540px",
     borderRadius: "24px 24px 0 0",
-    padding: "16px 18px 24px",
+    padding: "16px 18px",
+    paddingBottom: "calc(32px + env(safe-area-inset-bottom, 20px))",
     animation: "slideUp 0.22s ease"
   },
   sheetHandleBar: {
