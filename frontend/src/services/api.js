@@ -25,7 +25,7 @@ export const getDefaultApiUrl = () => {
   }
 
   // Default to live Render cloud backend
-  return "https://erp-system-8q4z.onrender.com/api";
+  return "https://hrms-backend-qjfb.onrender.com/api";
 };
 
 export const setCustomApiUrl = (url) => {

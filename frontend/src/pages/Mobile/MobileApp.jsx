@@ -2434,7 +2434,7 @@ export default function MobileApp() {
                 <label style={mStyles.inputLabel}>Backend Server API URL</label>
                 <input
                   type="text"
-                  placeholder="https://erp-system-8q4z.onrender.com/api"
+                  placeholder="https://hrms-backend-qjfb.onrender.com/api"
                   style={mStyles.textInput}
                   value={serverUrlInput}
                   onChange={(e) => setServerUrlInput(e.target.value)}
