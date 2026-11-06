@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api, { getDefaultApiUrl, setCustomApiUrl } from "../../services/api";
 import { getFileUrl } from "../../utils/uploadFileUrl";
@@ -33,7 +33,6 @@ import {
   RefreshCw,
   SlidersHorizontal,
   ChevronRight,
-  Wifi,
   User,
   DollarSign,
   Layers,
@@ -71,10 +70,43 @@ export default function MobileApp() {
   const [notifications, setNotifications] = useState([]);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
-  // Server Settings State
+  // Server Settings State (Hidden from regular users; accessible via 5-tap gesture or Ctrl+Shift+S)
   const [serverUrlInput, setServerUrlInput] = useState(() => getDefaultApiUrl());
   const [serverTestStatus, setServerTestStatus] = useState(null);
   const [testingServer, setTestingServer] = useState(false);
+
+  // Secret admin access to server settings (tap 5 times within 2 seconds or Ctrl+Shift+S)
+  const [adminTapCount, setAdminTapCount] = useState(0);
+  const adminTapTimerRef = useRef(null);
+  const handleSecretAdminTap = () => {
+    if (adminTapTimerRef.current) clearTimeout(adminTapTimerRef.current);
+    adminTapTimerRef.current = setTimeout(() => setAdminTapCount(0), 2000);
+    setAdminTapCount((prev) => {
+      const next = prev + 1;
+      if (next >= 5) {
+        triggerHaptic(60);
+        setIsServerModalOpen(true);
+        return 0;
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("server") === "1" || params.get("config") === "server") {
+      setIsServerModalOpen(true);
+    }
+
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === "S" || e.key === "s")) {
+        e.preventDefault();
+        setIsServerModalOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Today's date string YYYY-MM-DD
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
@@ -1912,7 +1944,7 @@ export default function MobileApp() {
             <div style={mStyles.pageHeader}>
               <div>
                 <h2 style={mStyles.pageTitle}>Menu & Settings</h2>
-                <p style={mStyles.pageSubtitle}>Employee services, server configuration & tools</p>
+                <p style={mStyles.pageSubtitle}>Employee services, system shortcuts & preferences</p>
               </div>
             </div>
 
@@ -1967,25 +1999,14 @@ export default function MobileApp() {
             </div>
 
             {/* System & Settings */}
-            <h3 style={{ ...mStyles.sectionTitle, marginTop: "20px" }}>System Configuration</h3>
+            <h3
+              style={{ ...mStyles.sectionTitle, marginTop: "20px", userSelect: "none", cursor: "default" }}
+              onClick={handleSecretAdminTap}
+              title="System Configuration"
+            >
+              System Configuration
+            </h3>
             <div style={mStyles.menuListCard}>
-              <div
-                style={mStyles.menuRowItem}
-                onClick={() => {
-                  triggerHaptic();
-                  setIsServerModalOpen(true);
-                }}
-              >
-                <div style={{ ...mStyles.menuItemIconCircle, background: "#f0fdfa", color: "#0f766e" }}>
-                  <Wifi size={18} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <h4 style={mStyles.menuRowTitle}>Server Connection Settings</h4>
-                  <p style={mStyles.menuRowSub}>Check Render Cloud or local Wi-Fi IP</p>
-                </div>
-                <ChevronRight size={18} color="#94a3b8" />
-              </div>
-
               <div
                 style={mStyles.menuRowItem}
                 onClick={() => {
@@ -2025,7 +2046,10 @@ export default function MobileApp() {
               </div>
             </div>
 
-            <p style={mStyles.versionFooterText}>
+            <p
+              style={{ ...mStyles.versionFooterText, userSelect: "none", cursor: "default" }}
+              onClick={handleSecretAdminTap}
+            >
               SNMR FAB INDIA ERP • Native Mobile App v2.4 • Connected to Cloud
             </p>
             {/* Bottom spacer for More */}
