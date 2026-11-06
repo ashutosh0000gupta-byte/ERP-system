@@ -25,11 +25,28 @@ export default function Login() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Server Settings Modal State (for Mobile App & Network)
+  // Server Settings Modal State (Hidden by default to prevent accidental edits; accessible via Ctrl+Shift+S or ?server=1)
   const [showServerModal, setShowServerModal] = useState(false);
   const [serverUrlInput, setServerUrlInput] = useState(() => getDefaultApiUrl());
   const [testStatus, setTestStatus] = useState(null); // { type: 'success' | 'error' | 'testing', msg: string }
   const [testingConnection, setTestingConnection] = useState(false);
+
+  // Hidden admin shortcut: Ctrl + Shift + S or URL parameter ?server=1
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("server") === "1" || params.get("config") === "server") {
+      setShowServerModal(true);
+    }
+
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === "S" || e.key === "s")) {
+        e.preventDefault();
+        setShowServerModal((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const testServerUrl = async (urlToTest) => {
     const target = (urlToTest || serverUrlInput || "").trim();
@@ -185,48 +202,7 @@ export default function Login() {
         overflowY: "auto",
         position: "relative",
       }}>
-        {/* Side Server Settings Button (Top-Right Corner) */}
-        <button
-          type="button"
-          onClick={() => {
-            setShowServerModal(true);
-            setTestStatus(null);
-          }}
-          title="Server Connection Settings"
-          style={{
-            position: "absolute",
-            top: "20px",
-            right: "24px",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            background: "rgba(255, 255, 255, 0.85)",
-            backdropFilter: "blur(8px)",
-            border: "1px solid #cbd5e1",
-            borderRadius: "10px",
-            padding: "7px 12px",
-            fontSize: "12px",
-            fontWeight: "600",
-            color: "#475569",
-            cursor: "pointer",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-            transition: "all 0.15s ease",
-            zIndex: 10
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "#ffffff";
-            e.currentTarget.style.borderColor = "#0f766e";
-            e.currentTarget.style.color = "#0f766e";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "rgba(255, 255, 255, 0.85)";
-            e.currentTarget.style.borderColor = "#cbd5e1";
-            e.currentTarget.style.color = "#475569";
-          }}
-        >
-          <span>⚙️</span>
-          <span>Server Settings</span>
-        </button>
+
 
         <div style={{
           width: "100%",
