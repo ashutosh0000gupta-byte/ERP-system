@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth, DEMO_ACCOUNTS } from "../../context/AuthContext";
 import Spinner from "../../components/shared/Spinner";
