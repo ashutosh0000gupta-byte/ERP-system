@@ -17,6 +17,7 @@ import {
   generateWorkerSalaries,
   payWorkerSalary,
   getDashboardStats,
+  getStorageStats,
   getWorkerById,
   updateWorkerStatus,
   updateWorker,
@@ -58,6 +59,7 @@ router.use(authenticate);
 
 // Dashboard
 router.get("/dashboard", getDashboardStats);
+router.get("/storage", getStorageStats);
 
 // Sites
 router.get("/sites", getSites);

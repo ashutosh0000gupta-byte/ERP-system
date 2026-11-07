@@ -14,3 +14,4 @@ cloudinary.config({
 export const isCloudinaryReady = Boolean(cloudName && apiKey && apiSecret);
 
 export default cloudinary;
+

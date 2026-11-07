@@ -147,6 +147,15 @@ export const getDashboardStats = async (req: Request, res: Response) => {
   }
 };
 
+export const getStorageStats = async (req: Request, res: Response) => {
+  try {
+    const stats = await snmrService.getStorageUsageStats();
+    res.json(stats);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 export const getWorkerById = async (req: Request, res: Response) => {
   try {
     const worker = await snmrService.getWorkerById(req.params.id);
