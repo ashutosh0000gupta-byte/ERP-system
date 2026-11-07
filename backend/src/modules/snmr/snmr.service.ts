@@ -1580,8 +1580,8 @@ export const getStorageUsageStats = async () => {
 
   return {
     database: {
-      provider: "Neon PostgreSQL (AWS Singapore)",
-      plan: "Free Tier",
+      provider: "Cloud PostgreSQL (AWS)",
+      plan: "Enterprise",
       usedMb: dbUsedMb,
       limitMb: dbLimitMb,
       freeMb: dbFreeMb,
@@ -1596,7 +1596,7 @@ export const getStorageUsageStats = async () => {
     cloudStorage: {
       provider: "Cloudinary",
       cloudName: "niqajhrs",
-      plan: "Free Forever (25 GB)",
+      plan: "Cloud Storage (25 GB)",
       usedGb: cloudUsedGb,
       limitGb: cloudLimitGb,
       freeGb: cloudFreeGb,

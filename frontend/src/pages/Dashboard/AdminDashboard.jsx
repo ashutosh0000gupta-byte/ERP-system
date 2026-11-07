@@ -139,7 +139,7 @@ export default function AdminDashboard({ isSupervisor = false }) {
           />
         </div>
 
-        {/* Live Storage & Cloud Quota Tracker */}
+        {/* Live Storage & Database Quota Tracker */}
         <div style={{
           background: "#fff",
           borderRadius: "16px",
@@ -163,10 +163,10 @@ export default function AdminDashboard({ isSupervisor = false }) {
               </div>
               <div>
                 <h3 style={{ fontSize: "17px", fontWeight: 700, margin: 0, color: "#0f172a" }}>
-                  System Storage & Cloud Quota
+                  System Storage & Database Quota
                 </h3>
                 <p style={{ fontSize: "12px", color: "#64748b", margin: "2px 0 0" }}>
-                  Live storage status for Neon PostgreSQL Database and Cloudinary Media
+                  Live status for Database and Document Storage
                 </p>
               </div>
             </div>
@@ -185,13 +185,13 @@ export default function AdminDashboard({ isSupervisor = false }) {
                 border: "1px solid #a7f3d0"
               }}>
                 <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981", display: "inline-block" }}></span>
-                99.2% Storage Available
+                99.2% Available
               </span>
             </div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "20px" }}>
-            {/* Box 1: Neon Database */}
+            {/* Box 1: Database */}
             <div style={{
               background: "#f8fafc",
               borderRadius: "14px",
@@ -204,15 +204,15 @@ export default function AdminDashboard({ isSupervisor = false }) {
                     <Database size={18} />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: "14px", color: "#0f172a" }}>Neon PostgreSQL Database</div>
-                    <div style={{ fontSize: "11px", color: "#64748b" }}>AWS Singapore • Free Tier</div>
+                    <div style={{ fontWeight: 700, fontSize: "15px", color: "#0f172a" }}>Database</div>
+                    <div style={{ fontSize: "11px", color: "#64748b" }}>Cloud PostgreSQL • Online</div>
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a" }}>
                     {stats.storage?.database?.usedMb ?? 38.5} MB
                   </div>
-                  <div style={{ fontSize: "11px", color: "#64748b" }}>of 500 MB limit</div>
+                  <div style={{ fontSize: "11px", color: "#64748b" }}>of 500 MB capacity</div>
                 </div>
               </div>
 
@@ -228,7 +228,7 @@ export default function AdminDashboard({ isSupervisor = false }) {
               </div>
 
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#64748b" }}>
-                <span>Free: <strong style={{ color: "#047857" }}>{stats.storage?.database?.freeMb ?? 461.5} MB</strong></span>
+                <span>Available: <strong style={{ color: "#047857" }}>{stats.storage?.database?.freeMb ?? 461.5} MB</strong></span>
                 <span>Used: <strong>{stats.storage?.database?.usedPercent ?? 7.7}%</strong></span>
               </div>
 
@@ -239,7 +239,7 @@ export default function AdminDashboard({ isSupervisor = false }) {
               </div>
             </div>
 
-            {/* Box 2: Cloudinary Cloud Storage */}
+            {/* Box 2: Storage */}
             <div style={{
               background: "#f8fafc",
               borderRadius: "14px",
@@ -252,15 +252,15 @@ export default function AdminDashboard({ isSupervisor = false }) {
                     <Cloud size={18} />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: "14px", color: "#0f172a" }}>Cloudinary Storage (KYC & Files)</div>
-                    <div style={{ fontSize: "11px", color: "#64748b" }}>Cloud: niqajhrs • Free Forever</div>
+                    <div style={{ fontWeight: 700, fontSize: "15px", color: "#0f172a" }}>Storage</div>
+                    <div style={{ fontSize: "11px", color: "#64748b" }}>Encrypted File Cloud • Active</div>
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a" }}>
                     {stats.storage?.cloudStorage?.usedGb ?? 0.01} GB
                   </div>
-                  <div style={{ fontSize: "11px", color: "#64748b" }}>of 25 GB limit</div>
+                  <div style={{ fontSize: "11px", color: "#64748b" }}>of 25 GB capacity</div>
                 </div>
               </div>
 
@@ -276,7 +276,7 @@ export default function AdminDashboard({ isSupervisor = false }) {
               </div>
 
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#64748b" }}>
-                <span>Free: <strong style={{ color: "#047857" }}>{stats.storage?.cloudStorage?.freeGb ?? 24.99} GB</strong></span>
+                <span>Available: <strong style={{ color: "#047857" }}>{stats.storage?.cloudStorage?.freeGb ?? 24.99} GB</strong></span>
                 <span>Used: <strong>{stats.storage?.cloudStorage?.usedPercent ?? 0.1}%</strong></span>
               </div>
 
