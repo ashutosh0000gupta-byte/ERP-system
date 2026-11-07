@@ -1552,30 +1552,65 @@ export const getStorageUsageStats = async () => {
   const dbUsedPercent = Number(((dbSizeBytes / dbLimitBytes) * 100).toFixed(2));
 
   // Count active tables
-  const [totalWorkers, totalAttendances, totalDocuments, totalExcelSheets] = await Promise.all([
+  const [totalWorkers, totalAttendances, totalDocuments, totalExcelSheets, totalReceipts] = await Promise.all([
     prisma.worker.count().catch(() => 0),
     prisma.workerAttendance.count().catch(() => 0),
     prisma.snmrDocument.count().catch(() => 0),
-    prisma.excelSheetArchive.count().catch(() => 0)
+    prisma.excelSheetArchive.count().catch(() => 0),
+    prisma.siteExpense.count({ where: { receiptUrl: { not: null } } }).catch(() => 0)
   ]);
 
-  // 2. Cloudinary Cloud Storage Metrics
+  // Auto-migrate any unmigrated base64 expense receipts to Cloudinary
+  if (isCloudinaryReady) {
+    try {
+      const base64Expenses = await prisma.siteExpense.findMany({
+        where: { receiptUrl: { startsWith: "data:" } },
+        take: 10
+      });
+      for (const exp of base64Expenses) {
+        if (exp.receiptUrl && exp.receiptUrl.startsWith("data:")) {
+          try {
+            const up = await cloudinary.uploader.upload(exp.receiptUrl, {
+              folder: "hrms/expenses",
+              resource_type: "auto"
+            });
+            await prisma.siteExpense.update({
+              where: { id: exp.id },
+              data: { receiptUrl: up.secure_url }
+            });
+          } catch (e) {
+            console.warn("[SiteExpense] Failed to migrate base64 receipt to Cloudinary:", (e as Error)?.message);
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 2. Cloudinary Cloud Storage Metrics (Real-time live bytes)
   let cloudUsedBytes = 0;
   let cloudLimitGb = 25;
-  let cloudObjects = totalDocuments + totalExcelSheets;
-  let cloudUsedPercent = 0.01;
+  let cloudObjects = totalDocuments + totalExcelSheets + totalReceipts;
 
   if (isCloudinaryReady) {
     try {
-      const usage = await cloudinary.api.usage();
-      if (usage) {
-        cloudUsedBytes = usage.storage?.usage || 0;
-        cloudObjects = usage.objects?.usage ?? cloudObjects;
-        cloudLimitGb = usage.credits?.limit || 25;
-        cloudUsedPercent = Number(usage.credits?.used_percent || ((cloudUsedBytes / (cloudLimitGb * 1024 * 1024 * 1024)) * 100).toFixed(2));
+      // Query real-time uploaded resources under hrms/
+      const res = await cloudinary.api.resources({
+        type: "upload",
+        prefix: "hrms/",
+        max_results: 500
+      });
+      if (res && res.resources && res.resources.length > 0) {
+        cloudObjects = res.resources.length;
+        cloudUsedBytes = res.resources.reduce((acc: number, curr: any) => acc + (curr.bytes || 0), 0);
       }
     } catch (e) {
-      // Cloudinary api call fallback
+      try {
+        const usage = await cloudinary.api.usage();
+        if (usage && usage.storage?.usage) {
+          cloudUsedBytes = usage.storage.usage;
+          cloudObjects = usage.objects?.usage ?? cloudObjects;
+        }
+      } catch (err) {}
     }
   }
 
@@ -1585,6 +1620,7 @@ export const getStorageUsageStats = async () => {
   const cloudLimitBytes = cloudLimitGb * 1024 * 1024 * 1024;
   const cloudFreeBytes = Math.max(0, cloudLimitBytes - cloudUsedBytes);
   const cloudFreeGb = Number((cloudFreeBytes / (1024 * 1024 * 1024)).toFixed(2));
+  const cloudUsedPercent = Number(((cloudUsedBytes / cloudLimitBytes) * 100).toFixed(3));
 
   return {
     database: {
@@ -1733,7 +1769,31 @@ export const getSiteExpenses = async (
   });
 };
 
-export const createSiteExpense = async (data: any) => {
+export const createSiteExpense = async (data: any, file?: Express.Multer.File) => {
+  let receiptUrl = data.receiptUrl || null;
+
+  // 1. If physical file provided via multipart upload
+  if (file) {
+    try {
+      const saved = await saveUploadedFile("documents", file);
+      receiptUrl = saved.fileUrl;
+    } catch (fileErr) {
+      console.warn("[SiteExpense] Multipart file upload to storage failed:", fileErr);
+    }
+  }
+  // 2. If base64 data URL provided from mobile or web camera/input
+  else if (receiptUrl && String(receiptUrl).startsWith("data:") && isCloudinaryReady) {
+    try {
+      const uploadRes = await cloudinary.uploader.upload(receiptUrl, {
+        folder: "hrms/expenses",
+        resource_type: "auto"
+      });
+      receiptUrl = uploadRes.secure_url;
+    } catch (uploadErr) {
+      console.warn("[SiteExpense] Cloudinary receipt upload failed:", (uploadErr as Error)?.message);
+    }
+  }
+
   return prisma.siteExpense.create({
     data: {
       siteId: data.siteId,
@@ -1742,13 +1802,19 @@ export const createSiteExpense = async (data: any) => {
       amount: data.amount,
       description: data.description,
       recordedBy: data.recordedBy,
-      receiptUrl: data.receiptUrl || null,
+      receiptUrl,
     },
     include: { site: true }
   });
 };
 
 export const deleteSiteExpense = async (id: string) => {
+  const expense = await prisma.siteExpense.findUnique({ where: { id } });
+  if (expense && expense.receiptUrl) {
+    try {
+      await deleteStoredFile(expense.receiptUrl);
+    } catch {}
+  }
   return prisma.siteExpense.delete({
     where: { id }
   });

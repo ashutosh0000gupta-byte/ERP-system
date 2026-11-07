@@ -99,7 +99,7 @@ router.post("/salaries/notify", notifyWorkerSalaries);
 
 // Expenses
 router.get("/expenses", getSiteExpenses);
-router.post("/expenses", createSiteExpense);
+router.post("/expenses", excelUpload.single("file"), createSiteExpense);
 router.delete("/expenses/:id", deleteSiteExpense);
 
 // Documents

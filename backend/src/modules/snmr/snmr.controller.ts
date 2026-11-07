@@ -180,8 +180,11 @@ export const getSiteExpenses = async (req: Request, res: Response) => {
 
 export const createSiteExpense = async (req: Request, res: Response) => {
   try {
-    const expense = await snmrService.createSiteExpense({ ...req.body, recordedBy: (req as any).user?.email || 'Admin' });
-    res.json(expense);
+    const expense = await snmrService.createSiteExpense(
+      { ...req.body, recordedBy: (req as any).user?.name || (req as any).user?.email || 'Admin' },
+      req.file
+    );
+    res.status(201).json(expense);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
