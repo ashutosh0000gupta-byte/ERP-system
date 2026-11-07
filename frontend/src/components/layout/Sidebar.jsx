@@ -6,7 +6,7 @@ import {
   GraduationCap, Laptop, CheckSquare, Receipt, Plane, Home, Headphones,
   FileText, LogOut, Building2, GitBranch, BarChart3, Bell, Shield, UserPlus,
   ClipboardList, ChevronDown, UserRound, CreditCard, Briefcase, ClipboardCheck,
-  HelpCircle, FileSpreadsheet, Smartphone
+  HelpCircle, FileSpreadsheet, Smartphone, Loader2
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -50,7 +50,7 @@ const NAV_GROUPS = [
 const STORAGE_KEY = "proteccio_sidebar_groups";
 
 /* ─── NavItem ──────────────────────────────────────────── */
-function NavItem({ item, isActive, onClick, showLabel }) {
+function NavItem({ item, isActive, isPending, onClick, showLabel }) {
   return (
     <button
       onClick={() => onClick(item.href)}
@@ -64,55 +64,91 @@ function NavItem({ item, isActive, onClick, showLabel }) {
         padding: showLabel ? "9px 12px 9px 14px" : "9px 0",
         borderRadius: "10px",
         border: "none",
-        background: isActive ? "rgba(15,118,110,0.16)" : "transparent",
-        color: isActive ? "#ffffff" : "var(--sidebar-text)",
-        fontWeight: isActive ? 600 : 400,
+        background: isPending
+          ? "rgba(15,118,110,0.3)"
+          : isActive
+          ? "rgba(15,118,110,0.16)"
+          : "transparent",
+        color: isPending ? "#5eead4" : isActive ? "#ffffff" : "var(--sidebar-text)",
+        fontWeight: (isActive || isPending) ? 600 : 400,
         fontSize: "13px",
         cursor: "pointer",
         width: "100%",
         textAlign: "left",
         position: "relative",
-        transition: "background 0.15s, color 0.15s",
+        transition: "all 0.15s ease",
         overflow: "hidden",
       }}
       onMouseEnter={(e) => {
-        if (!isActive) {
+        if (!isActive && !isPending) {
           e.currentTarget.style.background = "rgba(255,255,255,0.06)";
           e.currentTarget.style.color = "#e2eaf2";
         }
       }}
       onMouseLeave={(e) => {
-        if (!isActive) {
+        if (!isActive && !isPending) {
           e.currentTarget.style.background = "transparent";
           e.currentTarget.style.color = "var(--sidebar-text)";
         }
       }}
     >
-      {/* Teal accent left border for active item */}
-      {isActive && (
+      {/* Teal accent left border for active or pending item */}
+      {(isActive || isPending) && (
         <span style={{
           position: "absolute",
           left: 0, top: "50%", transform: "translateY(-50%)",
           width: "3px", height: "22px",
           borderRadius: "0 3px 3px 0",
-          background: "var(--primary)",
-          boxShadow: "0 0 8px rgba(15,118,110,0.7)",
+          background: isPending ? "#2dd4bf" : "var(--primary)",
+          boxShadow: isPending ? "0 0 10px rgba(45,212,191,0.9)" : "0 0 8px rgba(15,118,110,0.7)",
         }} />
       )}
 
-      <item.icon
-        size={16}
-        style={{
-          color: isActive ? "#5eead4" : "var(--sidebar-text)",
-          flexShrink: 0,
-          transition: "color 0.15s",
-        }}
-      />
+      {isPending ? (
+        <Loader2
+          size={16}
+          className="hrms-spin"
+          style={{
+            color: "#5eead4",
+            flexShrink: 0,
+          }}
+        />
+      ) : (
+        <item.icon
+          size={16}
+          style={{
+            color: isActive ? "#5eead4" : "var(--sidebar-text)",
+            flexShrink: 0,
+            transition: "color 0.15s",
+          }}
+        />
+      )}
 
       {/* Label only shown when sidebar is expanded */}
       {showLabel && (
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {item.title}
+        <span style={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flex: 1
+        }}>
+          <span>{item.title}</span>
+          {isPending && (
+            <span style={{
+              fontSize: "10px",
+              padding: "1px 6px",
+              background: "rgba(94, 234, 212, 0.2)",
+              color: "#5eead4",
+              borderRadius: "4px",
+              fontWeight: 700,
+              letterSpacing: "0.2px"
+            }}>
+              Loading...
+            </span>
+          )}
         </span>
       )}
     </button>
@@ -120,7 +156,7 @@ function NavItem({ item, isActive, onClick, showLabel }) {
 }
 
 /* ─── NavGroup ─────────────────────────────────────────── */
-function NavGroup({ group, isExpanded, onToggle, items, isOpen, location, navigate }) {
+function NavGroup({ group, isExpanded, onToggle, items, isOpen, location, onNavClick, pendingHref }) {
   const hasActiveChild = items.some((item) => {
     if (item.href === "/") return location.pathname === "/";
     return location.pathname.startsWith(item.href);
@@ -222,7 +258,8 @@ function NavGroup({ group, isExpanded, onToggle, items, isOpen, location, naviga
                 ? location.pathname === "/"
                 : location.pathname.startsWith(item.href)
             }
-            onClick={navigate}
+            isPending={pendingHref === item.href}
+            onClick={onNavClick}
             showLabel={isOpen}
           />
         ))}
@@ -236,6 +273,19 @@ export default function Sidebar({ isOpen }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, permissions } = useAuth();
+  const [pendingHref, setPendingHref] = useState(null);
+
+  // Clear pending href once route updates
+  useEffect(() => {
+    setPendingHref(null);
+  }, [location.pathname, location.search]);
+
+  const handleNavClick = (href) => {
+    if (location.pathname !== href) {
+      setPendingHref(href);
+    }
+    navigate(href);
+  };
 
   // Load persisted expanded state from localStorage
   const [expandedGroups, setExpandedGroups] = useState(() => {
@@ -377,7 +427,8 @@ export default function Sidebar({ isOpen }) {
               items={group.items}
               isOpen={isOpen}
               location={location}
-              navigate={navigate}
+              onNavClick={handleNavClick}
+              pendingHref={pendingHref}
             />
           </div>
         ))}

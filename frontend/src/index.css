@@ -30,10 +30,37 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text);
 }
 
-button { font-family: inherit; cursor: pointer; }
+button {
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.08s ease, filter 0.15s ease;
+}
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
 input, textarea, select { font-family: inherit; }
 img { max-width: 100%; display: block; }
 a { text-decoration: none; color: inherit; }
+
+/* ─── Global Desktop Loading Animations ───────────────────────────────── */
+@keyframes hrmsTopProgress {
+  0% { transform: translateX(-100%); width: 35%; }
+  50% { width: 65%; }
+  100% { transform: translateX(250%); width: 35%; }
+}
+
+.hrms-top-progress-bar {
+  animation: hrmsTopProgress 1.1s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes hrmsSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.hrms-spin {
+  animation: hrmsSpin 0.85s linear infinite;
+}
 
 /* ─── Scrollbar ────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }

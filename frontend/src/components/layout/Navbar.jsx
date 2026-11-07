@@ -9,13 +9,14 @@
 
 import {
   Bell, Search, ChevronDown, X, LogOut, UserRound,
-  CheckCheck, Settings, PanelLeftClose, PanelLeftOpen, Smartphone,
+  CheckCheck, Settings, PanelLeftClose, PanelLeftOpen, Smartphone, Loader2,
 } from "lucide-react";
 import { useRef, useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSearch } from "../../context/SearchContext";
 import { useAuth } from "../../context/AuthContext";
 import { useAppMode } from "../../hooks/useAppMode";
+import { useIsApiLoading } from "../../services/api";
 import { getInboxNotifications, markAllRead as markAllNotificationsRead, markAsRead } from "../../services/notificationService";
 
 /* ─── Constants ──────────────────────────────────────── */
@@ -43,6 +44,7 @@ export default function Navbar({ onToggleSidebar, sidebarOpen }) {
   const { query, setQuery, results, isOpen, setIsOpen, clear } = useSearch();
   const { user, logout } = useAuth();
   const { switchMode } = useAppMode();
+  const isApiLoading = useIsApiLoading();
   const navigate = useNavigate();
   const inputRef = useRef(null);
   const dropRef  = useRef(null);
@@ -261,6 +263,30 @@ export default function Navbar({ onToggleSidebar, sidebarOpen }) {
 
       {/* ── Right: notifications + divider + user ── */}
       <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+
+        {/* Syncing Indicator */}
+        {isApiLoading && (
+          <div
+            title="Syncing data with cloud server..."
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "4px 10px",
+              background: "rgba(15, 118, 110, 0.08)",
+              border: "1px solid rgba(15, 118, 110, 0.2)",
+              borderRadius: "16px",
+              fontSize: "11px",
+              fontWeight: 700,
+              color: "#0f766e",
+              marginRight: "4px",
+              animation: "fadeIn 0.2s ease",
+            }}
+          >
+            <Loader2 size={12} className="hrms-spin" style={{ color: "#0f766e" }} />
+            <span>Syncing...</span>
+          </div>
+        )}
 
         {/* Notification bell */}
         <div ref={notifRef} style={{ position: "relative" }}>

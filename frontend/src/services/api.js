@@ -12,6 +12,34 @@
  */
 
 import axios from "axios";
+import { useState, useEffect } from "react";
+
+// Global active request tracker for UI progress bars & spinners
+let activeRequestsCount = 0;
+const emitLoadingChange = () => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("hrms:loading", {
+        detail: {
+          isLoading: activeRequestsCount > 0,
+          count: activeRequestsCount,
+        },
+      })
+    );
+  }
+};
+
+export const useIsApiLoading = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  useEffect(() => {
+    const handler = (e) => {
+      setIsLoading(Boolean(e.detail?.isLoading));
+    };
+    window.addEventListener("hrms:loading", handler);
+    return () => window.removeEventListener("hrms:loading", handler);
+  }, []);
+  return isLoading;
+};
 
 export const getDefaultApiUrl = () => {
   const saved = localStorage.getItem("hrms_api_url");
@@ -52,6 +80,9 @@ const api = axios.create({
 // ── Request interceptor ─────────────────────────────────────────────────────
 api.interceptors.request.use(
   (config) => {
+    activeRequestsCount++;
+    emitLoadingChange();
+
     config.baseURL = getDefaultApiUrl();
     const token = localStorage.getItem("hrms_token");
     if (token) {
@@ -59,7 +90,11 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    activeRequestsCount = Math.max(0, activeRequestsCount - 1);
+    emitLoadingChange();
+    return Promise.reject(error);
+  }
 );
 
 // ── Response interceptor (silent token refresh on 401) ─────────────────────
@@ -79,8 +114,15 @@ async function tryRefresh() {
 }
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    activeRequestsCount = Math.max(0, activeRequestsCount - 1);
+    emitLoadingChange();
+    return response;
+  },
   async (error) => {
+    activeRequestsCount = Math.max(0, activeRequestsCount - 1);
+    emitLoadingChange();
+
     const original = error.config;
 
     // Only attempt rotation for real auth failures, once per request.

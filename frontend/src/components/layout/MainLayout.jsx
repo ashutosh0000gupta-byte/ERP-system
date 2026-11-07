@@ -11,14 +11,28 @@
  */
 
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 import { useAppMode } from "../../hooks/useAppMode";
+import { useIsApiLoading } from "../../services/api";
 
 const SIDEBAR_STORAGE_KEY = "proteccio_sidebar_open";
 
 export default function MainLayout({ children }) {
   const { isMobile: isDeviceMobile, switchMode } = useAppMode();
+  const location = useLocation();
+  const isApiLoading = useIsApiLoading();
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  // Trigger top loading bar whenever user navigates or route changes
+  useEffect(() => {
+    setIsNavigating(true);
+    const timer = setTimeout(() => setIsNavigating(false), 500);
+    return () => clearTimeout(timer);
+  }, [location.pathname, location.search]);
+
+  const showGlobalLoading = isNavigating || isApiLoading;
 
   // Load sidebar open state from localStorage, default to true on desktop
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -58,7 +72,34 @@ export default function MainLayout({ children }) {
   const closeSidebar  = () => setSidebarOpen(false);
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "var(--background)", overflow: "hidden" }}>
+    <div style={{ display: "flex", height: "100vh", background: "var(--background)", overflow: "hidden", position: "relative" }}>
+
+      {/* ── Desktop Global Top Progress Loading Bar ── */}
+      {showGlobalLoading && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "3.5px",
+            zIndex: 99999,
+            overflow: "hidden",
+            background: "rgba(15, 118, 110, 0.12)",
+            pointerEvents: "none",
+          }}
+        >
+          <div
+            className="hrms-top-progress-bar"
+            style={{
+              height: "100%",
+              background: "linear-gradient(90deg, #0d9488, #2dd4bf, #0f766e)",
+              borderRadius: "0 3px 3px 0",
+              boxShadow: "0 0 10px rgba(45, 212, 191, 0.9)",
+            }}
+          />
+        </div>
+      )}
 
       {/* ── Mobile overlay backdrop ── */}
       {isMobile && sidebarOpen && (
