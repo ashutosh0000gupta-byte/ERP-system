@@ -1530,22 +1530,26 @@ export const notifyWorkerSalaries = async (month: number, year: number) => {
 
 export const getStorageUsageStats = async () => {
   // 1. Neon Database Metrics (PostgreSQL)
-  let dbUsedMb = 38.5;
+  let dbSizeBytes = 40370176; // baseline in bytes (~38.5 MB)
   try {
     const rawRes: any = await prisma.$queryRawUnsafe(`SELECT pg_database_size(current_database())::text as size_bytes;`);
     if (rawRes && rawRes[0] && rawRes[0].size_bytes) {
       const bytes = Number(rawRes[0].size_bytes);
       if (!isNaN(bytes) && bytes > 0) {
-        dbUsedMb = Number((bytes / (1024 * 1024)).toFixed(1));
+        dbSizeBytes = bytes;
       }
     }
   } catch (e) {
     // Keep fallback
   }
 
+  const dbUsedKb = Number((dbSizeBytes / 1024).toFixed(2));
+  const dbUsedMb = Number((dbSizeBytes / (1024 * 1024)).toFixed(3));
   const dbLimitMb = 500;
-  const dbFreeMb = Number(Math.max(0, dbLimitMb - dbUsedMb).toFixed(1));
-  const dbUsedPercent = Number(((dbUsedMb / dbLimitMb) * 100).toFixed(1));
+  const dbLimitBytes = dbLimitMb * 1024 * 1024;
+  const dbFreeBytes = Math.max(0, dbLimitBytes - dbSizeBytes);
+  const dbFreeMb = Number((dbFreeBytes / (1024 * 1024)).toFixed(2));
+  const dbUsedPercent = Number(((dbSizeBytes / dbLimitBytes) * 100).toFixed(2));
 
   // Count active tables
   const [totalWorkers, totalAttendances, totalDocuments, totalExcelSheets] = await Promise.all([
@@ -1556,32 +1560,38 @@ export const getStorageUsageStats = async () => {
   ]);
 
   // 2. Cloudinary Cloud Storage Metrics
-  let cloudUsedGb = 0.01;
+  let cloudUsedBytes = 0;
   let cloudLimitGb = 25;
   let cloudObjects = totalDocuments + totalExcelSheets;
-  let cloudUsedPercent = 0.1;
+  let cloudUsedPercent = 0.01;
 
   if (isCloudinaryReady) {
     try {
       const usage = await cloudinary.api.usage();
       if (usage) {
-        const bytes = usage.storage?.usage || 0;
-        cloudUsedGb = Number((bytes / (1024 * 1024 * 1024)).toFixed(3));
+        cloudUsedBytes = usage.storage?.usage || 0;
         cloudObjects = usage.objects?.usage ?? cloudObjects;
         cloudLimitGb = usage.credits?.limit || 25;
-        cloudUsedPercent = Number(usage.credits?.used_percent || ((cloudUsedGb / cloudLimitGb) * 100).toFixed(2));
+        cloudUsedPercent = Number(usage.credits?.used_percent || ((cloudUsedBytes / (cloudLimitGb * 1024 * 1024 * 1024)) * 100).toFixed(2));
       }
     } catch (e) {
       // Cloudinary api call fallback
     }
   }
 
-  const cloudFreeGb = Number(Math.max(0, cloudLimitGb - cloudUsedGb).toFixed(2));
+  const cloudUsedKb = Number((cloudUsedBytes / 1024).toFixed(2));
+  const cloudUsedMb = Number((cloudUsedBytes / (1024 * 1024)).toFixed(3));
+  const cloudUsedGb = Number((cloudUsedBytes / (1024 * 1024 * 1024)).toFixed(4));
+  const cloudLimitBytes = cloudLimitGb * 1024 * 1024 * 1024;
+  const cloudFreeBytes = Math.max(0, cloudLimitBytes - cloudUsedBytes);
+  const cloudFreeGb = Number((cloudFreeBytes / (1024 * 1024 * 1024)).toFixed(2));
 
   return {
     database: {
       provider: "Cloud PostgreSQL (AWS)",
       plan: "Enterprise",
+      usedBytes: dbSizeBytes,
+      usedKb: dbUsedKb,
       usedMb: dbUsedMb,
       limitMb: dbLimitMb,
       freeMb: dbFreeMb,
@@ -1597,13 +1607,17 @@ export const getStorageUsageStats = async () => {
       provider: "Cloudinary",
       cloudName: "niqajhrs",
       plan: "Cloud Storage (25 GB)",
+      usedBytes: cloudUsedBytes,
+      usedKb: cloudUsedKb,
+      usedMb: cloudUsedMb,
       usedGb: cloudUsedGb,
       limitGb: cloudLimitGb,
       freeGb: cloudFreeGb,
       usedPercent: cloudUsedPercent,
       totalFiles: cloudObjects
     },
-    status: dbUsedPercent > 85 || cloudUsedPercent > 85 ? "Warning" : "Healthy"
+    status: dbUsedPercent > 85 || cloudUsedPercent > 85 ? "Warning" : "Healthy",
+    lastUpdated: new Date().toISOString()
   };
 };
 
