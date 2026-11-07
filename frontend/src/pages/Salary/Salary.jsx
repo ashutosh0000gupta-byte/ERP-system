@@ -882,13 +882,6 @@ export default function Salary() {
               {isMonthLocked ? <Lock size={16} color="#b91c1c" /> : <Unlock size={16} color="#64748b" />}
               <span>{isMonthLocked ? "Locked Month" : "Lock Month"}</span>
             </button>
-            <button 
-              style={{...styles.exportBtn, background: "#f0fdf4", color: "#166534", borderColor: "#bbf7d0"}} 
-              onClick={handleNotify} 
-              disabled={isNotifying || salaries.length === 0}
-            >
-              {isNotifying ? "Sending..." : "Notify SMS/WhatsApp"}
-            </button>
           </div>
         </div>
 
