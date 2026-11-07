@@ -146,8 +146,13 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 
 // =========================================================
-// HEALTH / READINESS
+// HEALTH / READINESS / PING KEEP-ALIVE
 // =========================================================
+
+// Ultra-lightweight keep-alive ping for cron services (0 DB load, returns 2 bytes "OK")
+app.all(["/ping", "/api/ping"], (_req: Request, res: Response) => {
+  res.status(200).send("OK");
+});
 
 app.get("/api/health/live", (_req: Request, res: Response) => {
   res.status(200).json({
