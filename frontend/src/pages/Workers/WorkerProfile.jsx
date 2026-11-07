@@ -184,19 +184,19 @@ export default function WorkerProfile() {
 
     setUploadingDoc(true);
     try {
-      const payload = {
-        title: file.name,
-        type: docType,
-        url: URL.createObjectURL(file),
-        entityType: "Worker",
-        entityId: id,
-        uploadedBy: "Admin"
-      };
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("title", file.name);
+      formData.append("type", docType);
+      formData.append("entityType", "Worker");
+      formData.append("entityId", id);
       
-      const res = await api.post("/snmr/documents", payload);
+      const res = await api.post("/snmr/documents", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
       setDocuments([res.data, ...documents]);
     } catch (err) {
-      alert("Failed to upload document");
+      alert("Failed to upload document: " + (err.response?.data?.error || err.message));
     } finally {
       setUploadingDoc(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -1349,6 +1349,30 @@ export default function WorkerProfile() {
                         <div style={{ fontWeight: 600, fontSize: "14px", color: "#0f172a" }}>{doc.type}</div>
                         <div style={{ fontSize: "12px", color: "#64748b" }}>{doc.title}</div>
                       </div>
+                      {doc.url && (
+                        <a
+                          href={doc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            padding: "6px 12px",
+                            background: "#eff6ff",
+                            color: "#2563eb",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            textDecoration: "none",
+                            marginRight: "8px",
+                            border: "1px solid #bfdbfe"
+                          }}
+                          title="View / Download Document"
+                        >
+                          <Eye size={14} /> View
+                        </a>
+                      )}
                       <button style={styles.delBtn} onClick={() => handleDeleteDoc(doc.id)}><Trash2 size={16} /></button>
                     </div>
                   ))}

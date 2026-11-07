@@ -198,7 +198,10 @@ export const getDocuments = async (req: Request, res: Response) => {
 
 export const uploadDocument = async (req: Request, res: Response) => {
   try {
-    const doc = await snmrService.uploadDocument({ ...req.body, uploadedBy: (req as any).user?.email || 'Admin' });
+    const doc = await snmrService.uploadDocument(
+      { ...req.body, uploadedBy: (req as any).user?.name || (req as any).user?.email || 'Admin' },
+      req.file
+    );
     res.json(doc);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

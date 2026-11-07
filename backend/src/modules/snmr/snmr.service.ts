@@ -1668,15 +1668,26 @@ export const getDocuments = async (entityType?: string, entityId?: string) => {
   });
 };
 
-export const uploadDocument = async (data: any) => {
+export const uploadDocument = async (data: any, file?: Express.Multer.File) => {
+  let fileUrl = data.url;
+  let title = data.title;
+
+  if (file) {
+    const saved = await saveUploadedFile("documents", file);
+    fileUrl = saved.fileUrl;
+    if (!title || String(title).trim() === "") {
+      title = file.originalname || saved.fileName;
+    }
+  }
+
   return prisma.snmrDocument.create({
     data: {
-      title: data.title,
-      type: data.type,
-      url: data.url,
-      entityType: data.entityType,
+      title: title || "Document",
+      type: data.type || "Document",
+      url: fileUrl || "",
+      entityType: data.entityType || "Worker",
       entityId: data.entityId,
-      uploadedBy: data.uploadedBy
+      uploadedBy: data.uploadedBy || "Admin"
     }
   });
 };
@@ -1846,6 +1857,12 @@ export const deleteWorker = async (id: string) => {
 
 
 export const deleteDocument = async (id: string) => {
+  const doc = await prisma.snmrDocument.findUnique({ where: { id } });
+  if (doc && doc.url) {
+    try {
+      await deleteStoredFile(doc.url);
+    } catch {}
+  }
   return prisma.snmrDocument.delete({ where: { id } });
 };
 

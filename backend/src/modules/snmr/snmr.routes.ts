@@ -102,7 +102,7 @@ router.delete("/expenses/:id", deleteSiteExpense);
 
 // Documents
 router.get("/documents", getDocuments);
-router.post("/documents", uploadDocument);
+router.post("/documents", excelUpload.single("file"), uploadDocument);
 router.delete("/documents/:id", deleteDocument);
 
 // Users
